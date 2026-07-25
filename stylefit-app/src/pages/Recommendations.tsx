@@ -345,6 +345,7 @@ function OutfitCard({
   outfit,
   isFavorite,
   toggleFavorite,
+  index,
 }: {
   outfit: OutfitSet;
   isFavorite: (id: string) => boolean;
@@ -359,18 +360,35 @@ function OutfitCard({
     return map;
   }, [outfit.itemReasons]);
 
+  const itemMatchMap = useMemo(() => {
+    const map: Record<string, { score: number; reasons: string[] }> = {};
+    outfit.itemMatchScores?.forEach(m => { map[m.itemId] = { score: m.score, reasons: m.reasons }; });
+    return map;
+  }, [outfit.itemMatchScores]);
+
   const categoryLabel: Record<string, string> = {
     top: '上衣', bottom: '下装', dress: '裙装', outerwear: '外套', shoes: '鞋履', accessory: '配饰',
   };
 
   return (
-    <Card className="border-0 shadow-sm overflow-hidden transition-shadow hover:shadow-md">
+    <Card className="border-0 shadow-sm overflow-hidden transition-shadow hover:shadow-md stagger-item" style={{ animationDelay: `${index * 100}ms` }}>
       <CardContent className="p-0">
-        {/* Header with theme name */}
+        {/* Header with theme name and match score */}
         <div className="bg-gradient-to-r from-amber-50 to-orange-50 px-4 py-3 border-b">
           <div className="flex items-center justify-between mb-1">
             <h3 className="font-semibold text-slate-800">{outfit.themeName || outfit.name}</h3>
-            <span className="text-sm font-bold text-amber-600">¥{outfit.totalPrice}</span>
+            <div className="flex items-center gap-2">
+              {outfit.matchScore !== undefined && (
+                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                  outfit.matchScore >= 80 ? 'bg-green-100 text-green-700' :
+                  outfit.matchScore >= 60 ? 'bg-amber-100 text-amber-700' :
+                  'bg-slate-100 text-slate-600'
+                }`}>
+                  匹配 {outfit.matchScore}%
+                </span>
+              )}
+              <span className="text-sm font-bold text-amber-600">¥{outfit.totalPrice}</span>
+            </div>
           </div>
           {outfit.suitableBodyDesc && (
             <div className="flex items-center gap-1 text-xs text-slate-500 mb-1">
@@ -378,7 +396,15 @@ function OutfitCard({
               {outfit.suitableBodyDesc}
             </div>
           )}
-          <p className="mt-1 text-xs text-slate-500 line-clamp-2">{outfit.description}</p>
+          {outfit.matchReasons && outfit.matchReasons.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1">
+              {outfit.matchReasons.slice(0, 3).map((reason, idx) => (
+                <span key={idx} className="text-xs text-green-600 bg-green-50 px-1.5 py-0.5 rounded">
+                  {reason}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Item thumbnails */}
@@ -396,11 +422,16 @@ function OutfitCard({
                   }`}
                 />
               </button>
+              {itemMatchMap[item.id] && (
+                <span className="absolute bottom-0.5 left-0.5 text-[9px] font-bold bg-black/60 text-white px-1 rounded">
+                  {itemMatchMap[item.id].score}%
+                </span>
+              )}
             </div>
           ))}
         </div>
 
-        {/* Item details with reasons */}
+        {/* Item details with reasons and buy buttons */}
         <div className="px-3 pb-2">
           <button
             onClick={() => setExpanded(!expanded)}
@@ -425,9 +456,12 @@ function OutfitCard({
                   />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1">
-                      <span className="text-xs font-medium text-slate-700 truncate">
-                        {categoryLabel[item.category] || item.category} · {item.name}
-                      </span>
+                      <div className="flex items-center gap-1 min-w-0">
+                        <span className="text-xs text-slate-400">{item.brand}</span>
+                        <span className="text-xs font-medium text-slate-700 truncate">
+                          {categoryLabel[item.category] || item.category} · {item.name}
+                        </span>
+                      </div>
                       <span className="text-xs font-bold text-slate-900 shrink-0">¥{item.price}</span>
                     </div>
                     {itemReasonMap[item.id] && (
@@ -440,6 +474,16 @@ function OutfitCard({
                         💡 {item.stylingTips}
                       </p>
                     )}
+                    <a
+                      href={item.buyLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700"
+                    >
+                      <ShoppingBag className="h-3 w-3" />
+                      立即购买
+                      <ExternalLink className="h-2.5 w-2.5" />
+                    </a>
                   </div>
                 </div>
               ))}

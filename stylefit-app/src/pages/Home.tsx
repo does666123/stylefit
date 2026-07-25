@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Shirt,
@@ -9,12 +10,29 @@ import {
   Ruler,
   Palette,
   Heart,
+  RefreshCw,
 } from 'lucide-react';
-import { useFavorites } from '../hooks/useRecommendation';
+import { useFavorites, loadProfile } from '../hooks/useRecommendation';
+import type { UserBodyProfile } from '../types';
 
 export default function Home() {
   const navigate = useNavigate();
   const { favoriteItems } = useFavorites();
+  const [existingProfile, setExistingProfile] = useState<UserBodyProfile | null>(null);
+
+  // 检测是否已有保存的画像
+  useEffect(() => {
+    const profile = loadProfile();
+    if (profile) {
+      setExistingProfile(profile);
+    }
+  }, []);
+
+  const handleViewRecommendations = () => {
+    if (existingProfile) {
+      navigate('/recommendations', { state: { profile: existingProfile } });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-white page-enter">
@@ -44,12 +62,31 @@ export default function Home() {
                 </span>
               </Button>
             )}
-            <Button
-              onClick={() => navigate('/survey')}
-              className="bg-slate-900 hover:bg-slate-800"
-            >
-              开始穿搭测试
-            </Button>
+            {existingProfile ? (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleViewRecommendations}
+                  className="hidden sm:inline-flex"
+                >
+                  查看推荐
+                </Button>
+                <Button
+                  onClick={() => navigate('/survey')}
+                  className="bg-slate-900 hover:bg-slate-800"
+                >
+                  重新测试
+                </Button>
+              </>
+            ) : (
+              <Button
+                onClick={() => navigate('/survey')}
+                className="bg-slate-900 hover:bg-slate-800"
+              >
+                开始穿搭测试
+              </Button>
+            )}
           </div>
         </div>
       </nav>
@@ -72,16 +109,49 @@ export default function Home() {
             输入你的身高、体重、体型等信息，AI 会为你精准推荐最适合的服装搭配。
             不再为"这件衣服适不适合我"而困扰，让穿搭变得简单又有趣。
           </p>
-          <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-            <Button
-              size="lg"
-              onClick={() => navigate('/survey')}
-              className="h-12 px-8 text-base bg-slate-900 hover:bg-slate-800"
-            >
-              立即测试我的穿搭
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </div>
+
+          {/* 回访用户：显示快捷入口 */}
+          {existingProfile && (
+            <div className="mb-8 inline-flex flex-col items-center gap-3 rounded-2xl border bg-gradient-to-r from-green-50 to-emerald-50 px-6 py-4 shadow-sm">
+              <div className="flex items-center gap-2 text-sm font-medium text-green-700">
+                <UserCheck className="h-4 w-4" />
+                欢迎回来！检测到你的体型数据
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button
+                  size="lg"
+                  onClick={handleViewRecommendations}
+                  className="h-11 px-6 bg-green-600 hover:bg-green-700 text-white"
+                >
+                  查看我的推荐
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  onClick={() => navigate('/survey')}
+                  className="h-11 px-6"
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  重新测试
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* 新用户：显示测试入口 */}
+          {!existingProfile && (
+            <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
+              <Button
+                size="lg"
+                onClick={() => navigate('/survey')}
+                className="h-12 px-8 text-base bg-slate-900 hover:bg-slate-800"
+              >
+                立即测试我的穿搭
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Decorative elements */}

@@ -146,6 +146,7 @@ export default function Survey() {
       occasion: profile.occasion!,
       season: profile.season!,
       age: profile.age,
+      budget: profile.budget,
       measurements: profile.measurements || {},
     };
     // 持久化到 localStorage，防止刷新后数据丢失
@@ -445,6 +446,23 @@ export default function Survey() {
                       </SelectContent>
                     </Select>
                     <p className="mt-1 text-xs text-slate-400">推荐将基于当季适穿的单品</p>
+                  </div>
+                  <div>
+                    <Label htmlFor="budget" className="mb-2 block">
+                      预算上限
+                      <span className="ml-1 text-xs font-normal text-slate-400">（可选，单位：元）</span>
+                    </Label>
+                    <Input
+                      id="budget"
+                      type="number"
+                      value={profile.budget || ''}
+                      onChange={(e) => update('budget', e.target.value ? Number(e.target.value) : undefined)}
+                      placeholder="500（不填则不限预算）"
+                      className="h-12"
+                      min={50}
+                      max={10000}
+                    />
+                    <p className="mt-1 text-xs text-slate-400">设置预算后，推荐将优先匹配价格范围内的商品</p>
                   </div>
                 </div>
               </div>
