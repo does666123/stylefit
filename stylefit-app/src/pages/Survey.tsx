@@ -12,11 +12,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Shirt, ArrowRight, ArrowLeft, Check, Loader2, Sparkles, Ruler } from 'lucide-react';
+import { Shirt, ArrowRight, ArrowLeft, Check, Loader2, Sparkles, Ruler, AlertCircle } from 'lucide-react';
 import type { UserBodyProfile, Gender, BodyType, SkinTone, StylePreference, Occasion, Season } from '../types';
 import { saveProfile } from '../hooks/useRecommendation';
 
-const steps = ['基础信息', '身体数据', '风格偏好'];
+const allSteps = ['基础信息', '身材分析', '风格偏好', '推荐结果'];
 
 const bodyTypeOptions: { value: BodyType; label: string; desc: string }[] = [
   { value: 'slim', label: '偏瘦', desc: '肩窄腰细，整体偏纤细' },
@@ -59,10 +59,16 @@ const seasonOptions: { value: Season; label: string }[] = [
   { value: 'winter', label: '冬季' },
 ];
 
+interface ValidationErrors {
+  height?: string;
+  weight?: string;
+}
+
 export default function Survey() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<ValidationErrors>({});
   const [profile, setProfile] = useState<Partial<UserBodyProfile>>({
     gender: 'male',
     height: 175,
@@ -70,10 +76,14 @@ export default function Survey() {
     measurements: {},
   });
 
-  const progress = ((step + 1) / steps.length) * 100;
+  // Progress: 3 survey steps map to first 3 of 4 total steps
+  const progress = ((step + 1) / allSteps.length) * 100;
 
   const update = <K extends keyof UserBodyProfile>(key: K, value: UserBodyProfile[K]) => {
     setProfile((p) => ({ ...p, [key]: value }));
+    // Clear related error when user edits
+    if (key === 'height') setErrors(e => ({ ...e, height: undefined }));
+    if (key === 'weight') setErrors(e => ({ ...e, weight: undefined }));
   };
 
   const updateMeasurement = (key: keyof UserBodyProfile['measurements'], value: number | undefined) => {
@@ -83,12 +93,28 @@ export default function Survey() {
     }));
   };
 
+  const validateStep0 = (): boolean => {
+    const newErrors: ValidationErrors = {};
+    const h = profile.height;
+    const w = profile.weight;
+
+    if (!h || h < 80 || h > 220) {
+      newErrors.height = '身高需在 80-220cm 之间';
+    }
+    if (!w || w < 20 || w > 200) {
+      newErrors.weight = '体重需在 20-200kg 之间';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const canProceed = () => {
     if (step === 0) {
       return (
         profile.gender &&
-        profile.height && profile.height >= 100 && profile.height <= 220 &&
-        profile.weight && profile.weight >= 30 && profile.weight <= 150
+        profile.height && profile.height >= 80 && profile.height <= 220 &&
+        profile.weight && profile.weight >= 20 && profile.weight <= 200
       );
     }
     if (step === 1) {
@@ -98,6 +124,13 @@ export default function Survey() {
       return profile.stylePreference && profile.occasion && profile.season;
     }
     return false;
+  };
+
+  const handleNext = () => {
+    if (step === 0) {
+      if (!validateStep0()) return;
+    }
+    setStep(step + 1);
   };
 
   const handleSubmit = async () => {
@@ -130,16 +163,43 @@ export default function Survey() {
             </div>
             <span className="text-xl font-bold text-slate-900">StyleFit</span>
           </div>
-          <div className="text-sm text-slate-400">步骤 {step + 1} / {steps.length}</div>
+          <div className="text-sm text-slate-400">步骤 {step + 1} / {allSteps.length}</div>
         </div>
       </nav>
 
-      <div className="mx-auto max-w-xl px-4 py-8">
-        <Progress value={progress} className="mb-8" />
+      <div className="mx-auto max-w-xl px-4 py-8 page-enter">
+        {/* Step Progress Indicator */}
+        <div className="mb-6">
+          <Progress value={progress} className="mb-4" />
+          <div className="flex justify-between">
+            {allSteps.map((label, idx) => (
+              <div key={label} className="flex flex-col items-center gap-1.5">
+                <div
+                  className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-all duration-300 ${
+                    idx < step
+                      ? 'bg-slate-900 text-white'
+                      : idx === step
+                      ? 'bg-slate-900 text-white ring-4 ring-slate-200'
+                      : 'bg-slate-200 text-slate-400'
+                  }`}
+                >
+                  {idx < step ? <Check className="h-4 w-4" /> : idx + 1}
+                </div>
+                <span
+                  className={`text-xs font-medium transition-colors ${
+                    idx <= step ? 'text-slate-700' : 'text-slate-400'
+                  }`}
+                >
+                  {label}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
 
-        <Card className="border-0 shadow-lg">
+        <Card className="border-0 shadow-lg animate-fade-in-up">
           <CardContent className="p-6 sm:p-8">
-            {/* Step 1: Basic Info */}
+            {/* Step 0: Basic Info */}
             {step === 0 && (
               <div className="space-y-6">
                 <div>
@@ -171,26 +231,67 @@ export default function Survey() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="height" className="mb-2 block">身高 (cm)</Label>
-                      <Input id="height" type="number" value={profile.height || ''} onChange={(e) => update('height', Number(e.target.value))} placeholder="175" className="h-12" />
+                      <Input
+                        id="height"
+                        type="number"
+                        value={profile.height || ''}
+                        onChange={(e) => update('height', Number(e.target.value))}
+                        placeholder="175（范围 80-220）"
+                        className={`h-12 ${errors.height ? 'border-red-400 ring-1 ring-red-400' : ''}`}
+                        min={80}
+                        max={220}
+                      />
+                      {errors.height && (
+                        <p className="mt-1.5 flex items-center gap-1 text-xs text-red-500">
+                          <AlertCircle className="h-3 w-3" />
+                          {errors.height}
+                        </p>
+                      )}
                     </div>
                     <div>
                       <Label htmlFor="weight" className="mb-2 block">体重 (kg)</Label>
-                      <Input id="weight" type="number" value={profile.weight || ''} onChange={(e) => update('weight', Number(e.target.value))} placeholder="70" className="h-12" />
+                      <Input
+                        id="weight"
+                        type="number"
+                        value={profile.weight || ''}
+                        onChange={(e) => update('weight', Number(e.target.value))}
+                        placeholder="70（范围 20-200）"
+                        className={`h-12 ${errors.weight ? 'border-red-400 ring-1 ring-red-400' : ''}`}
+                        min={20}
+                        max={200}
+                      />
+                      {errors.weight && (
+                        <p className="mt-1.5 flex items-center gap-1 text-xs text-red-500">
+                          <AlertCircle className="h-3 w-3" />
+                          {errors.weight}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div>
-                    <Label htmlFor="age" className="mb-2 block">年龄（可选）</Label>
-                    <Input id="age" type="number" value={profile.age || ''} onChange={(e) => update('age', Number(e.target.value))} placeholder="25" className="h-12" />
+                    <Label htmlFor="age" className="mb-2 block">
+                      年龄
+                      <span className="ml-1 text-xs font-normal text-slate-400">（可选）</span>
+                    </Label>
+                    <Input
+                      id="age"
+                      type="number"
+                      value={profile.age || ''}
+                      onChange={(e) => update('age', Number(e.target.value))}
+                      placeholder="25"
+                      className="h-12"
+                    />
+                    <p className="mt-1 text-xs text-slate-400">填写年龄可进一步优化推荐</p>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Step 2: Body Measurements */}
+            {/* Step 1: Body Analysis */}
             {step === 1 && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="mb-1 text-2xl font-bold text-slate-900">身体数据</h2>
+                  <h2 className="mb-1 text-2xl font-bold text-slate-900">身材分析</h2>
                   <p className="text-sm text-slate-500">更详细的身体数据让推荐更精准</p>
                 </div>
 
@@ -222,6 +323,7 @@ export default function Survey() {
                   {/* Skin Tone */}
                   <div>
                     <Label className="mb-3 block">肤色</Label>
+                    <p className="mb-2 text-xs text-slate-400">选择最接近你手腕内侧肤色的选项</p>
                     <div className="grid grid-cols-5 gap-2">
                       {skinToneOptions.map((opt) => (
                         <button
@@ -242,7 +344,8 @@ export default function Survey() {
                   <div>
                     <Label className="mb-3 flex items-center gap-2">
                       <Ruler className="h-4 w-4 text-slate-400" />
-                      详细尺寸（可选，推荐填写）
+                      详细尺寸
+                      <span className="text-xs font-normal text-slate-400">（可选，推荐填写）</span>
                     </Label>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
@@ -292,7 +395,7 @@ export default function Survey() {
               </div>
             )}
 
-            {/* Step 3: Style Preferences */}
+            {/* Step 2: Style Preferences */}
             {step === 2 && (
               <div className="space-y-6">
                 <div>
@@ -322,24 +425,26 @@ export default function Survey() {
                   <div>
                     <Label className="mb-2 block">穿着场合</Label>
                     <Select value={profile.occasion} onValueChange={(v) => update('occasion', v as Occasion)}>
-                      <SelectTrigger className="h-12"><SelectValue placeholder="选择场合" /></SelectTrigger>
+                      <SelectTrigger className="h-12"><SelectValue placeholder="选择主要穿着场合" /></SelectTrigger>
                       <SelectContent>
                         {occasionOptions.map((opt) => (
                           <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
+                    <p className="mt-1 text-xs text-slate-400">我们会优先推荐适合该场合的搭配</p>
                   </div>
                   <div>
                     <Label className="mb-2 block">当前季节</Label>
                     <Select value={profile.season} onValueChange={(v) => update('season', v as Season)}>
-                      <SelectTrigger className="h-12"><SelectValue placeholder="选择季节" /></SelectTrigger>
+                      <SelectTrigger className="h-12"><SelectValue placeholder="选择当前季节" /></SelectTrigger>
                       <SelectContent>
                         {seasonOptions.map((opt) => (
                           <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
+                    <p className="mt-1 text-xs text-slate-400">推荐将基于当季适穿的单品</p>
                   </div>
                 </div>
               </div>
@@ -352,8 +457,8 @@ export default function Survey() {
                   <ArrowLeft className="mr-2 h-4 w-4" />上一步
                 </Button>
               )}
-              {step < steps.length - 1 ? (
-                <Button className="h-12 flex-1 bg-slate-900 hover:bg-slate-800" disabled={!canProceed()} onClick={() => setStep(step + 1)}>
+              {step < 2 ? (
+                <Button className="h-12 flex-1 bg-slate-900 hover:bg-slate-800" disabled={!canProceed()} onClick={handleNext}>
                   下一步<ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               ) : (

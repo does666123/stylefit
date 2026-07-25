@@ -114,7 +114,7 @@ export function getBMICategory(height: number, weight: number) {
   return { bmi: Math.round(bmi * 10) / 10, category, advice };
 }
 
-export function generateOutfitSets(recommendations: ClothingItem[]): OutfitSet[] {
+export function generateOutfitSets(recommendations: ClothingItem[], profile?: UserBodyProfile | null): OutfitSet[] {
   const tops = recommendations.filter(i => i.category === 'top');
   const bottoms = recommendations.filter(i => i.category === 'bottom' || i.category === 'dress');
   const outerwears = recommendations.filter(i => i.category === 'outerwear');
@@ -122,6 +122,12 @@ export function generateOutfitSets(recommendations: ClothingItem[]): OutfitSet[]
   const accessories = recommendations.filter(i => i.category === 'accessory');
 
   const outfits: OutfitSet[] = [];
+
+  const themeNames = [
+    '都市精英穿搭', '质感日常搭配', '周末休闲风格',
+    '商务轻正装', '潮流街头搭配', '简约高级感',
+  ];
+  const seasonLabel = profile ? { spring: '春季', summer: '夏季', autumn: '秋季', winter: '冬季', all: '四季' }[profile.season] || '' : '';
 
   for (let i = 0; i < 3 && i < tops.length; i++) {
     const top = tops[i];
@@ -134,19 +140,111 @@ export function generateOutfitSets(recommendations: ClothingItem[]): OutfitSet[]
     const items = [top, bottom, outer, shoe, acc].filter((item): item is ClothingItem => !!item);
     const totalPrice = items.reduce((sum, item) => sum + item.price, 0);
 
+    // 生成每件单品的个性化推荐理由
+    const itemReasons: { itemId: string; reason: string }[] = items.map(item => ({
+      itemId: item.id,
+      reason: item.recommendReason || generateDynamicReason(item, profile),
+    }));
+
+    // 生成适合身材描述
+    const bodyTypeLabel = profile ? mapBodyTypeForDesc(profile.bodyType) : '';
+    const heightDesc = profile ? `${profile.height}cm左右` : '';
+    const suitableBodyDesc = profile
+      ? `适合${heightDesc}${bodyTypeLabel}身材`
+      : '适合大多数身材';
+
+    // 生成整体搭配建议
+    const stylingAdvice = generateStylingAdvice(items, profile);
+
+    const themeName = `${seasonLabel || ''}${themeNames[i % themeNames.length]}`;
+
     outfits.push({
       id: `outfit-${i}`,
       name: `${top.subCategory || '上装'} + ${bottom ? (bottom.subCategory || '下装') : '...'} 搭配`,
       items,
       totalPrice,
       description: `根据你的体型和风格，推荐 ${top.name}${bottom ? ' 搭配 ' + bottom.name : ''}${outer ? '，' + outer.name + ' 作为外套' : ''}。`,
-      tags: [top.styles[0], top.occasions[0], '搭配推荐'],
+      tags: [top.styles[0], top.occasions[0], '搭配推荐'].filter(Boolean),
       occasion: top.occasions[0] || 'daily',
       style: top.styles[0] || 'casual',
+      themeName,
+      suitableBodyDesc,
+      stylingAdvice,
+      itemReasons,
     });
   }
 
   return outfits;
+}
+
+function mapBodyTypeForDesc(bodyType: string): string {
+  const map: Record<string, string> = {
+    slim: '偏瘦', standard: '标准', athletic: '运动型', curvy: '曲线型', plus: '微胖',
+  };
+  return map[bodyType] || '';
+}
+
+function generateDynamicReason(item: ClothingItem, profile?: UserBodyProfile | null): string {
+  if (!profile) return item.description;
+
+  const parts: string[] = [];
+  const height = profile.height;
+  const bodyType = profile.bodyType;
+
+  // 根据体型生成理由
+  if (bodyType === 'slim') {
+    if (item.fit === 'relaxed' || item.fit === 'oversized') parts.push('略宽松版型增加视觉存在感');
+    else if (item.tags.some(t => t.includes('叠穿') || t.includes('层次') || t.includes('重磅'))) parts.push('增加上半身层次感和厚度');
+    else parts.push('修身版型展现精干身材');
+  } else if (bodyType === 'plus' || bodyType === 'curvy') {
+    if (item.fit === 'relaxed' || item.fit === 'wide') parts.push('宽松版型舒适不紧绷');
+    if (item.tags.some(t => t.includes('显瘦') || t.includes('藏肉') || t.includes('垂感'))) parts.push('视觉显瘦效果好');
+    else parts.push('合身剪裁修饰身形');
+  } else if (bodyType === 'athletic') {
+    if (item.fit === 'slim') parts.push('修身版型凸显运动型身材优势');
+    else parts.push('挺括版型与运动身材相得益彰');
+  } else {
+    parts.push('百搭款式适合标准身材');
+  }
+
+  // 根据身高生成理由
+  if (height < 165 && item.tags.some(t => t.includes('显腿长') || t.includes('高腰') || t.includes('短款') || t.includes('厚底'))) {
+    parts.push('有助于拉长身材比例');
+  } else if (height >= 180 && item.tags.some(t => t.includes('中长款') || t.includes('阔腿') || t.includes('气场'))) {
+    parts.push('高个子穿着更有气场');
+  }
+
+  // 根据季节
+  if (item.seasons.includes('all') || item.seasons.includes(profile.season)) {
+    parts.push('当季穿着正合适');
+  }
+
+  return parts.length > 0 ? parts.join('，') : item.description;
+}
+
+function generateStylingAdvice(items: ClothingItem[], profile?: UserBodyProfile | null): string {
+  const tips: string[] = [];
+  const hasOuter = items.some(i => i.category === 'outerwear');
+  const hasAcc = items.some(i => i.category === 'accessory');
+
+  if (profile && profile.bodyType === 'slim') {
+    tips.push('可通过叠穿增加层次感');
+  } else if (profile && (profile.bodyType === 'plus' || profile.bodyType === 'curvy')) {
+    tips.push('建议上深下浅或全身同色系搭配更显瘦');
+  }
+
+  if (hasOuter) {
+    tips.push('外套敞开穿更显随性');
+  }
+  if (hasAcc) {
+    tips.push('配饰点缀提升整体精致度');
+  }
+
+  if (tips.length === 0) {
+    tips.push('简约搭配即可穿出好效果');
+  }
+
+  return tips.join('；');
 }
 
 // Profile localStorage helpers

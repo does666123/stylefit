@@ -35,6 +35,9 @@ export const clothingData: ClothingItem[] = [
     rating: 4.5,
     tags: ['显瘦增宽', '条纹', '商务休闲'],
     bestFor: { narrowShoulder: true, thinWaist: true },
+    recommendReason: '横条纹视觉增宽，适合偏瘦身材增加上半身存在感',
+    stylingTips: '搭配修身西裤或直筒牛仔裤，内搭白色T恤露出领口增加层次',
+    material: '纯棉珠地网眼面料，透气舒适',
   },
   {
     id: 'm-top-slim-02',
@@ -58,6 +61,9 @@ export const clothingData: ClothingItem[] = [
     rating: 4.6,
     tags: ['重磅', '挺括', '叠穿'],
     bestFor: { narrowShoulder: true, thinWaist: true },
+    recommendReason: '重磅面料挺括不贴身，为偏瘦身材增加视觉厚度和轮廓感',
+    stylingTips: '单穿即可撑起版型，天冷可外搭大衣或夹克，下装配直筒裤平衡比例',
+    material: '380g重磅纯棉毛圈布，不易变形',
   },
   {
     id: 'm-top-slim-03',
@@ -105,6 +111,9 @@ export const clothingData: ClothingItem[] = [
     description: '经典修身版型，优质棉质面料，标准体型穿着合身又显精神',
     rating: 4.7,
     tags: ['经典', '百搭', '商务'],
+    recommendReason: '经典修身剪裁，标准体型穿着合身得体，展现匀称身材优势',
+    stylingTips: '商务场合搭配西裤和皮鞋，日常可配牛仔裤和小白鞋，卷起袖口更随性',
+    material: '100%牛津纺棉，免烫处理',
   },
   {
     id: 'm-top-std-02',
@@ -245,6 +254,9 @@ export const clothingData: ClothingItem[] = [
     rating: 4.5,
     tags: ['V领显瘦', '垂感', '藏肉'],
     bestFor: { thickWaist: true },
+    recommendReason: 'V领视觉拉长上半身，垂感面料不贴身，有效遮掩腰腹赘肉',
+    stylingTips: '选深色款更显瘦，搭配直筒裤平衡上下比例，避免宽松+宽松的膨胀搭配',
+    material: ' viscose垂感面料，顺滑不皱',
   },
   {
     id: 'm-top-plus-02',
@@ -320,6 +332,9 @@ export const clothingData: ClothingItem[] = [
     rating: 4.6,
     tags: ['高腰', '九分', '显腿长'],
     bestFor: { shortLegs: true },
+    recommendReason: '高腰线上移腰线，九分长度露出脚踝，视觉显腿长5cm',
+    stylingTips: '搭配短款上衣或把上衣扎进裤子，强化高腰效果。露出脚踝配乐福鞋更精致',
+    material: 'TR面料（涤纶+粘胶），挺括抗皱',
   },
   {
     id: 'm-bottom-short-02',
@@ -466,6 +481,9 @@ export const clothingData: ClothingItem[] = [
     rating: 4.8,
     tags: ['经典', '气质', '中长款'],
     bestFor: { tall: true },
+    recommendReason: '中长款设计纵向延伸视觉，高个子穿着气场十足，尽显挺拔身形',
+    stylingTips: '内搭简约针织衫+西裤，系带穿法明确腰线。矮个子慎选，建议膝盖以上长度',
+    material: '棉质混纺斜纹布，防风防泼水',
   },
   {
     id: 'm-outer-02',

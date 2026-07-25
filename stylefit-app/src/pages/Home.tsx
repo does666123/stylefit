@@ -14,7 +14,7 @@ export default function Home() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white page-enter">
       {/* Navbar */}
       <nav className="sticky top-0 z-50 border-b bg-white/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">

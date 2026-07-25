@@ -85,6 +85,11 @@ export interface ClothingItem {
     thickWaist?: boolean;
     thinWaist?: boolean;
   };
+  // 商业化展示字段
+  recommendReason?: string; // 推荐理由（针对特定体型）
+  stylingTips?: string; // 搭配建议
+  material?: string; // 面料说明
+  priceRange?: string; // 价格区间描述
 }
 
 export interface OutfitSet {
@@ -96,6 +101,11 @@ export interface OutfitSet {
   tags: string[];
   occasion: Occasion;
   style: StylePreference;
+  // 商业化展示字段
+  themeName?: string; // 主题名称（如"春季老钱风穿搭"）
+  suitableBodyDesc?: string; // 适合身材描述
+  stylingAdvice?: string; // 整体搭配建议
+  itemReasons?: { itemId: string; reason: string }[]; // 每件单品的推荐理由
 }
 
 export interface FavoriteItem {
