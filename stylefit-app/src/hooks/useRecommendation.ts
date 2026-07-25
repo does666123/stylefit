@@ -211,7 +211,11 @@ export function useFavorites() {
 
   useEffect(() => {
     if (loaded) {
-      localStorage.setItem(FAV_KEY, JSON.stringify(favorites));
+      try {
+        localStorage.setItem(FAV_KEY, JSON.stringify(favorites));
+      } catch {
+        // ignore - 隐私模式或存储超限时可能抛出异常
+      }
     }
   }, [favorites, loaded]);
 
