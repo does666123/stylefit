@@ -320,14 +320,6 @@ function OutfitCard({
   isFavorite: (id: string) => boolean;
   toggleFavorite: (id: string) => void;
 }) {
-  outfit,
-  isFavorite,
-  toggleFavorite,
-}: {
-  outfit: any;
-  isFavorite: (id: string) => boolean;
-  toggleFavorite: (id: string) => void;
-}) {
   return (
     <Card className="border-0 shadow-sm overflow-hidden">
       <CardContent className="p-0">

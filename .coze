@@ -1,0 +1,21 @@
+[project]
+requires = ["nodejs-24"]
+project_type = "web"
+
+[preview]
+preview_enable = "enabled"
+
+[dev]
+build = ["bash", "stylefit-app/scripts/coze-preview-build.sh"]
+run = ["bash", "stylefit-app/scripts/coze-preview-run.sh"]
+
+[deploy]
+build = ["bash", "stylefit-app/scripts/build.sh"]
+run = ["bash", "stylefit-app/scripts/run.sh"]
+
+[deploy.profile]
+kind = "service"
+flavor = "web"
+
+[subprojects]
+path = ["stylefit-app"]
