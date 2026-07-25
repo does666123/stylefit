@@ -17,8 +17,6 @@ import {
   Heart,
   Crown,
   Footprints,
-  BookmarkPlus,
-  BookmarkCheck,
   Lightbulb,
   MapPin,
   Check,
@@ -130,18 +128,20 @@ export default function Recommendations() {
             </div>
             <span className="text-xl font-bold text-slate-900">StyleFit</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setShowFavorites(!showFavorites)}
+              onClick={() => navigate('/favorites')}
+              className="relative"
             >
-              {showFavorites ? (
-                <BookmarkCheck className="mr-1 h-4 w-4" />
-              ) : (
-                <BookmarkPlus className="mr-1 h-4 w-4" />
+              <Heart className="mr-1 h-4 w-4" />
+              <span className="hidden sm:inline">收藏</span>
+              {favoriteItems.length > 0 && (
+                <span className="ml-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                  {favoriteItems.length}
+                </span>
               )}
-              {showFavorites ? '返回推荐' : `我的收藏 (${favoriteItems.length})`}
             </Button>
             <Button
               variant="ghost"
@@ -149,7 +149,7 @@ export default function Recommendations() {
               onClick={() => navigate('/survey')}
             >
               <ArrowLeft className="mr-1 h-4 w-4" />
-              重新测试
+              <span className="hidden sm:inline">重新测试</span>
             </Button>
           </div>
         </div>
@@ -158,19 +158,19 @@ export default function Recommendations() {
       <div className="mx-auto max-w-6xl px-4 py-8">
         {/* Step Progress Indicator */}
         <div className="mb-8">
-          <div className="flex justify-between">
+          <div className="flex justify-between gap-1">
             {allSteps.map((label, idx) => (
-              <div key={label} className="flex flex-col items-center gap-1.5">
+              <div key={label} className="flex min-w-0 flex-col items-center gap-1 sm:gap-1.5">
                 <div
-                  className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-all ${
+                  className={`flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full text-xs font-bold transition-all ${
                     idx < 3
                       ? 'bg-slate-900 text-white'
                       : 'bg-slate-900 text-white ring-4 ring-slate-200'
                   }`}
                 >
-                  {idx < 3 ? <Check className="h-4 w-4" /> : idx + 1}
+                  {idx < 3 ? <Check className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> : idx + 1}
                 </div>
-                <span className={`text-xs font-medium ${idx <= 3 ? 'text-slate-700' : 'text-slate-400'}`}>
+                <span className={`truncate text-[10px] sm:text-xs font-medium ${idx <= 3 ? 'text-slate-700' : 'text-slate-400'}`}>
                   {label}
                 </span>
               </div>
@@ -382,7 +382,7 @@ function OutfitCard({
         </div>
 
         {/* Item thumbnails */}
-        <div className="grid grid-cols-5 gap-1 p-2">
+        <div className="grid grid-cols-3 gap-1 p-2 sm:grid-cols-5">
           {outfit.items.slice(0, 5).map((item: ClothingItem) => (
             <div key={item.id} className="relative aspect-square overflow-hidden rounded-lg bg-slate-100">
               <img src={item.image} alt={item.name} className="h-full w-full object-cover" loading="lazy" />

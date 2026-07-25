@@ -8,10 +8,13 @@ import {
   ArrowRight,
   Ruler,
   Palette,
+  Heart,
 } from 'lucide-react';
+import { useFavorites } from '../hooks/useRecommendation';
 
 export default function Home() {
   const navigate = useNavigate();
+  const { favoriteItems } = useFavorites();
 
   return (
     <div className="min-h-screen bg-white page-enter">
@@ -26,12 +29,28 @@ export default function Home() {
               StyleFit
             </span>
           </div>
-          <Button
-            onClick={() => navigate('/survey')}
-            className="bg-slate-900 hover:bg-slate-800"
-          >
-            开始穿搭测试
-          </Button>
+          <div className="flex items-center gap-2">
+            {favoriteItems.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/favorites')}
+                className="relative"
+              >
+                <Heart className="mr-1 h-4 w-4" />
+                <span className="hidden sm:inline">收藏</span>
+                <span className="ml-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                  {favoriteItems.length}
+                </span>
+              </Button>
+            )}
+            <Button
+              onClick={() => navigate('/survey')}
+              className="bg-slate-900 hover:bg-slate-800"
+            >
+              开始穿搭测试
+            </Button>
+          </div>
         </div>
       </nav>
 

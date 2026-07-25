@@ -26,6 +26,8 @@ stylefit-app/
       Home.tsx            # 首页
       Survey.tsx          # 风格问卷页
       Recommendations.tsx # 推荐结果页
+      Favorites.tsx       # 收藏页
+      NotFound.tsx        # 404 页
     components/
       ui/                 # shadcn/ui 组件
       ErrorBoundary.tsx   # 错误边界
@@ -44,7 +46,8 @@ stylefit-app/
 ## 关键入口 / 核心模块
 
 - **入口**: `src/main.tsx` -> `src/App.tsx`
-- **路由**: Home (`/`), Survey (`/survey`), Recommendations (`/recommendations`)
+- **路由**: Home (`/`), Survey (`/survey`), Recommendations (`/recommendations`), Favorites (`/favorites`), NotFound (`*`)
+- **路由懒加载**: 所有页面通过 `React.lazy` 动态导入，实现代码分割
 - **核心逻辑**: `src/hooks/useRecommendation.ts` 负责根据用户问卷结果匹配推荐
 - **数据源**: `src/data/clothing.ts` 提供服装数据
 
