@@ -28,6 +28,11 @@ export default function Home() {
     }
   }, []);
 
+  // 意图预取：用户触碰/hover 按钮时提前加载 Survey chunk
+  const prefetchSurvey = () => {
+    import('./Survey');
+  };
+
   const handleViewRecommendations = () => {
     if (existingProfile) {
       navigate('/recommendations', { state: { profile: existingProfile } });
@@ -130,6 +135,8 @@ export default function Home() {
                   size="lg"
                   variant="outline"
                   onClick={() => navigate('/survey')}
+                  onTouchStart={prefetchSurvey}
+                  onMouseEnter={prefetchSurvey}
                   className="h-11 px-6"
                 >
                   <RefreshCw className="mr-2 h-4 w-4" />
@@ -145,6 +152,8 @@ export default function Home() {
               <Button
                 size="lg"
                 onClick={() => navigate('/survey')}
+                onTouchStart={prefetchSurvey}
+                onMouseEnter={prefetchSurvey}
                 className="h-12 px-8 text-base bg-slate-900 hover:bg-slate-800"
               >
                 立即测试我的穿搭
