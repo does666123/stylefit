@@ -1,5 +1,5 @@
-import { useLocation, useNavigate } from 'react-router';
-import { useRecommendations, getBMICategory, generateOutfitSets, useFavorites, loadProfile } from '../hooks/useRecommendation';
+import { useLocation, useNavigate, useSearchParams } from 'react-router';
+import { useRecommendations, getBMICategory, generateOutfitSets, useFavorites, loadProfile, getNeutralProfile } from '../hooks/useRecommendation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -20,10 +20,31 @@ import {
   Lightbulb,
   MapPin,
   Check,
+  ChevronDown,
+  Briefcase,
+  HeartHandshake,
+  Dumbbell,
+  PartyPopper,
+  Plane,
 } from 'lucide-react';
-import type { UserBodyProfile, ClothingItem, OutfitSet } from '../types';
-import { useMemo, useState, useEffect } from 'react';
+import type { UserBodyProfile, ClothingItem, OutfitSet, Occasion } from '../types';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import LoadingScreen from '@/components/LoadingScreen';
+
+// 场合快捷切换数据
+const occasionSwitcherItems: { key: Occasion; label: string; icon: React.ReactNode }[] = [
+  { key: 'work', label: '上班通勤', icon: <Briefcase className="h-4 w-4" /> },
+  { key: 'date', label: '约会', icon: <HeartHandshake className="h-4 w-4" /> },
+  { key: 'daily', label: '运动健身', icon: <Dumbbell className="h-4 w-4" /> },
+  { key: 'party', label: '聚会派对', icon: <PartyPopper className="h-4 w-4" /> },
+  { key: 'travel', label: '周末出游', icon: <Plane className="h-4 w-4" /> },
+  { key: 'formal', label: '商务正式', icon: <Crown className="h-4 w-4" /> },
+];
+
+const occasionLabelMap: Record<string, string> = {
+  work: '上班通勤', date: '约会', daily: '运动健身',
+  party: '聚会派对', travel: '周末出游', formal: '商务正式',
+};
 
 const catList: { key: string; label: string; icon: React.ReactNode }[] = [
   { key: 'all', label: '全部', icon: <Sparkles className="h-4 w-4" /> },
@@ -45,12 +66,32 @@ const allSteps = ['基础信息', '身材分析', '风格偏好', '推荐结果'
 export default function Recommendations() {
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // 从 URL 读取场合参数
+  const urlOccasion = searchParams.get('occasion') || '';
+  const isValidOccasion = ['work', 'date', 'daily', 'party', 'travel', 'formal'].includes(urlOccasion);
 
   // 优先从 location.state 读取，如果没有则从 localStorage 读取（解决刷新后数据丢失问题）
   const [profile, setProfile] = useState<UserBodyProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [showFavorites, setShowFavorites] = useState(false);
+  const [showOccasionSwitcher, setShowOccasionSwitcher] = useState(false);
+  const switcherRef = useRef<HTMLDivElement>(null);
+
+  // 点击外部关闭场合切换器
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (switcherRef.current && !switcherRef.current.contains(event.target as Node)) {
+        setShowOccasionSwitcher(false);
+      }
+    }
+    if (showOccasionSwitcher) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showOccasionSwitcher]);
 
   // 初始化：尝试从 state 或 localStorage 获取 profile
   useEffect(() => {
@@ -65,9 +106,26 @@ export default function Recommendations() {
     const stored = loadProfile();
     if (stored) {
       setProfile(stored);
+    } else if (isValidOccasion) {
+      // 无画像但有场合参数 → 使用中性默认画像
+      setProfile(getNeutralProfile(urlOccasion));
     }
     setIsLoading(false);
-  }, [location.state]);
+  }, [location.state, isValidOccasion, urlOccasion]);
+
+  // 切换场合
+  const handleSwitchOccasion = (occasion: Occasion) => {
+    setShowOccasionSwitcher(false);
+    const stored = loadProfile();
+    if (stored) {
+      // 有画像：只更新场合
+      setProfile({ ...stored, occasion });
+    } else {
+      // 无画像：使用中性默认
+      setProfile(getNeutralProfile(occasion));
+    }
+    setSearchParams({ occasion });
+  };
 
   const recommendations = useRecommendations(profile);
   const outfits = useMemo(() => generateOutfitSets(recommendations, profile), [recommendations, profile]);
@@ -90,7 +148,7 @@ export default function Recommendations() {
     return <LoadingScreen message="正在加载你的推荐..." />;
   }
 
-  // 没有 profile 数据时显示引导页
+  // 没有 profile 数据且无场合参数时显示引导页
   if (!profile) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
@@ -105,12 +163,20 @@ export default function Recommendations() {
             <p className="mb-6 text-slate-500">
               请先完成体型信息测试，我们才会为你推荐服装
             </p>
-            <Button
-              onClick={() => navigate('/survey')}
-              className="bg-slate-900 hover:bg-slate-800"
-            >
-              去测试
-            </Button>
+            <div className="flex flex-col gap-2">
+              <Button
+                onClick={() => navigate('/survey')}
+                className="bg-slate-900 hover:bg-slate-800"
+              >
+                去测试
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => navigate('/')}
+              >
+                返回首页
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -156,6 +222,59 @@ export default function Recommendations() {
       </nav>
 
       <div className="mx-auto max-w-6xl px-4 py-8">
+        {/* 场合标签 + 未填问卷提示 */}
+        {isValidOccasion && (
+          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-slate-500">今天去 ·</span>
+              <div className="relative" ref={switcherRef}>
+                <button
+                  onClick={() => setShowOccasionSwitcher(!showOccasionSwitcher)}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-slate-800"
+                >
+                  {occasionLabelMap[urlOccasion] || urlOccasion}
+                  <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showOccasionSwitcher ? 'rotate-180' : ''}`} />
+                </button>
+                {/* 场合切换下拉 */}
+                {showOccasionSwitcher && (
+                  <div className="absolute left-0 top-full z-50 mt-2 w-44 rounded-xl border bg-white p-1.5 shadow-lg animate-scale-in">
+                    {occasionSwitcherItems.map((item) => (
+                      <button
+                        key={item.key}
+                        onClick={() => handleSwitchOccasion(item.key)}
+                        className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                          item.key === urlOccasion
+                            ? 'bg-slate-100 font-medium text-slate-900'
+                            : 'text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        {item.icon}
+                        {item.label}
+                        {item.key === urlOccasion && <Check className="ml-auto h-3.5 w-3.5 text-slate-900" />}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            {/* 未填问卷提示 */}
+            {!loadProfile() && (
+              <div className="flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                <Lightbulb className="h-3.5 w-3.5 flex-shrink-0" />
+                <span>填写问卷可获得更准推荐</span>
+                <Button
+                  variant="link"
+                  size="sm"
+                  onClick={() => navigate('/survey')}
+                  className="h-auto px-1 py-0 text-xs font-medium text-amber-700 underline"
+                >
+                  去填写
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Step Progress Indicator */}
         <div className="mb-8">
           <div className="flex justify-between gap-1">

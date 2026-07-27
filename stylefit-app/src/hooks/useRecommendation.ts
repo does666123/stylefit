@@ -449,6 +449,36 @@ export function loadProfile(): UserBodyProfile | null {
   return null;
 }
 
+/**
+ * 获取当前季节
+ */
+function getCurrentSeason(): 'spring' | 'summer' | 'autumn' | 'winter' {
+  const month = new Date().getMonth() + 1;
+  if (month >= 3 && month <= 5) return 'spring';
+  if (month >= 6 && month <= 8) return 'summer';
+  if (month >= 9 && month <= 11) return 'autumn';
+  return 'winter';
+}
+
+/**
+ * 生成中性默认画像（用于「今天去哪」快捷入口，用户未填问卷时使用）
+ * 使用合理的中间值，确保推荐结果确定性且覆盖面广。
+ */
+export function getNeutralProfile(occasion?: string): UserBodyProfile {
+  return {
+    gender: 'male',
+    height: 175,
+    weight: 70,
+    age: 28,
+    bodyType: 'standard',
+    skinTone: 'light',
+    stylePreference: 'casual',
+    occasion: (occasion as UserBodyProfile['occasion']) || 'daily',
+    season: getCurrentSeason(),
+    measurements: {},
+  };
+}
+
 export function clearProfile(): void {
   try {
     localStorage.removeItem(PROFILE_KEY);

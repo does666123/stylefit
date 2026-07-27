@@ -11,9 +11,30 @@ import {
   Palette,
   Heart,
   RefreshCw,
+  Briefcase,
+  HeartHandshake,
+  Dumbbell,
+  PartyPopper,
+  Plane,
+  Crown,
 } from 'lucide-react';
 import { useFavorites, loadProfile } from '../hooks/useRecommendation';
-import type { UserBodyProfile } from '../types';
+import type { UserBodyProfile, Occasion } from '../types';
+
+// 场合快捷入口数据
+const occasionQuickEntries: {
+  key: Occasion;
+  icon: React.ReactNode;
+  title: string;
+  desc: string;
+}[] = [
+  { key: 'work', icon: <Briefcase className="h-5 w-5" />, title: '上班通勤', desc: '干练得体，职场自信' },
+  { key: 'date', icon: <HeartHandshake className="h-5 w-5" />, title: '约会', desc: '温柔有品，留下好印象' },
+  { key: 'daily', icon: <Dumbbell className="h-5 w-5" />, title: '运动健身', desc: '舒适活力，自在运动' },
+  { key: 'party', icon: <PartyPopper className="h-5 w-5" />, title: '聚会派对', desc: '时髦亮眼，成为焦点' },
+  { key: 'travel', icon: <Plane className="h-5 w-5" />, title: '周末出游', desc: '轻松百搭，说走就走' },
+  { key: 'formal', icon: <Crown className="h-5 w-5" />, title: '商务正式', desc: '稳重优雅，气场全开' },
+];
 
 export default function Home() {
   const navigate = useNavigate();
@@ -166,6 +187,43 @@ export default function Home() {
         {/* Decorative elements */}
         <div className="absolute top-20 left-10 h-32 w-32 rounded-full bg-slate-100 opacity-50 blur-2xl" />
         <div className="absolute bottom-10 right-10 h-40 w-40 rounded-full bg-slate-200 opacity-40 blur-3xl" />
+      </section>
+
+      {/* 今天去哪 - 场合快捷入口 */}
+      <section className="px-4 py-16 bg-white">
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-8 text-center">
+            <h2 className="mb-2 text-2xl font-bold text-slate-900 sm:text-3xl">
+              今天去哪？
+            </h2>
+            <p className="text-sm text-slate-500">
+              选一个场合，一键获取穿搭推荐
+            </p>
+          </div>
+
+          {/* 移动端横向滑动，桌面端网格 */}
+          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none sm:grid sm:grid-cols-3 sm:gap-4 sm:overflow-visible lg:grid-cols-6 sm:pb-0">
+            {occasionQuickEntries.map((entry) => (
+              <button
+                key={entry.key}
+                onClick={() => navigate(`/recommendations?occasion=${entry.key}`)}
+                className="group flex min-w-[140px] flex-shrink-0 flex-col items-center gap-3 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition-all hover:border-slate-200 hover:shadow-md active:scale-[0.98] sm:min-w-0"
+              >
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-50 text-slate-600 transition-colors group-hover:bg-slate-900 group-hover:text-white">
+                  {entry.icon}
+                </div>
+                <div className="text-center">
+                  <div className="text-sm font-semibold text-slate-900">
+                    {entry.title}
+                  </div>
+                  <div className="mt-0.5 text-xs text-slate-400 leading-relaxed">
+                    {entry.desc}
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
       </section>
 
       {/* How it works */}
