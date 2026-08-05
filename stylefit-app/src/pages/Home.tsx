@@ -47,6 +47,7 @@ export default function Home() {
   const [existingProfile, setExistingProfile] = useState<UserBodyProfile | null>(null);
   const [weather, setWeather] = useState<WeatherInterpretation | null>(null);
   const [weatherLoading, setWeatherLoading] = useState(true);
+  const [weatherRefreshing, setWeatherRefreshing] = useState(false);
 
   // 检测是否已有保存的画像
   useEffect(() => {
@@ -57,8 +58,12 @@ export default function Home() {
   }, []);
 
   // 获取天气（不阻塞渲染）
-  const loadWeather = useCallback(async () => {
-    setWeatherLoading(true);
+  const loadWeather = useCallback(async (isManualRefresh = false) => {
+    if (isManualRefresh) {
+      setWeatherRefreshing(true);
+    } else {
+      setWeatherLoading(true);
+    }
     const result = await fetchWeatherWithCache();
     if (result?.data) {
       setWeather(interpretWeather(result.data, result.isDefault, result.locationName));
@@ -66,6 +71,7 @@ export default function Home() {
       setWeather(null);
     }
     setWeatherLoading(false);
+    setWeatherRefreshing(false);
   }, []);
 
   useEffect(() => {
@@ -223,10 +229,11 @@ export default function Home() {
               </div>
             ) : weather ? (
               <button
-                onClick={loadWeather}
-                className="group flex w-full items-center gap-4 rounded-2xl border bg-white px-5 py-4 text-left shadow-sm transition-all hover:shadow-md active:scale-[0.99]"
+                onClick={() => !weatherRefreshing && loadWeather(true)}
+                disabled={weatherRefreshing}
+                className="group flex w-full items-center gap-4 rounded-2xl border bg-white px-5 py-4 text-left shadow-sm transition-all hover:shadow-md active:scale-[0.99] disabled:cursor-not-allowed"
               >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-600">
+                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-600 transition-opacity duration-200 ${weatherRefreshing ? 'opacity-60' : ''}`}>
                   {weather.rainNote ? (
                     <Umbrella className="h-5 w-5" />
                   ) : weather.windNote ? (
@@ -235,23 +242,23 @@ export default function Home() {
                     <CloudSun className="h-5 w-5" />
                   )}
                 </div>
-                <div className="min-w-0 flex-1">
+                <div className={`min-w-0 flex-1 transition-opacity duration-200 ${weatherRefreshing ? 'opacity-60' : ''}`}>
                   <div className="flex items-baseline gap-2">
-                    <span className="text-lg font-semibold text-slate-900">
+                    <span className="text-lg font-semibold text-slate-900 transition-all duration-200">
                       {Math.round(weather.temperature)}°C
                     </span>
-                    <span className="text-sm text-slate-500">· 体感 {Math.round(weather.apparentTemperature)}°C</span>
+                    <span className="text-sm text-slate-500 transition-all duration-200">· 体感 {Math.round(weather.apparentTemperature)}°C</span>
                     <span className="text-sm text-slate-500">{weather.weatherLabel}</span>
                     <span className="hidden text-xs text-slate-400 sm:inline">·</span>
                     <span className="hidden text-xs text-slate-400 sm:inline">{weather.locationName}</span>
                   </div>
-                  <p className="mt-0.5 truncate text-xs text-slate-500">
+                  <p className="mt-0.5 truncate text-xs text-slate-500 transition-all duration-200">
                     {weather.clothingAdvice}
                     {weather.rainNote && <span className="ml-1 text-sky-600">· {weather.rainNote}</span>}
                     {weather.windNote && <span className="ml-1 text-amber-600">· {weather.windNote}</span>}
                   </p>
                 </div>
-                <RefreshCw className="h-4 w-4 shrink-0 text-slate-300 transition-colors group-hover:text-slate-500" />
+                <RefreshCw className={`h-4 w-4 shrink-0 text-slate-300 transition-all duration-200 group-hover:text-slate-500 ${weatherRefreshing ? 'animate-spin text-sky-500' : ''}`} />
               </button>
             ) : null}
           </div>
