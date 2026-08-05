@@ -317,7 +317,7 @@ export default function Recommendations() {
             </div>
             <div className="min-w-0 flex-1">
               <span className="text-sm font-medium text-slate-900">
-                今天 {Math.round(weatherInterp.apparentTemperature)}°C {weatherInterp.weatherLabel}
+                今天 {Math.round(weatherInterp.temperature)}°C · 体感 {Math.round(weatherInterp.apparentTemperature)}°C {weatherInterp.weatherLabel}
               </span>
               <span className="mx-1.5 text-slate-300">·</span>
               <span className="text-sm text-slate-500">{weatherInterp.thicknessLabel}</span>

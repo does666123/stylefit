@@ -238,8 +238,9 @@ export default function Home() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline gap-2">
                     <span className="text-lg font-semibold text-slate-900">
-                      {Math.round(weather.apparentTemperature)}°C
+                      {Math.round(weather.temperature)}°C
                     </span>
+                    <span className="text-sm text-slate-500">· 体感 {Math.round(weather.apparentTemperature)}°C</span>
                     <span className="text-sm text-slate-500">{weather.weatherLabel}</span>
                     <span className="hidden text-xs text-slate-400 sm:inline">·</span>
                     <span className="hidden text-xs text-slate-400 sm:inline">{weather.locationName}</span>
