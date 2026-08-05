@@ -1,6 +1,6 @@
 import { useMemo, useCallback } from 'react';
 import { useState, useEffect } from 'react';
-import type { UserBodyProfile, ClothingItem, OutfitSet, FavoriteItem, MatchResult } from '../types';
+import type { UserBodyProfile, ClothingItem, OutfitSet, FavoriteItem, MatchResult, Season } from '../types';
 import { clothingData } from '../data/clothing';
 
 // localStorage keys
@@ -30,11 +30,14 @@ function calculateBMI(height: number, weight: number): number {
  * - 商品评分加成：+rating*2 分
  * 
  * 最终分数归一化到 0-100 的百分比
+ * 
+ * 天气校准：当提供 weatherSeason 时，用它替代 profile.season 进行季节维度打分
  */
 function calculateMatchResult(
   item: ClothingItem,
   profile: UserBodyProfile,
-  bmi: number
+  bmi: number,
+  weatherSeason?: Season
 ): MatchResult {
   const reasons: string[] = [];
   let rawScore = 0;
@@ -87,13 +90,17 @@ function calculateMatchResult(
     reasons.push('✓ 肤色搭配协调');
   }
 
-  // === 5. 季节匹配 (8分) ===
-  if (item.seasons.includes('all') || item.seasons.includes(profile.season)) {
+  // === 5. 季节匹配 (8分) - 天气校准 ===
+  const effectiveSeason = weatherSeason || profile.season;
+  if (item.seasons.includes('all') || item.seasons.includes(effectiveSeason)) {
     rawScore += 8;
     if (!item.seasons.includes('all')) {
       const seasonLabel: Record<string, string> = { spring: '春季', summer: '夏季', autumn: '秋季', winter: '冬季' };
-      reasons.push(`✓ 适合${seasonLabel[profile.season] || profile.season}穿着`);
+      reasons.push(`✓ 适合${seasonLabel[effectiveSeason] || effectiveSeason}穿着`);
     }
+  } else if (weatherSeason && weatherSeason !== profile.season) {
+    // 天气校准但季节不匹配时给部分分
+    rawScore += 2;
   }
 
   // === 6. 年龄适配 (5分) ===
@@ -215,19 +222,20 @@ export function useRecommendations(profile: UserBodyProfile | null): ClothingIte
 }
 
 /** 获取带匹配度详情的推荐结果 */
-export function useRecommendationsWithMatch(profile: UserBodyProfile | null): ScoredItem[] {
+export function useRecommendationsWithMatch(profile: UserBodyProfile | null, weather?: { thicknessTier: string; season: Season; remarks: string[] } | null): ScoredItem[] {
   return useMemo(() => {
     if (!profile) return [];
     const bmi = calculateBMI(profile.height, profile.weight);
+    const weatherSeason = weather?.season;
 
     return clothingData
       .map((item) => ({
         item,
-        matchResult: calculateMatchResult(item, profile, bmi),
+        matchResult: calculateMatchResult(item, profile, bmi, weatherSeason),
       }))
       .filter(({ matchResult }) => matchResult.score > 0)
       .sort((a, b) => b.matchResult.score - a.matchResult.score);
-  }, [profile]);
+  }, [profile, weather]);
 }
 
 export function getBMICategory(height: number, weight: number) {
@@ -252,7 +260,7 @@ export function getBMICategory(height: number, weight: number) {
   return { bmi: Math.round(bmi * 10) / 10, category, advice };
 }
 
-export function generateOutfitSets(recommendations: ClothingItem[], profile?: UserBodyProfile | null): OutfitSet[] {
+export function generateOutfitSets(recommendations: ClothingItem[], profile?: UserBodyProfile | null, weather?: { thicknessTier: string; season: Season; remarks: string[] } | null): OutfitSet[] {
   const tops = recommendations.filter(i => i.category === 'top');
   const bottoms = recommendations.filter(i => i.category === 'bottom' || i.category === 'dress');
   const outerwears = recommendations.filter(i => i.category === 'outerwear');
@@ -288,9 +296,10 @@ export function generateOutfitSets(recommendations: ClothingItem[], profile?: Us
     }));
 
     // 计算每件单品的匹配度
+    const weatherSeason = weather?.season;
     const itemMatchScores: { itemId: string; score: number; reasons: string[] }[] = profile
       ? items.map(item => {
-          const match = calculateMatchResult(item, profile, bmi);
+          const match = calculateMatchResult(item, profile, bmi, weatherSeason);
           return { itemId: item.id, score: match.score, reasons: match.reasons };
         })
       : [];

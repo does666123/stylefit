@@ -26,10 +26,14 @@ import {
   Dumbbell,
   PartyPopper,
   Plane,
+  CloudSun,
+  Umbrella,
+  Wind,
 } from 'lucide-react';
 import type { UserBodyProfile, ClothingItem, OutfitSet, Occasion } from '../types';
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import LoadingScreen from '@/components/LoadingScreen';
+import { fetchWeatherWithCache, interpretWeather, getWeatherRemark, thicknessTierToSeason, type WeatherInterpretation, type WeatherData } from '../lib/weather';
 
 // 场合快捷切换数据
 const occasionSwitcherItems: { key: Occasion; label: string; icon: React.ReactNode }[] = [
@@ -79,6 +83,21 @@ export default function Recommendations() {
   const [showFavorites, setShowFavorites] = useState(false);
   const [showOccasionSwitcher, setShowOccasionSwitcher] = useState(false);
   const switcherRef = useRef<HTMLDivElement>(null);
+  const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
+  const [weatherInterp, setWeatherInterp] = useState<WeatherInterpretation | null>(null);
+
+  // 获取天气（不阻塞渲染）
+  const loadWeather = useCallback(async () => {
+    const result = await fetchWeatherWithCache();
+    if (result?.data) {
+      setWeatherData(result.data);
+      setWeatherInterp(interpretWeather(result.data, result.isDefault, result.locationName));
+    }
+  }, []);
+
+  useEffect(() => {
+    loadWeather();
+  }, [loadWeather]);
 
   // 点击外部关闭场合切换器
   useEffect(() => {
@@ -128,7 +147,16 @@ export default function Recommendations() {
   };
 
   const recommendations = useRecommendations(profile);
-  const outfits = useMemo(() => generateOutfitSets(recommendations, profile), [recommendations, profile]);
+  const weatherForEngine = useMemo(() => {
+    if (!weatherData) return null;
+    const interpretation = interpretWeather(weatherData, false, '');
+    return {
+      thicknessTier: interpretation.thicknessTier,
+      season: thicknessTierToSeason(interpretation.thicknessTier),
+      remarks: [getWeatherRemark(weatherData) || ''],
+    };
+  }, [weatherData]);
+  const outfits = useMemo(() => generateOutfitSets(recommendations, profile, weatherForEngine), [recommendations, profile, weatherForEngine]);
   const bmiInfo = useMemo(() => {
     if (!profile) return null;
     return getBMICategory(profile.height, profile.weight);
@@ -271,6 +299,31 @@ export default function Recommendations() {
                   去填写
                 </Button>
               </div>
+            )}
+          </div>
+        )}
+
+        {/* 天气条 */}
+        {weatherInterp && (
+          <div className="mb-6 flex items-center gap-2 rounded-xl border bg-white px-4 py-2.5 shadow-sm">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sky-50 text-sky-600">
+              {weatherInterp.rainNote ? (
+                <Umbrella className="h-4 w-4" />
+              ) : weatherInterp.windNote ? (
+                <Wind className="h-4 w-4" />
+              ) : (
+                <CloudSun className="h-4 w-4" />
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="text-sm font-medium text-slate-900">
+                今天 {Math.round(weatherInterp.apparentTemperature)}°C {weatherInterp.weatherLabel}
+              </span>
+              <span className="mx-1.5 text-slate-300">·</span>
+              <span className="text-sm text-slate-500">{weatherInterp.thicknessLabel}</span>
+            </div>
+            {weatherInterp.isDefault && (
+              <span className="hidden text-[10px] text-slate-400 sm:inline">按上海天气推荐</span>
             )}
           </div>
         )}

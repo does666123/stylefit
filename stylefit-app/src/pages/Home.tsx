@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Shirt,
@@ -17,8 +17,13 @@ import {
   PartyPopper,
   Plane,
   Crown,
+  CloudSun,
+  Umbrella,
+  Wind,
+  Loader2,
 } from 'lucide-react';
 import { useFavorites, loadProfile } from '../hooks/useRecommendation';
+import { fetchWeatherWithCache, interpretWeather, type WeatherInterpretation } from '../lib/weather';
 import type { UserBodyProfile, Occasion } from '../types';
 
 // 场合快捷入口数据
@@ -40,6 +45,8 @@ export default function Home() {
   const navigate = useNavigate();
   const { favoriteItems } = useFavorites();
   const [existingProfile, setExistingProfile] = useState<UserBodyProfile | null>(null);
+  const [weather, setWeather] = useState<WeatherInterpretation | null>(null);
+  const [weatherLoading, setWeatherLoading] = useState(true);
 
   // 检测是否已有保存的画像
   useEffect(() => {
@@ -48,6 +55,22 @@ export default function Home() {
       setExistingProfile(profile);
     }
   }, []);
+
+  // 获取天气（不阻塞渲染）
+  const loadWeather = useCallback(async () => {
+    setWeatherLoading(true);
+    const result = await fetchWeatherWithCache();
+    if (result?.data) {
+      setWeather(interpretWeather(result.data, result.isDefault, result.locationName));
+    } else {
+      setWeather(null);
+    }
+    setWeatherLoading(false);
+  }, []);
+
+  useEffect(() => {
+    loadWeather();
+  }, [loadWeather]);
 
   // 意图预取：用户触碰/hover 按钮时提前加载 Survey chunk
   const prefetchSurvey = () => {
@@ -188,6 +211,51 @@ export default function Home() {
         <div className="absolute top-20 left-10 h-32 w-32 rounded-full bg-slate-100 opacity-50 blur-2xl" />
         <div className="absolute bottom-10 right-10 h-40 w-40 rounded-full bg-slate-200 opacity-40 blur-3xl" />
       </section>
+
+      {/* 天气卡 */}
+      {(weatherLoading || weather) && (
+        <section className="px-4 pt-8 pb-0">
+          <div className="mx-auto max-w-2xl">
+            {weatherLoading && !weather ? (
+              <div className="flex items-center justify-center gap-2 rounded-2xl border bg-white px-5 py-4 shadow-sm">
+                <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+                <span className="text-sm text-slate-400">获取天气中...</span>
+              </div>
+            ) : weather ? (
+              <button
+                onClick={loadWeather}
+                className="group flex w-full items-center gap-4 rounded-2xl border bg-white px-5 py-4 text-left shadow-sm transition-all hover:shadow-md active:scale-[0.99]"
+              >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-600">
+                  {weather.rainNote ? (
+                    <Umbrella className="h-5 w-5" />
+                  ) : weather.windNote ? (
+                    <Wind className="h-5 w-5" />
+                  ) : (
+                    <CloudSun className="h-5 w-5" />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-lg font-semibold text-slate-900">
+                      {Math.round(weather.apparentTemperature)}°C
+                    </span>
+                    <span className="text-sm text-slate-500">{weather.weatherLabel}</span>
+                    <span className="hidden text-xs text-slate-400 sm:inline">·</span>
+                    <span className="hidden text-xs text-slate-400 sm:inline">{weather.locationName}</span>
+                  </div>
+                  <p className="mt-0.5 truncate text-xs text-slate-500">
+                    {weather.clothingAdvice}
+                    {weather.rainNote && <span className="ml-1 text-sky-600">· {weather.rainNote}</span>}
+                    {weather.windNote && <span className="ml-1 text-amber-600">· {weather.windNote}</span>}
+                  </p>
+                </div>
+                <RefreshCw className="h-4 w-4 shrink-0 text-slate-300 transition-colors group-hover:text-slate-500" />
+              </button>
+            ) : null}
+          </div>
+        </section>
+      )}
 
       {/* 今天去哪 - 场合快捷入口 */}
       <section className="px-4 py-16 bg-white">
