@@ -213,7 +213,7 @@ export default function Recommendations() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900">
               <Shirt className="h-4 w-4 text-white" />
             </div>
-            <span className="text-xl font-bold text-slate-900">StyleFit</span>
+            <span className="text-xl font-bold tracking-tight text-slate-900">StyleFit</span>
           </div>
           <div className="flex items-center gap-1 sm:gap-2">
             <LanguageSwitcher />
