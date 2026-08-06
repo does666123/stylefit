@@ -13,50 +13,56 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Shirt, ArrowRight, ArrowLeft, Check, Loader2, Sparkles, Ruler, AlertCircle } from 'lucide-react';
+import { useT } from '@/i18n';
 import type { UserBodyProfile, Gender, BodyType, SkinTone, StylePreference, Occasion, Season } from '../types';
 import { saveProfile } from '../hooks/useRecommendation';
 
-const allSteps = ['基础信息', '身材分析', '风格偏好', '推荐结果'];
+const allSteps = ['survey.step.basic', 'survey.step.body', 'survey.step.style', 'survey.step.result'];
 
-const bodyTypeOptions: { value: BodyType; label: string; desc: string }[] = [
-  { value: 'slim', label: '偏瘦', desc: '肩窄腰细，整体偏纤细' },
-  { value: 'standard', label: '标准', desc: '比例匀称，不胖不瘦' },
-  { value: 'athletic', label: '运动型', desc: '肩宽腰细，肌肉线条明显' },
-  { value: 'curvy', label: '曲线型', desc: '腰臀比例明显，有曲线美' },
-  { value: 'plus', label: '丰腴型', desc: '骨架较大或整体偏丰满' },
+interface BodyTypeOption { value: BodyType; labelKey: string; descKey: string }
+const bodyTypeOptions: BodyTypeOption[] = [
+  { value: 'slim', labelKey: 'survey.body.slim', descKey: 'survey.body.slim.desc' },
+  { value: 'standard', labelKey: 'survey.body.standard', descKey: 'survey.body.standard.desc' },
+  { value: 'athletic', labelKey: 'survey.body.athletic', descKey: 'survey.body.athletic.desc' },
+  { value: 'curvy', labelKey: 'survey.body.curvy', descKey: 'survey.body.curvy.desc' },
+  { value: 'plus', labelKey: 'survey.body.plus', descKey: 'survey.body.plus.desc' },
 ];
 
-const skinToneOptions: { value: SkinTone; label: string; color: string }[] = [
-  { value: 'fair', label: '白皙', color: '#F5E6D3' },
-  { value: 'light', label: '偏白', color: '#F0D5B8' },
-  { value: 'medium', label: '自然', color: '#D4A574' },
-  { value: 'tan', label: '偏黄', color: '#C4956A' },
-  { value: 'dark', label: '深色', color: '#8B5A2B' },
+interface SkinToneOption { value: SkinTone; labelKey: string; color: string }
+const skinToneOptions: SkinToneOption[] = [
+  { value: 'fair', labelKey: 'survey.body.skinTone.fair', color: '#F5E6D3' },
+  { value: 'light', labelKey: 'survey.body.skinTone.light', color: '#F0D5B8' },
+  { value: 'medium', labelKey: 'survey.body.skinTone.medium', color: '#D4A574' },
+  { value: 'tan', labelKey: 'survey.body.skinTone.tan', color: '#C4956A' },
+  { value: 'dark', labelKey: 'survey.body.skinTone.dark', color: '#8B5A2B' },
 ];
 
-const styleOptions: { value: StylePreference; label: string; desc: string }[] = [
-  { value: 'casual', label: '休闲风', desc: '舒适自在，日常首选' },
-  { value: 'business', label: '商务风', desc: '干练专业，职场必备' },
-  { value: 'streetwear', label: '街头风', desc: '潮流个性，态度表达' },
-  { value: 'minimal', label: '简约风', desc: 'less is more，高级质感' },
-  { value: 'elegant', label: '优雅风', desc: '精致气质，约会首选' },
-  { value: 'sporty', label: '运动风', desc: '活力动感，健康阳光' },
+interface StyleOption { value: StylePreference; labelKey: string; descKey: string }
+const styleOptions: StyleOption[] = [
+  { value: 'casual', labelKey: 'survey.style.casual', descKey: 'survey.style.casual.desc' },
+  { value: 'business', labelKey: 'survey.style.business', descKey: 'survey.style.business.desc' },
+  { value: 'streetwear', labelKey: 'survey.style.streetwear', descKey: 'survey.style.streetwear.desc' },
+  { value: 'minimal', labelKey: 'survey.style.minimal', descKey: 'survey.style.minimal.desc' },
+  { value: 'elegant', labelKey: 'survey.style.elegant', descKey: 'survey.style.elegant.desc' },
+  { value: 'sporty', labelKey: 'survey.style.sporty', descKey: 'survey.style.sporty.desc' },
 ];
 
-const occasionOptions: { value: Occasion; label: string }[] = [
-  { value: 'daily', label: '日常通勤' },
-  { value: 'work', label: '职场商务' },
-  { value: 'date', label: '约会聚会' },
-  { value: 'party', label: '派对活动' },
-  { value: 'travel', label: '旅行出游' },
-  { value: 'formal', label: '正式场合' },
+interface OccasionOption { value: Occasion; labelKey: string }
+const occasionOptions: OccasionOption[] = [
+  { value: 'daily', labelKey: 'survey.occasion.daily' },
+  { value: 'work', labelKey: 'survey.occasion.work' },
+  { value: 'date', labelKey: 'survey.occasion.date' },
+  { value: 'party', labelKey: 'survey.occasion.party' },
+  { value: 'travel', labelKey: 'survey.occasion.travel' },
+  { value: 'formal', labelKey: 'survey.occasion.formal' },
 ];
 
-const seasonOptions: { value: Season; label: string }[] = [
-  { value: 'spring', label: '春季' },
-  { value: 'summer', label: '夏季' },
-  { value: 'autumn', label: '秋季' },
-  { value: 'winter', label: '冬季' },
+interface SeasonOption { value: Season; labelKey: string }
+const seasonOptions: SeasonOption[] = [
+  { value: 'spring', labelKey: 'survey.season.spring' },
+  { value: 'summer', labelKey: 'survey.season.summer' },
+  { value: 'autumn', labelKey: 'survey.season.autumn' },
+  { value: 'winter', labelKey: 'survey.season.winter' },
 ];
 
 interface ValidationErrors {
@@ -66,6 +72,7 @@ interface ValidationErrors {
 
 export default function Survey() {
   const navigate = useNavigate();
+  const { t } = useT();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<ValidationErrors>({});
@@ -99,10 +106,10 @@ export default function Survey() {
     const w = profile.weight;
 
     if (!h || h < 80 || h > 220) {
-      newErrors.height = '身高需在 80-220cm 之间';
+      newErrors.height = t('survey.error.height');
     }
     if (!w || w < 20 || w > 200) {
-      newErrors.weight = '体重需在 20-200kg 之间';
+      newErrors.weight = t('survey.error.weight');
     }
 
     setErrors(newErrors);
@@ -164,7 +171,7 @@ export default function Survey() {
             </div>
             <span className="text-xl font-bold text-slate-900">StyleFit</span>
           </div>
-          <div className="text-sm text-slate-400">步骤 {step + 1} / {allSteps.length}</div>
+          <div className="text-sm text-slate-400">{t('survey.stepIndicator', { current: step + 1, total: allSteps.length })}</div>
         </div>
       </nav>
 
@@ -204,16 +211,16 @@ export default function Survey() {
             {step === 0 && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="mb-1 text-2xl font-bold text-slate-900">基础信息</h2>
-                  <p className="text-sm text-slate-500">让我们先了解你的基本身体数据</p>
+                  <h2 className="mb-1 text-2xl font-bold text-slate-900">{t('survey.basic.title')}</h2>
+                  <p className="text-sm text-slate-500">{t('survey.basic.desc')}</p>
                 </div>
                 <div className="space-y-4">
                   <div>
-                    <Label className="mb-2 block">性别</Label>
+                    <Label className="mb-2 block">{t('survey.basic.gender')}</Label>
                     <div className="grid grid-cols-2 gap-3">
                       {[
-                        { value: 'male', label: '男士' },
-                        { value: 'female', label: '女士' },
+                        { value: 'male', labelKey: 'common.male' },
+                        { value: 'female', labelKey: 'common.female' },
                       ].map((opt) => (
                         <button
                           key={opt.value}
@@ -224,20 +231,20 @@ export default function Survey() {
                               : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
                           }`}
                         >
-                          {opt.label}
+                          {t(opt.labelKey as any)}
                         </button>
                       ))}
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="height" className="mb-2 block">身高 (cm)</Label>
+                      <Label htmlFor="height" className="mb-2 block">{t('survey.basic.height')}</Label>
                       <Input
                         id="height"
                         type="number"
                         value={profile.height || ''}
                         onChange={(e) => update('height', Number(e.target.value))}
-                        placeholder="175（范围 80-220）"
+                        placeholder={t('survey.placeholder.height')}
                         className={`h-12 ${errors.height ? 'border-red-400 ring-1 ring-red-400' : ''}`}
                         min={80}
                         max={220}
@@ -250,13 +257,13 @@ export default function Survey() {
                       )}
                     </div>
                     <div>
-                      <Label htmlFor="weight" className="mb-2 block">体重 (kg)</Label>
+                      <Label htmlFor="weight" className="mb-2 block">{t('survey.basic.weight')}</Label>
                       <Input
                         id="weight"
                         type="number"
                         value={profile.weight || ''}
                         onChange={(e) => update('weight', Number(e.target.value))}
-                        placeholder="70（范围 20-200）"
+                        placeholder={t('survey.placeholder.weight')}
                         className={`h-12 ${errors.weight ? 'border-red-400 ring-1 ring-red-400' : ''}`}
                         min={20}
                         max={200}
@@ -271,8 +278,8 @@ export default function Survey() {
                   </div>
                   <div>
                     <Label htmlFor="age" className="mb-2 block">
-                      年龄
-                      <span className="ml-1 text-xs font-normal text-slate-400">（可选）</span>
+                      {t('survey.basic.age')}
+                      <span className="ml-1 text-xs font-normal text-slate-400">{t('survey.basic.age.optional')}</span>
                     </Label>
                     <Input
                       id="age"
@@ -282,7 +289,7 @@ export default function Survey() {
                       placeholder="25"
                       className="h-12"
                     />
-                    <p className="mt-1 text-xs text-slate-400">填写年龄可进一步优化推荐</p>
+                    <p className="mt-1 text-xs text-slate-400">{t('survey.basic.age.hint')}</p>
                   </div>
                 </div>
               </div>
@@ -292,14 +299,14 @@ export default function Survey() {
             {step === 1 && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="mb-1 text-2xl font-bold text-slate-900">身材分析</h2>
-                  <p className="text-sm text-slate-500">更详细的身体数据让推荐更精准</p>
+                  <h2 className="mb-1 text-2xl font-bold text-slate-900">{t('survey.body.title')}</h2>
+                  <p className="text-sm text-slate-500">{t('survey.body.desc')}</p>
                 </div>
 
                 <div className="space-y-5">
                   {/* Body Type */}
                   <div>
-                    <Label className="mb-3 block">体型类型</Label>
+                    <Label className="mb-3 block">{t('survey.body.type')}</Label>
                     <div className="space-y-2">
                       {bodyTypeOptions.map((opt) => (
                         <button
@@ -312,8 +319,8 @@ export default function Survey() {
                           }`}
                         >
                           <div className="flex-1">
-                            <div className="font-semibold">{opt.label}</div>
-                            <div className={`text-xs ${profile.bodyType === opt.value ? 'text-slate-300' : 'text-slate-400'}`}>{opt.desc}</div>
+                            <div className="font-semibold">{t(opt.labelKey as any)}</div>
+                            <div className={`text-xs ${profile.bodyType === opt.value ? 'text-slate-300' : 'text-slate-400'}`}>{t(opt.descKey as any)}</div>
                           </div>
                           {profile.bodyType === opt.value && <Check className="h-5 w-5 shrink-0" />}
                         </button>
@@ -323,8 +330,8 @@ export default function Survey() {
 
                   {/* Skin Tone */}
                   <div>
-                    <Label className="mb-3 block">肤色</Label>
-                    <p className="mb-2 text-xs text-slate-400">选择最接近你手腕内侧肤色的选项</p>
+                    <Label className="mb-3 block">{t('survey.body.skinTone')}</Label>
+                    <p className="mb-2 text-xs text-slate-400">{t('survey.body.skinTone.hint')}</p>
                     <div className="grid grid-cols-5 gap-2">
                       {skinToneOptions.map((opt) => (
                         <button
@@ -335,7 +342,7 @@ export default function Survey() {
                           }`}
                         >
                           <div className="h-10 w-10 rounded-full border border-slate-200" style={{ backgroundColor: opt.color }} />
-                          <span className="text-xs font-medium text-slate-600">{opt.label}</span>
+                          <span className="text-xs font-medium text-slate-600">{t(opt.labelKey as any)}</span>
                         </button>
                       ))}
                     </div>
@@ -345,12 +352,12 @@ export default function Survey() {
                   <div>
                     <Label className="mb-3 flex items-center gap-2">
                       <Ruler className="h-4 w-4 text-slate-400" />
-                      详细尺寸
-                      <span className="text-xs font-normal text-slate-400">（可选，推荐填写）</span>
+                      {t('survey.body.measurements')}
+                      <span className="text-xs font-normal text-slate-400">{t('survey.body.measurements.optional')}</span>
                     </Label>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <Label className="mb-1 block text-xs text-slate-500">肩宽 (cm)</Label>
+                        <Label className="mb-1 block text-xs text-slate-500">{t('survey.body.shoulder')}</Label>
                         <Input
                           type="number"
                           value={profile.measurements?.shoulderWidth || ''}
@@ -360,7 +367,7 @@ export default function Survey() {
                         />
                       </div>
                       <div>
-                        <Label className="mb-1 block text-xs text-slate-500">腰围 (cm)</Label>
+                        <Label className="mb-1 block text-xs text-slate-500">{t('survey.body.waist')}</Label>
                         <Input
                           type="number"
                           value={profile.measurements?.waist || ''}
@@ -370,7 +377,7 @@ export default function Survey() {
                         />
                       </div>
                       <div>
-                        <Label className="mb-1 block text-xs text-slate-500">臀围 (cm)</Label>
+                        <Label className="mb-1 block text-xs text-slate-500">{t('survey.body.hip')}</Label>
                         <Input
                           type="number"
                           value={profile.measurements?.hip || ''}
@@ -380,7 +387,7 @@ export default function Survey() {
                         />
                       </div>
                       <div>
-                        <Label className="mb-1 block text-xs text-slate-500">腿长/内缝 (cm)</Label>
+                        <Label className="mb-1 block text-xs text-slate-500">{t('survey.body.leg')}</Label>
                         <Input
                           type="number"
                           value={profile.measurements?.legLength || ''}
@@ -390,7 +397,7 @@ export default function Survey() {
                         />
                       </div>
                     </div>
-                    <p className="mt-2 text-xs text-slate-400">腿长测量方法：从裆部垂直量到脚踝骨</p>
+                    <p className="mt-2 text-xs text-slate-400">{t('survey.body.leg.hint')}</p>
                   </div>
                 </div>
               </div>
@@ -400,12 +407,12 @@ export default function Survey() {
             {step === 2 && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="mb-1 text-2xl font-bold text-slate-900">风格偏好</h2>
-                  <p className="text-sm text-slate-500">选择你喜欢的风格和穿着场景</p>
+                  <h2 className="mb-1 text-2xl font-bold text-slate-900">{t('survey.style.title')}</h2>
+                  <p className="text-sm text-slate-500">{t('survey.style.desc')}</p>
                 </div>
                 <div className="space-y-5">
                   <div>
-                    <Label className="mb-3 block">偏好风格</Label>
+                    <Label className="mb-3 block">{t('survey.style.label')}</Label>
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                       {styleOptions.map((opt) => (
                         <button
@@ -417,52 +424,52 @@ export default function Survey() {
                               : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
                           }`}
                         >
-                          <div className="text-sm font-semibold">{opt.label}</div>
-                          <div className={`mt-0.5 text-xs ${profile.stylePreference === opt.value ? 'text-slate-300' : 'text-slate-400'}`}>{opt.desc}</div>
+                          <div className="text-sm font-semibold">{t(opt.labelKey as any)}</div>
+                          <div className={`mt-0.5 text-xs ${profile.stylePreference === opt.value ? 'text-slate-300' : 'text-slate-400'}`}>{t(opt.descKey as any)}</div>
                         </button>
                       ))}
                     </div>
                   </div>
                   <div>
-                    <Label className="mb-2 block">穿着场合</Label>
+                    <Label className="mb-2 block">{t('survey.occasion.label')}</Label>
                     <Select value={profile.occasion} onValueChange={(v) => update('occasion', v as Occasion)}>
-                      <SelectTrigger className="h-12"><SelectValue placeholder="选择主要穿着场合" /></SelectTrigger>
+                      <SelectTrigger className="h-12"><SelectValue placeholder={t('survey.occasion.placeholder')} /></SelectTrigger>
                       <SelectContent>
                         {occasionOptions.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                          <SelectItem key={opt.value} value={opt.value}>{t(opt.labelKey as any)}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                    <p className="mt-1 text-xs text-slate-400">我们会优先推荐适合该场合的搭配</p>
+                    <p className="mt-1 text-xs text-slate-400">{t('survey.occasion.hint')}</p>
                   </div>
                   <div>
-                    <Label className="mb-2 block">当前季节</Label>
+                    <Label className="mb-2 block">{t('survey.season.label')}</Label>
                     <Select value={profile.season} onValueChange={(v) => update('season', v as Season)}>
-                      <SelectTrigger className="h-12"><SelectValue placeholder="选择当前季节" /></SelectTrigger>
+                      <SelectTrigger className="h-12"><SelectValue placeholder={t('survey.season.placeholder')} /></SelectTrigger>
                       <SelectContent>
                         {seasonOptions.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                          <SelectItem key={opt.value} value={opt.value}>{t(opt.labelKey as any)}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                    <p className="mt-1 text-xs text-slate-400">推荐将基于当季适穿的单品</p>
+                    <p className="mt-1 text-xs text-slate-400">{t('survey.season.hint')}</p>
                   </div>
                   <div>
                     <Label htmlFor="budget" className="mb-2 block">
-                      预算上限
-                      <span className="ml-1 text-xs font-normal text-slate-400">（可选，单位：元）</span>
+                      {t('survey.budget.label')}
+                      <span className="ml-1 text-xs font-normal text-slate-400">{t('survey.budget.optional')}</span>
                     </Label>
                     <Input
                       id="budget"
                       type="number"
                       value={profile.budget || ''}
                       onChange={(e) => update('budget', e.target.value ? Number(e.target.value) : undefined)}
-                      placeholder="500（不填则不限预算）"
+                      placeholder={t('survey.budget.placeholder')}
                       className="h-12"
                       min={50}
                       max={10000}
                     />
-                    <p className="mt-1 text-xs text-slate-400">设置预算后，推荐将优先匹配价格范围内的商品</p>
+                    <p className="mt-1 text-xs text-slate-400">{t('survey.budget.hint')}</p>
                   </div>
                 </div>
               </div>
@@ -472,19 +479,19 @@ export default function Survey() {
             <div className="mt-8 flex gap-3">
               {step > 0 && (
                 <Button variant="outline" className="h-12 flex-1" onClick={() => setStep(step - 1)}>
-                  <ArrowLeft className="mr-2 h-4 w-4" />上一步
+                  <ArrowLeft className="mr-2 h-4 w-4" />{t('survey.btn.prev')}
                 </Button>
               )}
               {step < 2 ? (
                 <Button className="h-12 flex-1 bg-slate-900 hover:bg-slate-800" disabled={!canProceed()} onClick={handleNext}>
-                  下一步<ArrowRight className="ml-2 h-4 w-4" />
+                  {t('survey.btn.next')}<ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               ) : (
                 <Button className="h-12 flex-1 bg-slate-900 hover:bg-slate-800" disabled={!canProceed() || loading} onClick={handleSubmit}>
                   {loading ? (
-                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />AI 分析中...</>
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t('survey.btn.generating')}</>
                   ) : (
-                    <><>获取推荐</><Sparkles className="ml-2 h-4 w-4" /></>
+                    <>{t('survey.btn.submit')}<Sparkles className="ml-2 h-4 w-4" /></>
                   )}
                 </Button>
               )}

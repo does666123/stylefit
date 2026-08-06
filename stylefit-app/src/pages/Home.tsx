@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { fetchWeatherWithCache, interpretWeather, type WeatherData } from '@/lib/weather';
 import { useT } from '@/i18n';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 
 interface UserProfile {
   height: number;
@@ -156,6 +157,7 @@ export function HomePage() {
             </span>
           </div>
           <div className="flex items-center gap-2">
+            <LanguageSwitcher />
             {favCount > 0 && (
               <Button
                 variant="ghost"
@@ -280,7 +282,7 @@ export function HomePage() {
                 <span className="text-sm text-slate-400">{t('home.weather.loading')}</span>
               </div>
             ) : weather ? (() => {
-              const wi = interpretWeather(weather, weatherIsDefault, weatherLocationName);
+              const wi = interpretWeather(weather, weatherIsDefault, weatherLocationName, t as any);
               return (
               <button
                 onClick={() => !weatherRefreshing && handleRefreshWeather()}

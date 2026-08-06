@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import {
   ArrowLeft,
   Heart,
@@ -17,14 +18,6 @@ import {
 import { clothingData } from '@/data/clothing';
 import type { ClothingItem } from '@/types';
 import { useT } from '@/i18n';
-
-const catLabelMap: Record<string, string> = {
-  top: '上装',
-  bottom: '下装',
-  shoes: '鞋履',
-  accessory: '配饰',
-  outer: '外套',
-};
 
 export function FavoritesPage() {
   const navigate = useNavigate();
@@ -74,6 +67,7 @@ export function FavoritesPage() {
             </span>
           </div>
           <div className="flex items-center gap-2">
+            <LanguageSwitcher />
             <Button
               variant="outline"
               size="sm"
@@ -153,6 +147,14 @@ function FavoriteCard({
 }) {
   const [imgError, setImgError] = useState(false);
   const fav = isFavorite(item.id);
+
+  const catLabelMap: Record<string, string> = {
+    top: t('rec.category.top'),
+    bottom: t('rec.category.bottom'),
+    shoes: t('rec.category.shoes'),
+    accessory: t('rec.category.accessory'),
+    outer: t('rec.category.outerwear'),
+  };
 
   return (
     <Card className="group overflow-hidden border-0 shadow-sm transition-shadow hover:shadow-lg">

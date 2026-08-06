@@ -33,172 +33,161 @@ function calculateBMI(height: number, weight: number): number {
  * 
  * 天气校准：当提供 weatherSeason 时，用它替代 profile.season 进行季节维度打分
  */
+type TFunc = (key: string, params?: Record<string, string | number>) => string;
+
 function calculateMatchResult(
   item: ClothingItem,
   profile: UserBodyProfile,
   bmi: number,
+  t: TFunc,
   weatherSeason?: Season
 ): MatchResult {
   const reasons: string[] = [];
   let rawScore = 0;
-  const maxPossibleScore = 100; // 理论最大基础分
+  const maxPossibleScore = 100;
 
-  // 性别过滤 - 不匹配直接返回0分排除
+  // Gender filter
   const itemGender = item.id.startsWith('m-') ? 'male' : item.id.startsWith('f-') ? 'female' : null;
   if (itemGender && itemGender !== profile.gender) {
-    return { score: 0, reasons: ['性别不匹配'] };
+    return { score: 0, reasons: [t('rec.match.reason.genderMismatch')] };
   }
 
-  // === 1. 体型匹配 (35分) ===
+  // === 1. Body type match (35) ===
   if (item.suitableBodyTypes.includes(profile.bodyType)) {
     rawScore += 35;
-    const bodyTypeLabel: Record<string, string> = {
-      slim: '偏瘦', standard: '标准', athletic: '运动型', curvy: '曲线型', plus: '丰腴型'
-    };
-    reasons.push(`✓ 适合${bodyTypeLabel[profile.bodyType] || profile.bodyType}体型`);
+    const typeLabel = t(`rec.match.bodyType.${profile.bodyType}`);
+    reasons.push(t('rec.match.reason.bodyTypeMatch', { type: typeLabel }));
   } else if (item.suitableBodyTypes.includes('standard')) {
     rawScore += 15;
-    reasons.push('~ 标准体型也可穿着');
+    reasons.push(t('rec.match.reason.bodyTypeStandard'));
   } else {
-    reasons.push('✗ 体型匹配度一般');
+    reasons.push(t('rec.match.reason.bodyTypePoor'));
   }
 
-  // === 2. 风格匹配 (20分) ===
+  // === 2. Style match (20) ===
   if (item.styles.includes(profile.stylePreference)) {
     rawScore += 20;
-    const styleLabel: Record<string, string> = {
-      casual: '休闲风', business: '商务风', streetwear: '街头风',
-      minimal: '简约风', elegant: '优雅风', sporty: '运动风'
-    };
-    reasons.push(`✓ 符合${styleLabel[profile.stylePreference] || profile.stylePreference}偏好`);
+    const styleLabel = t(`rec.match.style.${profile.stylePreference}`);
+    reasons.push(t('rec.match.reason.styleMatch', { style: styleLabel }));
   } else {
-    reasons.push('~ 风格略有差异');
+    reasons.push(t('rec.match.reason.styleDiff'));
   }
 
-  // === 3. 场合匹配 (15分) ===
+  // === 3. Occasion match (15) ===
   if (item.occasions.includes(profile.occasion)) {
     rawScore += 15;
-    const occasionLabel: Record<string, string> = {
-      daily: '日常', work: '职场', date: '约会', party: '派对', travel: '旅行', formal: '正式场合'
-    };
-    reasons.push(`✓ 适合${occasionLabel[profile.occasion] || profile.occasion}场合`);
+    const occasionLabel = t(`rec.match.occasion.${profile.occasion}`);
+    reasons.push(t('rec.match.reason.occasionMatch', { occasion: occasionLabel }));
   }
 
-  // === 4. 肤色匹配 (10分) ===
+  // === 4. Skin tone match (10) ===
   if (item.suitableSkinTones.includes(profile.skinTone)) {
     rawScore += 10;
-    reasons.push('✓ 肤色搭配协调');
+    reasons.push(t('rec.match.reason.skinToneMatch'));
   }
 
-  // === 5. 季节匹配 (8分) - 天气校准 ===
+  // === 5. Season match (8) ===
   const effectiveSeason = weatherSeason || profile.season;
   if (item.seasons.includes('all') || item.seasons.includes(effectiveSeason)) {
     rawScore += 8;
     if (!item.seasons.includes('all')) {
-      const seasonLabel: Record<string, string> = { spring: '春季', summer: '夏季', autumn: '秋季', winter: '冬季' };
-      reasons.push(`✓ 适合${seasonLabel[effectiveSeason] || effectiveSeason}穿着`);
+      const seasonLabel = t(`rec.match.season.${effectiveSeason}`);
+      reasons.push(t('rec.match.reason.seasonMatch', { season: seasonLabel }));
     }
   } else if (weatherSeason && weatherSeason !== profile.season) {
-    // 天气校准但季节不匹配时给部分分
     rawScore += 2;
   }
 
-  // === 6. 年龄适配 (5分) ===
-  const age = profile.age || 25; // 默认25岁
+  // === 6. Age match (5) ===
+  const age = profile.age || 25;
   if (age < 25 && (item.styles.includes('streetwear') || item.styles.includes('casual'))) {
     rawScore += 5;
-    reasons.push('✓ 年轻活力风格');
+    reasons.push(t('rec.match.reason.ageYoung'));
   } else if (age >= 25 && age < 40 && (item.styles.includes('business') || item.styles.includes('minimal'))) {
     rawScore += 5;
-    reasons.push('✓ 成熟质感风格');
+    reasons.push(t('rec.match.reason.ageMature'));
   } else if (age >= 40 && (item.styles.includes('business') || item.styles.includes('elegant'))) {
     rawScore += 5;
-    reasons.push('✓ 稳重优雅风格');
+    reasons.push(t('rec.match.reason.ageElegant'));
   } else {
     rawScore += 2;
   }
 
-  // === 7. 预算匹配 (7分) ===
+  // === 7. Budget match (7) ===
   const budget = profile.budget;
   if (budget && budget > 0) {
     if (item.price <= budget) {
       rawScore += 7;
-      reasons.push(`✓ 价格 ¥${item.price} 在预算内`);
+      reasons.push(t('rec.match.reason.priceInBudget', { price: item.price }));
     } else if (item.price <= budget * 1.2) {
       rawScore += 4;
-      reasons.push(`~ 价格 ¥${item.price} 略超预算`);
+      reasons.push(t('rec.match.reason.priceOverBudget', { price: item.price }));
     } else {
-      reasons.push(`✗ 价格 ¥${item.price} 超出预算较多`);
+      reasons.push(t('rec.match.reason.priceOverBudgetMuch', { price: item.price }));
     }
   } else {
-    rawScore += 4; // 无预算限制时给基础分
+    rawScore += 4;
   }
 
-  // === 额外加分 ===
-  // BMI 与版型适配
+  // === Bonus ===
   if (bmi < 18.5 && item.fit === 'slim') {
     rawScore += 5;
-    reasons.push('✓ 修身版型适合偏瘦身材');
+    reasons.push(t('rec.match.reason.fitSlim'));
   }
   if (bmi >= 24 && (item.fit === 'relaxed' || item.fit === 'oversized' || item.fit === 'wide')) {
     rawScore += 8;
-    reasons.push('✓ 宽松版型修饰身材');
+    reasons.push(t('rec.match.reason.fitWide'));
   }
-  if (bmi >= 24 && item.tags.some(t => t.includes('显瘦') || t.includes('遮肉'))) {
+  if (bmi >= 24 && item.tags.some(tag => tag.includes('显瘦') || tag.includes('遮肉'))) {
     rawScore += 5;
-    reasons.push('✓ 显瘦设计');
+    reasons.push(t('rec.match.reason.slimDesign'));
   }
 
-  // 身体测量数据精确匹配
   const m = profile.measurements || {};
   if (item.bestFor) {
     if (m.legLength && m.legLength < 75) {
       if (item.bestFor.shortLegs) {
         rawScore += 8;
-        reasons.push('✓ 适合短腿型，优化比例');
+        reasons.push(t('rec.match.reason.shortLegs'));
       }
-      if (item.tags.some(t => t.includes('高腰') || t.includes('九分') || t.includes('显腿长'))) {
+      if (item.tags.some(tag => tag.includes('高腰') || tag.includes('九分') || tag.includes('显腿长'))) {
         rawScore += 5;
-        reasons.push('✓ 高腰/九分设计显腿长');
+        reasons.push(t('rec.match.reason.highWaist'));
       }
     }
     if (m.legLength && m.legLength >= 85) {
       if (item.bestFor.tall) {
         rawScore += 5;
-        reasons.push('✓ 适合长腿型');
+        reasons.push(t('rec.match.reason.longLegs'));
       }
     }
     if (m.shoulderWidth) {
       if (m.shoulderWidth >= 45 && item.bestFor.broadShoulder) {
         rawScore += 5;
-        reasons.push('✓ 适合宽肩体型');
+        reasons.push(t('rec.match.reason.wideShoulders'));
       }
       if (m.shoulderWidth < 40 && item.bestFor.narrowShoulder) {
         rawScore += 5;
-        reasons.push('✓ 适合窄肩体型');
+        reasons.push(t('rec.match.reason.narrowShoulders'));
       }
     }
     if (m.waist) {
       if (m.waist >= 85 && (item.bestFor.thickWaist || item.fit === 'relaxed' || item.fit === 'oversized')) {
         rawScore += 5;
-        reasons.push('✓ 宽松腰围舒适');
+        reasons.push(t('rec.match.reason.wideWaist'));
       }
     }
   }
 
-  // 商品评分加成（最多10分）
   rawScore += Math.min(item.rating * 2, 10);
 
-  // 归一化到 0-100 百分比
-  // 理论最高分约 150+，我们映射到 100 分制
   const normalizedScore = Math.min(Math.round((rawScore / maxPossibleScore) * 100), 100);
-
   return { score: normalizedScore, reasons };
 }
 
 /** 获取商品匹配度（向后兼容） */
-function getScore(item: ClothingItem, profile: UserBodyProfile, bmi: number): number {
-  return calculateMatchResult(item, profile, bmi).score;
+function getScore(item: ClothingItem, profile: UserBodyProfile, bmi: number, t: TFunc): number {
+  return calculateMatchResult(item, profile, bmi, t).score;
 }
 
 /** 带匹配度的推荐结果 */
@@ -207,22 +196,23 @@ export interface ScoredItem {
   matchResult: MatchResult;
 }
 
-export function useRecommendations(profile: UserBodyProfile | null): ClothingItem[] {
+export function useRecommendations(profile: UserBodyProfile | null, t?: TFunc): ClothingItem[] {
   return useMemo(() => {
     if (!profile) return [];
     const bmi = calculateBMI(profile.height, profile.weight);
+    const tFunc = t || ((key: string) => key);
 
     const scored = clothingData
-      .map((item) => ({ item, score: getScore(item, profile, bmi) }))
+      .map((item) => ({ item, score: getScore(item, profile, bmi, tFunc) }))
       .filter(({ score }) => score > 0)
       .sort((a, b) => b.score - a.score);
 
     return scored.map(({ item }) => item);
-  }, [profile]);
+  }, [profile, t]);
 }
 
 /** 获取带匹配度详情的推荐结果 */
-export function useRecommendationsWithMatch(profile: UserBodyProfile | null, weather?: { thicknessTier: string; season: Season; remarks: string[] } | null): ScoredItem[] {
+export function useRecommendationsWithMatch(profile: UserBodyProfile | null, t: TFunc, weather?: { thicknessTier: string; season: Season; remarks: string[] } | null): ScoredItem[] {
   return useMemo(() => {
     if (!profile) return [];
     const bmi = calculateBMI(profile.height, profile.weight);
@@ -231,36 +221,36 @@ export function useRecommendationsWithMatch(profile: UserBodyProfile | null, wea
     return clothingData
       .map((item) => ({
         item,
-        matchResult: calculateMatchResult(item, profile, bmi, weatherSeason),
+        matchResult: calculateMatchResult(item, profile, bmi, t, weatherSeason),
       }))
       .filter(({ matchResult }) => matchResult.score > 0)
       .sort((a, b) => b.matchResult.score - a.matchResult.score);
-  }, [profile, weather]);
+  }, [profile, weather, t]);
 }
 
-export function getBMICategory(height: number, weight: number) {
+export function getBMICategory(height: number, weight: number, t: TFunc) {
   const bmi = calculateBMI(height, weight);
   let category: string;
   let advice: string;
 
   if (bmi < 18.5) {
-    category = '偏瘦';
-    advice = '建议选择修身或略宽松的版型，避免过于紧身的款式。可以利用叠穿增加层次感，横条纹和口袋设计能增加视觉宽度。';
+    category = t('rec.bmi.slim');
+    advice = t('rec.bmi.slim.advice');
   } else if (bmi < 24) {
-    category = '标准';
-    advice = '体型匀称，大多数版型都能驾驭。可以根据个人风格自由选择，修身款和宽松款都能穿出好效果。';
+    category = t('rec.bmi.standard');
+    advice = t('rec.bmi.standard.advice');
   } else if (bmi < 28) {
-    category = '微胖';
-    advice = '建议选择垂感好、略宽松的款式，V领、竖条纹、深色等元素有助于视觉显瘦。避免过于紧身或过于oversized的极端款式。';
+    category = t('rec.bmi.overweight');
+    advice = t('rec.bmi.overweight.advice');
   } else {
-    category = '偏胖';
-    advice = '建议选择深色、版型挺括的服装，V领和竖条纹是显瘦利器。避免过于紧身或过于宽松的款式，适度宽松最得体。';
+    category = t('rec.bmi.obese');
+    advice = t('rec.bmi.obese.advice');
   }
 
   return { bmi: Math.round(bmi * 10) / 10, category, advice };
 }
 
-export function generateOutfitSets(recommendations: ClothingItem[], profile?: UserBodyProfile | null, weather?: { thicknessTier: string; season: Season; remarks: string[] } | null): OutfitSet[] {
+export function generateOutfitSets(recommendations: ClothingItem[], t: TFunc, profile?: UserBodyProfile | null, weather?: { thicknessTier: string; season: Season; remarks: string[] } | null): OutfitSet[] {
   const tops = recommendations.filter(i => i.category === 'top');
   const bottoms = recommendations.filter(i => i.category === 'bottom' || i.category === 'dress');
   const outerwears = recommendations.filter(i => i.category === 'outerwear');
@@ -269,18 +259,14 @@ export function generateOutfitSets(recommendations: ClothingItem[], profile?: Us
 
   const outfits: OutfitSet[] = [];
 
-  const themeNames = [
-    '都市精英穿搭', '质感日常搭配', '周末休闲风格',
-    '商务轻正装', '潮流街头搭配', '简约高级感',
-  ];
-  const seasonLabel = profile ? { spring: '春季', summer: '夏季', autumn: '秋季', winter: '冬季', all: '四季' }[profile.season] || '' : '';
+  const styleNamesStr = t('rec.outfit.styleNames');
+  const themeNames = styleNamesStr.split(',');
+  const seasonLabel = profile ? t(`rec.match.season.${profile.season}`) : '';
 
-  // 预计算匹配度（如果有 profile）
   const bmi = profile ? calculateBMI(profile.height, profile.weight) : 0;
 
   for (let i = 0; i < 3 && i < tops.length; i++) {
     const top = tops[i];
-    // 安全访问：防止空数组导致 undefined
     const bottom = bottoms.length > 0 ? bottoms[i % bottoms.length] : undefined;
     const outer = outerwears.length > 0 ? outerwears[i % outerwears.length] : undefined;
     const shoe = shoes.length > 0 ? shoes[i % shoes.length] : undefined;
@@ -289,27 +275,23 @@ export function generateOutfitSets(recommendations: ClothingItem[], profile?: Us
     const items = [top, bottom, outer, shoe, acc].filter((item): item is ClothingItem => !!item);
     const totalPrice = items.reduce((sum, item) => sum + item.price, 0);
 
-    // 生成每件单品的个性化推荐理由
     const itemReasons: { itemId: string; reason: string }[] = items.map(item => ({
       itemId: item.id,
-      reason: item.recommendReason || generateDynamicReason(item, profile),
+      reason: item.recommendReason || generateDynamicReason(item, profile, t),
     }));
 
-    // 计算每件单品的匹配度
     const weatherSeason = weather?.season;
     const itemMatchScores: { itemId: string; score: number; reasons: string[] }[] = profile
       ? items.map(item => {
-          const match = calculateMatchResult(item, profile, bmi, weatherSeason);
+          const match = calculateMatchResult(item, profile, bmi, t, weatherSeason);
           return { itemId: item.id, score: match.score, reasons: match.reasons };
         })
       : [];
 
-    // 计算套装整体匹配度（取各单品匹配度的加权平均）
     const matchScore = itemMatchScores.length > 0
       ? Math.round(itemMatchScores.reduce((sum, m) => sum + m.score, 0) / itemMatchScores.length)
       : undefined;
 
-    // 套装匹配原因（汇总高分单品的原因）
     const matchReasons = itemMatchScores.length > 0
       ? itemMatchScores
           .filter(m => m.score >= 70)
@@ -317,25 +299,29 @@ export function generateOutfitSets(recommendations: ClothingItem[], profile?: Us
           .flatMap(m => m.reasons.filter(r => r.startsWith('✓')).slice(0, 2))
       : undefined;
 
-    // 生成适合身材描述
-    const bodyTypeLabel = profile ? mapBodyTypeForDesc(profile.bodyType) : '';
-    const heightDesc = profile ? `${profile.height}cm左右` : '';
+    const bodyTypeLabel = profile ? t(`rec.match.bodyType.${profile.bodyType}`) : '';
     const suitableBodyDesc = profile
-      ? `适合${heightDesc}${bodyTypeLabel}身材`
-      : '适合大多数身材';
+      ? t('rec.outfit.bodyFit', { bodyType: bodyTypeLabel })
+      : t('rec.outfit.mostBodyTypes');
 
-    // 生成整体搭配建议
-    const stylingAdvice = generateStylingAdvice(items, profile);
+    const stylingAdvice = generateStylingAdvice(items, profile, t);
 
     const themeName = `${seasonLabel || ''}${themeNames[i % themeNames.length]}`;
 
+    const topSubCat = top.subCategory || t('rec.category.top');
+    const bottomSubCat = bottom ? (bottom.subCategory || t('rec.category.bottom')) : '...';
+    const outfitName = t('rec.outfit.name', { top: topSubCat, bottom: bottomSubCat });
+    const outerDesc = outer ? t('rec.outfit.outerwear', { outer: outer.name }) : '';
+    const bottomDesc = bottom ? ` ${bottom.name}` : '';
+    const outfitDescription = t('rec.outfit.description', { top: top.name, bottom: bottomDesc }) + outerDesc;
+
     outfits.push({
       id: `outfit-${i}`,
-      name: `${top.subCategory || '上装'} + ${bottom ? (bottom.subCategory || '下装') : '...'} 搭配`,
+      name: outfitName,
       items,
       totalPrice,
-      description: `根据你的体型和风格，推荐 ${top.name}${bottom ? ' 搭配 ' + bottom.name : ''}${outer ? '，' + outer.name + ' 作为外套' : ''}。`,
-      tags: [top.styles[0], top.occasions[0], '搭配推荐'].filter(Boolean),
+      description: outfitDescription,
+      tags: [top.styles[0], top.occasions[0], t('rec.outfit.tag')].filter(Boolean),
       occasion: top.occasions[0] || 'daily',
       style: top.styles[0] || 'casual',
       themeName,
@@ -351,71 +337,61 @@ export function generateOutfitSets(recommendations: ClothingItem[], profile?: Us
   return outfits;
 }
 
-function mapBodyTypeForDesc(bodyType: string): string {
-  const map: Record<string, string> = {
-    slim: '偏瘦', standard: '标准', athletic: '运动型', curvy: '曲线型', plus: '微胖',
-  };
-  return map[bodyType] || '';
-}
-
-function generateDynamicReason(item: ClothingItem, profile?: UserBodyProfile | null): string {
+function generateDynamicReason(item: ClothingItem, profile: UserBodyProfile | null | undefined, t: TFunc): string {
   if (!profile) return item.description;
 
   const parts: string[] = [];
   const height = profile.height;
   const bodyType = profile.bodyType;
 
-  // 根据体型生成理由
   if (bodyType === 'slim') {
-    if (item.fit === 'relaxed' || item.fit === 'oversized') parts.push('略宽松版型增加视觉存在感');
-    else if (item.tags.some(t => t.includes('叠穿') || t.includes('层次') || t.includes('重磅'))) parts.push('增加上半身层次感和厚度');
-    else parts.push('修身版型展现精干身材');
+    if (item.fit === 'relaxed' || item.fit === 'oversized') parts.push(t('rec.reason.slim.relaxed'));
+    else if (item.tags.some(tag => tag.includes('叠穿') || tag.includes('层次') || tag.includes('重磅'))) parts.push(t('rec.reason.slim.layered'));
+    else parts.push(t('rec.reason.slim.fit'));
   } else if (bodyType === 'plus' || bodyType === 'curvy') {
-    if (item.fit === 'relaxed' || item.fit === 'wide') parts.push('宽松版型舒适不紧绷');
-    if (item.tags.some(t => t.includes('显瘦') || t.includes('藏肉') || t.includes('垂感'))) parts.push('视觉显瘦效果好');
-    else parts.push('合身剪裁修饰身形');
+    if (item.fit === 'relaxed' || item.fit === 'wide') parts.push(t('rec.reason.standard.relaxed'));
+    if (item.tags.some(tag => tag.includes('显瘦') || tag.includes('藏肉') || tag.includes('垂感'))) parts.push(t('rec.match.reason.slimDesign'));
+    else parts.push(t('rec.reason.standard.fit'));
   } else if (bodyType === 'athletic') {
-    if (item.fit === 'slim') parts.push('修身版型凸显运动型身材优势');
-    else parts.push('挺括版型与运动身材相得益彰');
+    if (item.fit === 'slim') parts.push(t('rec.reason.athletic.slim'));
+    else parts.push(t('rec.reason.athletic.fit'));
   } else {
-    parts.push('百搭款式适合标准身材');
+    parts.push(t('rec.reason.plus.fit'));
   }
 
-  // 根据身高生成理由
-  if (height < 165 && item.tags.some(t => t.includes('显腿长') || t.includes('高腰') || t.includes('短款') || t.includes('厚底'))) {
-    parts.push('有助于拉长身材比例');
-  } else if (height >= 180 && item.tags.some(t => t.includes('中长款') || t.includes('阔腿') || t.includes('气场'))) {
-    parts.push('高个子穿着更有气场');
+  if (height < 165 && item.tags.some(tag => tag.includes('显腿长') || tag.includes('高腰') || tag.includes('短款') || tag.includes('厚底'))) {
+    parts.push(t('rec.reason.height.short'));
+  } else if (height >= 180 && item.tags.some(tag => tag.includes('中长款') || tag.includes('阔腿') || tag.includes('气场'))) {
+    parts.push(t('rec.reason.height.tall'));
   }
 
-  // 根据季节
   if (item.seasons.includes('all') || item.seasons.includes(profile.season)) {
-    parts.push('当季穿着正合适');
+    parts.push(t('rec.reason.season'));
   }
 
   return parts.length > 0 ? parts.join('，') : item.description;
 }
 
-function generateStylingAdvice(items: ClothingItem[], profile?: UserBodyProfile | null): string {
+function generateStylingAdvice(items: ClothingItem[], profile: UserBodyProfile | null | undefined, t: TFunc): string {
   const tips: string[] = [];
   const hasOuter = items.some(i => i.category === 'outerwear');
   const hasAcc = items.some(i => i.category === 'accessory');
 
   if (profile && profile.bodyType === 'slim') {
-    tips.push('可通过叠穿增加层次感');
+    tips.push(t('rec.tips.slim'));
   } else if (profile && (profile.bodyType === 'plus' || profile.bodyType === 'curvy')) {
-    tips.push('建议上深下浅或全身同色系搭配更显瘦');
+    tips.push(t('rec.tips.plus.dark'));
   }
 
   if (hasOuter) {
-    tips.push('外套敞开穿更显随性');
+    tips.push(t('rec.tips.outerwear'));
   }
   if (hasAcc) {
-    tips.push('配饰点缀提升整体精致度');
+    tips.push(t('rec.tips.accessory'));
   }
 
   if (tips.length === 0) {
-    tips.push('简约搭配即可穿出好效果');
+    tips.push(t('rec.tips.standard'));
   }
 
   return tips.join('；');

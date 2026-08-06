@@ -34,40 +34,33 @@ import type { UserBodyProfile, ClothingItem, OutfitSet, Occasion } from '../type
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import LoadingScreen from '@/components/LoadingScreen';
 import { fetchWeatherWithCache, interpretWeather, getWeatherRemark, thicknessTierToSeason, type WeatherInterpretation, type WeatherData } from '../lib/weather';
+import { useT } from '../i18n';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 
 // 场合快捷切换数据
-const occasionSwitcherItems: { key: Occasion; label: string; icon: React.ReactNode }[] = [
-  { key: 'work', label: '上班通勤', icon: <Briefcase className="h-4 w-4" /> },
-  { key: 'date', label: '约会', icon: <HeartHandshake className="h-4 w-4" /> },
-  { key: 'daily', label: '运动健身', icon: <Dumbbell className="h-4 w-4" /> },
-  { key: 'party', label: '聚会派对', icon: <PartyPopper className="h-4 w-4" /> },
-  { key: 'travel', label: '周末出游', icon: <Plane className="h-4 w-4" /> },
-  { key: 'formal', label: '商务正式', icon: <Crown className="h-4 w-4" /> },
+const occasionSwitcherItems: { key: Occasion; labelKey: string; icon: React.ReactNode }[] = [
+  { key: 'work', labelKey: 'rec.occasion.work', icon: <Briefcase className="h-4 w-4" /> },
+  { key: 'date', labelKey: 'rec.occasion.date', icon: <HeartHandshake className="h-4 w-4" /> },
+  { key: 'daily', labelKey: 'rec.occasion.daily', icon: <Dumbbell className="h-4 w-4" /> },
+  { key: 'party', labelKey: 'rec.occasion.party', icon: <PartyPopper className="h-4 w-4" /> },
+  { key: 'travel', labelKey: 'rec.occasion.travel', icon: <Plane className="h-4 w-4" /> },
+  { key: 'formal', labelKey: 'rec.occasion.formal', icon: <Crown className="h-4 w-4" /> },
 ];
 
-const occasionLabelMap: Record<string, string> = {
-  work: '上班通勤', date: '约会', daily: '运动健身',
-  party: '聚会派对', travel: '周末出游', formal: '商务正式',
-};
-
-const catList: { key: string; label: string; icon: React.ReactNode }[] = [
-  { key: 'all', label: '全部', icon: <Sparkles className="h-4 w-4" /> },
-  { key: 'top', label: '上装', icon: <Shirt className="h-4 w-4" /> },
-  { key: 'bottom', label: '下装', icon: <Shirt className="h-4 w-4" /> },
-  { key: 'dress', label: '裙装', icon: <Heart className="h-4 w-4" /> },
-  { key: 'outerwear', label: '外套', icon: <Crown className="h-4 w-4" /> },
-  { key: 'shoes', label: '鞋履', icon: <Footprints className="h-4 w-4" /> },
-  { key: 'accessory', label: '配饰', icon: <Sparkles className="h-4 w-4" /> },
+const catList: { key: string; labelKey: string; icon: React.ReactNode }[] = [
+  { key: 'all', labelKey: 'rec.category.all', icon: <Sparkles className="h-4 w-4" /> },
+  { key: 'top', labelKey: 'rec.category.top', icon: <Shirt className="h-4 w-4" /> },
+  { key: 'bottom', labelKey: 'rec.category.bottom', icon: <Shirt className="h-4 w-4" /> },
+  { key: 'dress', labelKey: 'rec.category.dress', icon: <Heart className="h-4 w-4" /> },
+  { key: 'outerwear', labelKey: 'rec.category.outerwear', icon: <Crown className="h-4 w-4" /> },
+  { key: 'shoes', labelKey: 'rec.category.shoes', icon: <Footprints className="h-4 w-4" /> },
+  { key: 'accessory', labelKey: 'rec.category.accessory', icon: <Sparkles className="h-4 w-4" /> },
 ];
 
-const catLabelMap: Record<string, string> = {
-  all: '全部', top: '上装', bottom: '下装', dress: '裙装',
-  outerwear: '外套', shoes: '鞋履', accessory: '配饰',
-};
-
-const allSteps = ['基础信息', '身材分析', '风格偏好', '推荐结果'];
+const allSteps = ['survey.step.basic', 'survey.step.body', 'survey.step.style', 'survey.step.result'];
 
 export default function Recommendations() {
+  const { t } = useT();
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -91,7 +84,7 @@ export default function Recommendations() {
     const result = await fetchWeatherWithCache();
     if (result?.data) {
       setWeatherData(result.data);
-      setWeatherInterp(interpretWeather(result.data, result.isDefault, result.locationName));
+      setWeatherInterp(interpretWeather(result.data, result.isDefault, result.locationName, t as any));
     }
   }, []);
 
@@ -146,20 +139,20 @@ export default function Recommendations() {
     setSearchParams({ occasion });
   };
 
-  const recommendations = useRecommendations(profile);
+  const recommendations = useRecommendations(profile, t as any);
   const weatherForEngine = useMemo(() => {
     if (!weatherData) return null;
-    const interpretation = interpretWeather(weatherData, false, '');
+    const interpretation = interpretWeather(weatherData, false, '', t as (key: string) => string);
     return {
       thicknessTier: interpretation.thicknessTier,
       season: thicknessTierToSeason(interpretation.thicknessTier),
-      remarks: [getWeatherRemark(weatherData) || ''],
+      remarks: [getWeatherRemark(weatherData, t as (key: string) => string) || ''],
     };
-  }, [weatherData]);
-  const outfits = useMemo(() => generateOutfitSets(recommendations, profile, weatherForEngine), [recommendations, profile, weatherForEngine]);
+  }, [weatherData, t]);
+  const outfits = useMemo(() => generateOutfitSets(recommendations, t as any, profile, weatherForEngine), [recommendations, profile, weatherForEngine, t]);
   const bmiInfo = useMemo(() => {
     if (!profile) return null;
-    return getBMICategory(profile.height, profile.weight);
+    return getBMICategory(profile.height, profile.weight, t as any);
   }, [profile]);
 
   const { isFavorite, toggleFavorite, favoriteItems } = useFavorites();
@@ -173,7 +166,7 @@ export default function Recommendations() {
 
   // 加载中显示 LoadingScreen
   if (isLoading) {
-    return <LoadingScreen message="正在加载你的推荐..." />;
+    return <LoadingScreen message={t('rec.loading')} />;
   }
 
   // 没有 profile 数据且无场合参数时显示引导页
@@ -187,22 +180,22 @@ export default function Recommendations() {
                 <Shirt className="h-8 w-8 text-slate-400" />
               </div>
             </div>
-            <h2 className="mb-2 text-xl font-bold">还没有你的体型数据</h2>
+            <h2 className="mb-2 text-xl font-bold">{t('rec.noProfile.title')}</h2>
             <p className="mb-6 text-slate-500">
-              请先完成体型信息测试，我们才会为你推荐服装
+              {t('rec.noProfile.desc')}
             </p>
             <div className="flex flex-col gap-2">
               <Button
                 onClick={() => navigate('/survey')}
                 className="bg-slate-900 hover:bg-slate-800"
               >
-                去测试
+                {t('rec.noProfile.goTest')}
               </Button>
               <Button
                 variant="outline"
                 onClick={() => navigate('/')}
               >
-                返回首页
+                {t('rec.noProfile.backHome')}
               </Button>
             </div>
           </CardContent>
@@ -223,6 +216,7 @@ export default function Recommendations() {
             <span className="text-xl font-bold text-slate-900">StyleFit</span>
           </div>
           <div className="flex items-center gap-1 sm:gap-2">
+            <LanguageSwitcher />
             <Button
               variant="ghost"
               size="sm"
@@ -230,7 +224,7 @@ export default function Recommendations() {
               className="relative"
             >
               <Heart className="mr-1 h-4 w-4" />
-              <span className="hidden sm:inline">收藏</span>
+              <span className="hidden sm:inline">{t('common.favorites')}</span>
               {favoriteItems.length > 0 && (
                 <span className="ml-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
                   {favoriteItems.length}
@@ -243,7 +237,7 @@ export default function Recommendations() {
               onClick={() => navigate('/survey')}
             >
               <ArrowLeft className="mr-1 h-4 w-4" />
-              <span className="hidden sm:inline">重新测试</span>
+              <span className="hidden sm:inline">{t('common.retakeTest')}</span>
             </Button>
           </div>
         </div>
@@ -254,13 +248,13 @@ export default function Recommendations() {
         {isValidOccasion && (
           <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
-              <span className="text-sm text-slate-500">今天去 ·</span>
+              <span className="text-sm text-slate-500">{t('rec.todayGoing')}</span>
               <div className="relative" ref={switcherRef}>
                 <button
                   onClick={() => setShowOccasionSwitcher(!showOccasionSwitcher)}
                   className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-slate-800"
                 >
-                  {occasionLabelMap[urlOccasion] || urlOccasion}
+                  {(t as any)(`rec.occasion.${urlOccasion}`) || urlOccasion}
                   <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showOccasionSwitcher ? 'rotate-180' : ''}`} />
                 </button>
                 {/* 场合切换下拉 */}
@@ -277,7 +271,7 @@ export default function Recommendations() {
                         }`}
                       >
                         {item.icon}
-                        {item.label}
+                        {(t as any)(item.labelKey)}
                         {item.key === urlOccasion && <Check className="ml-auto h-3.5 w-3.5 text-slate-900" />}
                       </button>
                     ))}
@@ -289,14 +283,14 @@ export default function Recommendations() {
             {!loadProfile() && (
               <div className="flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
                 <Lightbulb className="h-3.5 w-3.5 flex-shrink-0" />
-                <span>填写问卷可获得更准推荐</span>
+                <span>{t('rec.fillSurvey')}</span>
                 <Button
                   variant="link"
                   size="sm"
                   onClick={() => navigate('/survey')}
                   className="h-auto px-1 py-0 text-xs font-medium text-amber-700 underline"
                 >
-                  去填写
+                  {t('rec.goFill')}
                 </Button>
               </div>
             )}
@@ -317,13 +311,13 @@ export default function Recommendations() {
             </div>
             <div className="min-w-0 flex-1">
               <span className="text-sm font-medium text-slate-900">
-                今天 {Math.round(weatherInterp.temperature)}°C · 体感 {Math.round(weatherInterp.apparentTemperature)}°C {weatherInterp.weatherLabel}
+                {t('rec.weather.today')} {Math.round(weatherInterp.temperature)}°C · {t('rec.weather.feelsLike')} {Math.round(weatherInterp.apparentTemperature)}°C {weatherInterp.weatherLabel}
               </span>
               <span className="mx-1.5 text-slate-300">·</span>
               <span className="text-sm text-slate-500">{weatherInterp.thicknessLabel}</span>
             </div>
             {weatherInterp.isDefault && (
-              <span className="hidden text-[10px] text-slate-400 sm:inline">按上海天气推荐</span>
+              <span className="hidden text-[10px] text-slate-400 sm:inline">{t('rec.weather.defaultLocation')}</span>
             )}
           </div>
         )}
@@ -343,7 +337,7 @@ export default function Recommendations() {
                   {idx < 3 ? <Check className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> : idx + 1}
                 </div>
                 <span className={`truncate text-[10px] sm:text-xs font-medium ${idx <= 3 ? 'text-slate-700' : 'text-slate-400'}`}>
-                  {label}
+                  {t(label as any)}
                 </span>
               </div>
             ))}
@@ -356,12 +350,12 @@ export default function Recommendations() {
             <div className="bg-gradient-to-r from-slate-900 to-slate-800 px-6 py-5 text-white">
               <div className="flex items-center gap-3 mb-3">
                 <Sparkles className="h-5 w-5 text-amber-400" />
-                <h2 className="text-lg font-bold">你的体型分析报告</h2>
+                <h2 className="text-lg font-bold">{t('rec.bodyReport.title')}</h2>
               </div>
               <div className="flex flex-wrap gap-4 text-sm">
                 <span className="flex items-center gap-1.5">
                   <User className="h-4 w-4 text-slate-400" />
-                  {profile.gender === 'male' ? '男士' : '女士'}
+                  {profile.gender === 'male' ? t('rec.bodyReport.gender.male') : t('rec.bodyReport.gender.female')}
                 </span>
                 <span className="flex items-center gap-1.5">
                   <Ruler className="h-4 w-4 text-slate-400" />
@@ -390,41 +384,41 @@ export default function Recommendations() {
             <div className="grid grid-cols-2 gap-4 px-6 py-4 sm:grid-cols-4">
               <ProfileTag
                 icon={<Palette className="h-4 w-4" />}
-                label="肤色"
-                value={mapSkinTone(profile.skinTone)}
+                label={t('rec.bodyReport.skinTone')}
+                value={mapSkinTone(profile.skinTone, t as any)}
               />
               <ProfileTag
                 icon={<User className="h-4 w-4" />}
-                label="体型"
-                value={mapBodyType(profile.bodyType)}
+                label={t('rec.bodyReport.bodyType')}
+                value={mapBodyType(profile.bodyType, t as any)}
               />
               <ProfileTag
                 icon={<Sparkles className="h-4 w-4" />}
-                label="风格"
-                value={mapStyle(profile.stylePreference)}
+                label={t('rec.bodyReport.style')}
+                value={mapStyle(profile.stylePreference, t as any)}
               />
               <ProfileTag
                 icon={<ShoppingBag className="h-4 w-4" />}
-                label="场合"
-                value={mapOccasion(profile.occasion)}
+                label={t('occasion')}
+                value={mapOccasion(profile.occasion, t as any)}
               />
             </div>
 
             {profile.measurements && Object.values(profile.measurements).some((v) => v) && (
               <div className="border-t px-6 py-3">
-                <div className="text-xs text-slate-400 mb-2">身体尺寸</div>
+                <div className="text-xs text-slate-400 mb-2">{t('survey.body.measurements')}</div>
                 <div className="flex flex-wrap gap-3 text-sm">
                   {profile.measurements.shoulderWidth && (
-                    <span className="rounded-md bg-slate-100 px-2 py-1">肩宽 {profile.measurements.shoulderWidth}cm</span>
+                    <span className="rounded-md bg-slate-100 px-2 py-1">{t('shoulderWidth')} {profile.measurements.shoulderWidth}cm</span>
                   )}
                   {profile.measurements.waist && (
-                    <span className="rounded-md bg-slate-100 px-2 py-1">腰围 {profile.measurements.waist}cm</span>
+                    <span className="rounded-md bg-slate-100 px-2 py-1">{t('waist')} {profile.measurements.waist}cm</span>
                   )}
                   {profile.measurements.hip && (
-                    <span className="rounded-md bg-slate-100 px-2 py-1">臀围 {profile.measurements.hip}cm</span>
+                    <span className="rounded-md bg-slate-100 px-2 py-1">{t('hip')} {profile.measurements.hip}cm</span>
                   )}
                   {profile.measurements.legLength && (
-                    <span className="rounded-md bg-slate-100 px-2 py-1">腿长 {profile.measurements.legLength}cm</span>
+                    <span className="rounded-md bg-slate-100 px-2 py-1">{t('legLength')} {profile.measurements.legLength}cm</span>
                   )}
                 </div>
               </div>
@@ -437,7 +431,7 @@ export default function Recommendations() {
           <div className="mb-10">
             <div className="mb-4 flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-amber-500" />
-              <h2 className="text-xl font-bold text-slate-900">穿搭搭配推荐</h2>
+              <h2 className="text-xl font-bold text-slate-900">{t('rec.outfitRecommendations')}</h2>
             </div>
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {outfits.map((outfit, idx) => (
@@ -471,7 +465,7 @@ export default function Recommendations() {
                 }`}
               >
                 {cat.icon}
-                {cat.label}
+                {(t as any)(cat.labelKey)}
               </button>
             ))}
           </div>
@@ -480,12 +474,12 @@ export default function Recommendations() {
         {/* Section Title */}
         <div className="mb-4">
           <h2 className="text-2xl font-bold text-slate-900">
-            {showFavorites ? '我的收藏' : '为你推荐'}
+            {showFavorites ? t('rec.favoriteItems') : t('rec.forYou')}
           </h2>
           <p className="text-sm text-slate-500">
             {showFavorites
-              ? `共 ${favoriteItems.length} 件收藏`
-              : `共 ${recommendations.length} 件精选服装`}
+              ? t('rec.itemCount', { count: favoriteItems.length })
+              : t('rec.itemCount', { count: recommendations.length })}
           </p>
         </div>
 
@@ -493,7 +487,7 @@ export default function Recommendations() {
         {displayItems.length === 0 ? (
           <div className="py-20 text-center text-slate-400">
             <Shirt className="mx-auto mb-3 h-12 w-12" />
-            <p>{showFavorites ? '还没有收藏任何单品' : '暂无此类别的推荐'}</p>
+            <p>{showFavorites ? t('rec.noFavorites') : t('rec.noCategoryResults')}</p>
           </div>
         ) : (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -524,6 +518,7 @@ function OutfitCard({
   toggleFavorite: (id: string) => void;
   index: number;
 }) {
+  const { t } = useT();
   const [expanded, setExpanded] = useState(false);
 
   const itemReasonMap = useMemo(() => {
@@ -539,7 +534,7 @@ function OutfitCard({
   }, [outfit.itemMatchScores]);
 
   const categoryLabel: Record<string, string> = {
-    top: '上衣', bottom: '下装', dress: '裙装', outerwear: '外套', shoes: '鞋履', accessory: '配饰',
+    top: t('rec.category.top'), bottom: t('rec.category.bottom'), dress: t('rec.category.dress'), outerwear: t('rec.category.outerwear'), shoes: t('rec.category.shoes'), accessory: t('rec.category.accessory'),
   };
 
   return (
@@ -556,7 +551,7 @@ function OutfitCard({
                   outfit.matchScore >= 60 ? 'bg-amber-100 text-amber-700' :
                   'bg-slate-100 text-slate-600'
                 }`}>
-                  匹配 {outfit.matchScore}%
+                  {t('rec.match')} {outfit.matchScore}%
                 </span>
               )}
               <span className="text-sm font-bold text-amber-600">¥{outfit.totalPrice}</span>
@@ -611,9 +606,9 @@ function OutfitCard({
           >
             <span className="flex items-center gap-1">
               <Lightbulb className="h-3 w-3 text-amber-500" />
-              查看搭配详情
+              {t('rec.viewDetails')}
             </span>
-            <span className="text-slate-400">{expanded ? '收起' : '展开'}</span>
+            <span className="text-slate-400">{expanded ? t('rec.collapse') : t('rec.expand')}</span>
           </button>
 
           {expanded && (
@@ -653,7 +648,7 @@ function OutfitCard({
                       className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700"
                     >
                       <ShoppingBag className="h-3 w-3" />
-                      立即购买
+                      {t('rec.buyNow')}
                       <ExternalLink className="h-2.5 w-2.5" />
                     </a>
                   </div>
@@ -667,7 +662,7 @@ function OutfitCard({
         {outfit.stylingAdvice && (
           <div className="border-t px-3 py-2">
             <p className="text-xs text-slate-500">
-              <span className="font-medium text-slate-600">搭配建议：</span>
+              <span className="font-medium text-slate-600">{t('rec.stylingTips')}</span>
               {outfit.stylingAdvice}
             </p>
           </div>
@@ -698,6 +693,7 @@ function ClothingCard({
   isFavorite: (id: string) => boolean;
   toggleFavorite: (id: string) => void;
 }) {
+  const { t } = useT();
   const [imgError, setImgError] = useState(false);
   const fav = isFavorite(item.id);
 
@@ -719,7 +715,7 @@ function ClothingCard({
         )}
         <div className="absolute top-3 left-3">
           <Badge variant="secondary" className="bg-white/90 text-xs font-medium">
-            {catLabelMap[item.category] || item.category}
+            {(t as any)(`rec.category.${item.category}`) || item.category}
           </Badge>
         </div>
         <div className="absolute top-3 right-3">
@@ -755,13 +751,13 @@ function ClothingCard({
           {item.suitableBodyTypes.slice(0, 3).map(bt => (
             <span key={bt} className="inline-flex items-center gap-0.5 rounded-md bg-slate-100 px-1.5 py-0.5 text-xs text-slate-500">
               <User className="h-2.5 w-2.5" />
-              {mapBodyType(bt)}
+              {mapBodyType(bt, t as any)}
             </span>
           ))}
           {item.occasions.slice(0, 2).map(occ => (
             <span key={occ} className="inline-flex items-center gap-0.5 rounded-md bg-blue-50 px-1.5 py-0.5 text-xs text-blue-600">
               <MapPin className="h-2.5 w-2.5" />
-              {mapOccasion(occ)}
+              {mapOccasion(occ, t as any)}
             </span>
           ))}
         </div>
@@ -775,17 +771,17 @@ function ClothingCard({
         {/* Material */}
         {item.material && (
           <div className="mb-3 text-xs text-slate-400">
-            <span className="font-medium">面料：</span>{item.material}
+            <span className="font-medium">{t('rec.material')}</span>{item.material}
           </div>
         )}
 
-        <div className="mb-3 text-xs text-slate-400">可选颜色: {item.colors.join(' / ')}</div>
+        <div className="mb-3 text-xs text-slate-400">{t('rec.availableColors')}: {item.colors.join(' / ')}</div>
 
         {/* Styling tips */}
         {item.stylingTips && (
           <div className="mb-3 rounded-lg border border-dashed border-slate-200 px-2.5 py-1.5">
             <p className="text-xs text-slate-500">
-              <span className="font-medium text-slate-600">搭配建议：</span>{item.stylingTips}
+              <span className="font-medium text-slate-600">{t('rec.stylingTips')}</span>{item.stylingTips}
             </p>
           </div>
         )}
@@ -800,7 +796,7 @@ function ClothingCard({
             )}
           </div>
           <Button size="sm" className="bg-slate-900 hover:bg-slate-800" onClick={() => window.open(item.buyLink, '_blank')}>
-            去购买<ExternalLink className="ml-1 h-3 w-3" />
+            {t('rec.goToBuy')}<ExternalLink className="ml-1 h-3 w-3" />
           </Button>
         </div>
       </CardContent>
@@ -828,19 +824,19 @@ function ProfileTag({
   );
 }
 
-function mapSkinTone(tone: string): string {
-  const map: Record<string, string> = { fair: '白皙', light: '偏白', medium: '自然', tan: '偏黄', dark: '深色' };
-  return map[tone] || tone;
+function mapSkinTone(tone: string, t: (key: string) => string): string {
+  const map: Record<string, string> = { fair: 'match.skinTone.fair', light: 'match.skinTone.light', medium: 'match.skinTone.medium', tan: 'match.skinTone.tan', dark: 'match.skinTone.dark' };
+  return map[tone] ? t(map[tone]) : tone;
 }
-function mapBodyType(type: string): string {
-  const map: Record<string, string> = { slim: '偏瘦', standard: '标准', athletic: '运动型', curvy: '曲线型', plus: '丰腴型' };
-  return map[type] || type;
+function mapBodyType(type: string, t: (key: string) => string): string {
+  const map: Record<string, string> = { slim: 'match.bodyType.slim', standard: 'match.bodyType.standard', athletic: 'match.bodyType.athletic', curvy: 'match.bodyType.curvy', plus: 'match.bodyType.plus' };
+  return map[type] ? t(map[type]) : type;
 }
-function mapStyle(style: string): string {
-  const map: Record<string, string> = { casual: '休闲', business: '商务', streetwear: '街头', minimal: '简约', elegant: '优雅', sporty: '运动' };
-  return map[style] || style;
+function mapStyle(style: string, t: (key: string) => string): string {
+  const map: Record<string, string> = { casual: 'match.style.casual', business: 'match.style.business', streetwear: 'match.style.streetwear', minimal: 'match.style.minimal', elegant: 'match.style.elegant', sporty: 'match.style.sporty' };
+  return map[style] ? t(map[style]) : style;
 }
-function mapOccasion(occ: string): string {
-  const map: Record<string, string> = { daily: '日常', work: '职场', date: '约会', party: '派对', travel: '旅行', formal: '正式' };
-  return map[occ] || occ;
+function mapOccasion(occ: string, t: (key: string) => string): string {
+  const map: Record<string, string> = { daily: 'match.occasion.daily', work: 'match.occasion.work', date: 'match.occasion.date', party: 'match.occasion.party', travel: 'match.occasion.travel', formal: 'match.occasion.formal' };
+  return map[occ] ? t(map[occ]) : occ;
 }

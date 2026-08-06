@@ -50,20 +50,25 @@ const LOCATION_THRESHOLD = 0.1; // 度
 
 // ============ 天气代码映射 ============
 
+export function getWeatherLabelKey(code: number): string {
+  if (code === 0) return 'weather.clear';
+  if (code <= 3) return code === 1 ? 'weather.clear' : code === 2 ? 'weather.partlyCloudy' : 'weather.cloudy';
+  if (code === 45 || code === 48) return 'weather.fog';
+  if (code >= 51 && code <= 55) return 'weather.drizzle';
+  if (code >= 56 && code <= 57) return 'weather.rain';
+  if (code >= 61 && code <= 65) return code <= 63 ? 'weather.rain' : 'weather.heavyRain';
+  if (code >= 66 && code <= 67) return 'weather.rain';
+  if (code >= 71 && code <= 75) return code <= 73 ? 'weather.snow' : 'weather.snow';
+  if (code === 77) return 'weather.snow';
+  if (code >= 80 && code <= 82) return 'weather.rain';
+  if (code >= 85 && code <= 86) return 'weather.snow';
+  if (code >= 95 && code <= 99) return 'weather.thunderstorm';
+  return 'weather.clear';
+}
+
+// Keep backward compat
 export function getWeatherLabel(code: number): string {
-  if (code === 0) return '晴';
-  if (code <= 3) return code === 1 ? '大部晴朗' : code === 2 ? '多云' : '阴';
-  if (code === 45 || code === 48) return '雾';
-  if (code >= 51 && code <= 55) return '小雨';
-  if (code >= 56 && code <= 57) return '冻雨';
-  if (code >= 61 && code <= 65) return code <= 63 ? '中雨' : '大雨';
-  if (code >= 66 && code <= 67) return '冻雨';
-  if (code >= 71 && code <= 75) return code <= 73 ? '小雪' : '大雪';
-  if (code === 77) return '雪粒';
-  if (code >= 80 && code <= 82) return '阵雨';
-  if (code >= 85 && code <= 86) return '阵雪';
-  if (code >= 95 && code <= 99) return '雷雨';
-  return '未知';
+  return getWeatherLabelKey(code);
 }
 
 export function isPrecipitationCode(code: number): boolean {
@@ -83,13 +88,22 @@ export function getThicknessTier(temp: number): ThicknessTier {
   return 'freezing';
 }
 
-const thicknessLabels: Record<ThicknessTier, string> = {
-  scorching: '酷热 · 短袖短裤/速干/凉鞋',
-  hot: '炎热 · 短袖薄裤/透气面料',
-  comfortable: '舒适 · 长袖T/衬衫/薄卫衣',
-  cool: '微凉 · 卫衣/夹克/针织衫',
-  cold: '寒冷 · 毛衣/风衣/大衣',
-  freezing: '严寒 · 羽绒服/加绒内搭',
+const thicknessLabelKeys: Record<ThicknessTier, string> = {
+  scorching: 'weather.tier.hot',
+  hot: 'weather.tier.hot',
+  comfortable: 'weather.tier.comfortable',
+  cool: 'weather.tier.cool',
+  cold: 'weather.tier.cold',
+  freezing: 'weather.tier.cold',
+};
+
+const clothingAdviceKeys: Record<ThicknessTier, string> = {
+  scorching: 'weather.advice.hot',
+  hot: 'weather.advice.warm',
+  comfortable: 'weather.advice.comfortable',
+  cool: 'weather.advice.cool',
+  cold: 'weather.advice.cold',
+  freezing: 'weather.advice.cold',
 };
 
 const thicknessSeasonMap: Record<ThicknessTier, Season> = {
@@ -109,31 +123,28 @@ export function thicknessTierToSeason(tier: ThicknessTier): Season {
 
 // ============ 天气解读 ============
 
-export function interpretWeather(data: WeatherData, isDefault: boolean, locationName: string): WeatherInterpretation {
+export function interpretWeather(data: WeatherData, isDefault: boolean, locationName: string, t?: (key: string) => string): WeatherInterpretation {
   const tier = getThicknessTier(data.apparentTemperature);
-  const weatherLabel = getWeatherLabel(data.weatherCode);
+  const weatherLabelKey = getWeatherLabelKey(data.weatherCode);
   const hasRain = isPrecipitationCode(data.weatherCode) || data.precipitation > 0;
   const hasWind = data.windSpeed >= 30;
 
-  let clothingAdvice = '';
-  switch (tier) {
-    case 'scorching': clothingAdvice = '适合清爽透气的搭配'; break;
-    case 'hot': clothingAdvice = '适合轻薄舒适的搭配'; break;
-    case 'comfortable': clothingAdvice = '适合层次灵活的搭配'; break;
-    case 'cool': clothingAdvice = '适合加一件外套的搭配'; break;
-    case 'cold': clothingAdvice = '注意保暖，优选厚实面料'; break;
-    case 'freezing': clothingAdvice = '全副武装，保暖第一'; break;
-  }
+  const clothingAdviceKey = clothingAdviceKeys[tier];
+  const thicknessLabelKey = thicknessLabelKeys[tier];
 
-  const rainNote = hasRain ? '出门记得带伞，鞋已优先防水款' : null;
-  const windNote = hasWind ? '风力较大，建议加防风外套' : null;
+  // If translation function provided, use it; otherwise return keys
+  const weatherLabel = t ? t(weatherLabelKey) : weatherLabelKey;
+  const thicknessLabel = t ? t(thicknessLabelKey) : thicknessLabelKey;
+  const clothingAdvice = t ? t(clothingAdviceKey) : clothingAdviceKey;
+  const rainNote = hasRain ? (t ? t('weather.rainAdvice') : 'weather.rainAdvice') : null;
+  const windNote = hasWind ? (t ? t('weather.windAdvice') : 'weather.windAdvice') : null;
 
   return {
     temperature: data.temperature,
     apparentTemperature: data.apparentTemperature,
     weatherLabel,
     thicknessTier: tier,
-    thicknessLabel: thicknessLabels[tier],
+    thicknessLabel,
     clothingAdvice,
     rainNote,
     windNote,
@@ -144,15 +155,16 @@ export function interpretWeather(data: WeatherData, isDefault: boolean, location
 
 // ============ 天气话术（用于推荐结果页） ============
 
-export function getWeatherRemark(data: WeatherData | null): string | null {
+export function getWeatherRemark(data: WeatherData | null, t?: (key: string) => string): string | null {
   if (!data) return null;
   const parts: string[] = [];
-  parts.push(`今天 ${Math.round(data.apparentTemperature)}°C`);
+  const todayLabel = t ? t('rec.weather.today') : 'Today';
+  parts.push(`${todayLabel} ${Math.round(data.apparentTemperature)}°C`);
   if (isPrecipitationCode(data.weatherCode) || data.precipitation > 0) {
-    parts.push('有雨，鞋已优先防水款');
+    parts.push(t ? t('weather.rainAdvice') : 'Rain expected');
   }
   if (data.windSpeed >= 30) {
-    parts.push('风大，建议防风外套');
+    parts.push(t ? t('weather.windAdvice') : 'Strong winds');
   }
   return parts.join(' · ');
 }
