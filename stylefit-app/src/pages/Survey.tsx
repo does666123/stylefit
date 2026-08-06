@@ -171,7 +171,7 @@ export default function Survey() {
             </div>
             <span className="text-xl font-bold text-slate-900">StyleFit</span>
           </div>
-          <div className="text-sm text-slate-400">{t('survey.stepIndicator', { current: step + 1, total: allSteps.length })}</div>
+          <div className="text-sm text-slate-400">{t('survey.stepIndicator', { step: step + 1, total: allSteps.length })}</div>
         </div>
       </nav>
 
@@ -198,7 +198,7 @@ export default function Survey() {
                     idx <= step ? 'text-slate-700' : 'text-slate-400'
                   }`}
                 >
-                  {label}
+                  {t(label as any)}
                 </span>
               </div>
             ))}

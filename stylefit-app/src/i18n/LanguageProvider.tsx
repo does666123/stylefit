@@ -37,10 +37,10 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   const t = useCallback((key: TranslationKey, params?: Record<string, string | number>): string => {
     const dict = lang === 'zh' ? zh : en;
-    let text = dict[key] || key;
+    let text = dict[key] || zh[key] || key;
     if (params) {
       Object.entries(params).forEach(([k, v]) => {
-        text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v));
+        text = text.replace(new RegExp(`\\{\\{${k}\\}\\}`, 'g'), String(v));
       });
     }
     return text;
