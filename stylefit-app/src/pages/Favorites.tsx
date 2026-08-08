@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,43 +15,14 @@ import {
   MapPin,
   Lightbulb,
 } from 'lucide-react';
-import { clothingData } from '@/data/clothing';
 import type { ClothingItem } from '@/types';
 import { useT } from '@/i18n';
+import { useFavorites } from '@/hooks/useRecommendation';
 
 export function FavoritesPage() {
   const navigate = useNavigate();
   const { t } = useT();
-  const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
-
-  // 从 localStorage 读取收藏
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('stylefit_favorites');
-      if (saved) {
-        const ids = JSON.parse(saved) as string[];
-        setFavoriteIds(ids);
-      }
-    } catch {
-      // ignore
-    }
-  }, []);
-
-  const isFavorite = (id: string) => favoriteIds.includes(id);
-
-  const toggleFavorite = (id: string) => {
-    setFavoriteIds(prev => {
-      const next = prev.includes(id) ? prev.filter(fid => fid !== id) : [...prev, id];
-      try {
-        localStorage.setItem('stylefit_favorites', JSON.stringify(next));
-      } catch {
-        // ignore
-      }
-      return next;
-    });
-  };
-
-  const favoriteItems = clothingData.filter(item => isFavorite(item.id));
+  const { favoriteItems, isFavorite, toggleFavorite } = useFavorites();
 
   return (
     <div className="min-h-screen bg-slate-50 page-enter">
@@ -153,7 +124,7 @@ function FavoriteCard({
     bottom: t('rec.category.bottom'),
     shoes: t('rec.category.shoes'),
     accessory: t('rec.category.accessory'),
-    outer: t('rec.category.outerwear'),
+    outerwear: t('rec.category.outerwear'),
   };
 
   return (

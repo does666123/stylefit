@@ -1,7 +1,7 @@
 import { useMemo, useCallback } from 'react';
 import { useState, useEffect } from 'react';
 import type { UserBodyProfile, ClothingItem, OutfitSet, FavoriteItem, MatchResult, Season } from '../types';
-import { clothingData } from '../data/clothing';
+import { getProductById, getProducts } from '@/services/productCatalog';
 
 // localStorage keys
 const PROFILE_KEY = 'stylefit_profile';
@@ -202,7 +202,7 @@ export function useRecommendations(profile: UserBodyProfile | null, t?: TFunc): 
     const bmi = calculateBMI(profile.height, profile.weight);
     const tFunc = t || ((key: string) => key);
 
-    const scored = clothingData
+    const scored = getProducts()
       .map((item) => ({ item, score: getScore(item, profile, bmi, tFunc) }))
       .filter(({ score }) => score > 0)
       .sort((a, b) => b.score - a.score);
@@ -218,7 +218,7 @@ export function useRecommendationsWithMatch(profile: UserBodyProfile | null, t: 
     const bmi = calculateBMI(profile.height, profile.weight);
     const weatherSeason = weather?.season;
 
-    return clothingData
+    return getProducts()
       .map((item) => ({
         item,
         matchResult: calculateMatchResult(item, profile, bmi, t, weatherSeason),
@@ -481,7 +481,28 @@ export function useFavorites() {
     try {
       const raw = localStorage.getItem(FAV_KEY);
       if (raw) {
-        setFavorites(JSON.parse(raw));
+        const saved = JSON.parse(raw) as unknown;
+        if (Array.isArray(saved)) {
+          setFavorites(saved.flatMap((favorite) => {
+            if (typeof favorite === 'string') {
+              return [{ id: favorite, addedAt: '' }];
+            }
+            if (
+              favorite &&
+              typeof favorite === 'object' &&
+              'id' in favorite &&
+              typeof favorite.id === 'string'
+            ) {
+              return [{
+                id: favorite.id,
+                addedAt: 'addedAt' in favorite && typeof favorite.addedAt === 'string'
+                  ? favorite.addedAt
+                  : '',
+              }];
+            }
+            return [];
+          }));
+        }
       }
     } catch { /* ignore */ }
     setLoaded(true);
@@ -513,7 +534,7 @@ export function useFavorites() {
 
   const favoriteItems = useMemo(() => {
     return favorites
-      .map(f => clothingData.find(c => c.id === f.id))
+      .map(f => getProductById(f.id))
       .filter((c): c is ClothingItem => !!c);
   }, [favorites]);
 
