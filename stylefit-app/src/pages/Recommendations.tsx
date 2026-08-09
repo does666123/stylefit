@@ -59,6 +59,15 @@ const catList: { key: string; labelKey: string; icon: React.ReactNode }[] = [
 
 const allSteps = ['survey.step.basic', 'survey.step.body', 'survey.step.style', 'survey.step.result'];
 
+type AIRecommendation = {
+  summary: string;
+  outfits: {
+    name: string;
+    stylingTip: string;
+    items: { id: string; reason: string }[];
+  }[];
+};
+
 export default function Recommendations() {
   const { t } = useT();
   const location = useLocation();
@@ -76,8 +85,9 @@ export default function Recommendations() {
   const [showFavorites, setShowFavorites] = useState(false);
   const [showOccasionSwitcher, setShowOccasionSwitcher] = useState(false);
   const switcherRef = useRef<HTMLDivElement>(null);
-  const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
+  const [weatherData, setWeatherData] = useState<WeatherData | null>();
   const [weatherInterp, setWeatherInterp] = useState<WeatherInterpretation | null>(null);
+  const [aiRecommendation, setAIRecommendation] = useState<AIRecommendation | null>(null);
 
   // 获取天气（不阻塞渲染）
   const loadWeather = useCallback(async () => {
@@ -85,6 +95,8 @@ export default function Recommendations() {
     if (result?.data) {
       setWeatherData(result.data);
       setWeatherInterp(interpretWeather(result.data, result.isDefault, result.locationName, t as any));
+    } else {
+      setWeatherData(null);
     }
   }, []);
 
@@ -149,7 +161,77 @@ export default function Recommendations() {
       remarks: [getWeatherRemark(weatherData, t as (key: string) => string) || ''],
     };
   }, [weatherData, t]);
-  const outfits = useMemo(() => generateOutfitSets(recommendations, t as any, profile, weatherForEngine), [recommendations, profile, weatherForEngine, t]);
+  const localOutfits = useMemo(() => generateOutfitSets(recommendations, t as any, profile, weatherForEngine), [recommendations, profile, weatherForEngine, t]);
+
+  useEffect(() => {
+    if (!profile || weatherData === undefined || recommendations.length === 0) return;
+
+    const controller = new AbortController();
+    fetch('/api/recommend', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({
+        profile,
+        weather: weatherInterp ? {
+          temperature: weatherInterp.temperature,
+          weatherLabel: weatherInterp.weatherLabel,
+          thicknessTier: weatherInterp.thicknessTier,
+          remarks: weatherForEngine?.remarks,
+        } : null,
+        candidates: recommendations.slice(0, 30).map((item) => ({
+          id: item.id,
+          name: item.name,
+          category: item.category,
+          price: item.price,
+          brand: item.brand,
+          colors: item.colors,
+          tags: item.tags,
+          styles: item.styles,
+          occasions: item.occasions,
+          seasons: item.seasons,
+          description: item.description,
+        })),
+      }),
+    })
+      .then((response) => response.ok ? response.json() : null)
+      .then((result) => {
+        const recommendation = result?.status === 'ok' ? result.recommendation : null;
+        setAIRecommendation(recommendation && Array.isArray(recommendation.outfits) ? recommendation : null);
+      })
+      .catch(() => setAIRecommendation(null));
+
+    return () => controller.abort();
+  }, [profile, weatherData, weatherInterp, weatherForEngine, recommendations]);
+
+  const outfits = useMemo(() => {
+    if (!aiRecommendation) return localOutfits;
+
+    const products = new Map(recommendations.map((item) => [item.id, item]));
+    const generated = aiRecommendation.outfits.flatMap((outfit, index): OutfitSet[] => {
+      const selected = outfit.items.flatMap(({ id }) => {
+        const item = products.get(id);
+        return item ? [item] : [];
+      });
+      if (selected.length < 2) return [];
+
+      return [{
+        id: `ai-outfit-${index}`,
+        name: outfit.name,
+        themeName: outfit.name,
+        items: selected,
+        totalPrice: selected.reduce((total, item) => total + item.price, 0),
+        description: aiRecommendation.summary,
+        tags: [selected[0].styles[0], selected[0].occasions[0]].filter(Boolean),
+        occasion: profile?.occasion || selected[0].occasions[0] || 'daily',
+        style: profile?.stylePreference || selected[0].styles[0] || 'casual',
+        stylingAdvice: outfit.stylingTip,
+        itemReasons: outfit.items.map(({ id, reason }) => ({ itemId: id, reason })),
+      }];
+    });
+
+    return generated.length ? generated : localOutfits;
+  }, [aiRecommendation, localOutfits, profile, recommendations]);
   const bmiInfo = useMemo(() => {
     if (!profile) return null;
     return getBMICategory(profile.height, profile.weight, t as any);
@@ -432,6 +514,7 @@ export default function Recommendations() {
             <div className="mb-4 flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-amber-500" />
               <h2 className="text-xl font-bold text-slate-900">{t('rec.outfitRecommendations')}</h2>
+              {aiRecommendation && <Badge variant="secondary">AI</Badge>}
             </div>
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {outfits.map((outfit, idx) => (
