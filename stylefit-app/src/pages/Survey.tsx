@@ -15,7 +15,9 @@ import {
 import { Shirt, ArrowRight, ArrowLeft, Check, Loader2, Sparkles, Ruler, AlertCircle } from 'lucide-react';
 import { useT } from '@/i18n';
 import type { UserBodyProfile, Gender, BodyType, SkinTone, StylePreference, Occasion, Season } from '../types';
-import { saveProfile } from '../hooks/useRecommendation';
+import { getRecommendations, saveProfile } from '../hooks/useRecommendation';
+import { requestAIRecommendation } from '../lib/aiRecommendation';
+import LoadingScreen from '@/components/LoadingScreen';
 
 const allSteps = ['survey.step.basic', 'survey.step.body', 'survey.step.style', 'survey.step.result'];
 
@@ -75,6 +77,8 @@ export default function Survey() {
   const { t } = useT();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const [submittedProfile, setSubmittedProfile] = useState<UserBodyProfile | null>(null);
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [profile, setProfile] = useState<Partial<UserBodyProfile>>({
     gender: 'male',
@@ -140,9 +144,20 @@ export default function Survey() {
     setStep(step + 1);
   };
 
-  const handleSubmit = async () => {
+  const generateRecommendation = async (fullProfile: UserBodyProfile) => {
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1500));
+    const recommendation = await requestAIRecommendation(fullProfile, getRecommendations(fullProfile)).catch(() => null);
+    if (recommendation) {
+      navigate('/recommendations', { state: { profile: fullProfile, aiRecommendation: recommendation } });
+      return;
+    }
+
+    setSubmittedProfile(fullProfile);
+    setRetryCount((count) => count + 1);
+    setLoading(false);
+  };
+
+  const handleSubmit = () => {
     const fullProfile: UserBodyProfile = {
       gender: profile.gender!,
       height: profile.height!,
@@ -158,8 +173,45 @@ export default function Survey() {
     };
     // 持久化到 localStorage，防止刷新后数据丢失
     saveProfile(fullProfile);
-    navigate('/recommendations', { state: { profile: fullProfile } });
+    setRetryCount(0);
+    generateRecommendation(fullProfile);
   };
+
+  const handleRetry = () => {
+    if (submittedProfile) generateRecommendation(submittedProfile);
+  };
+
+  if (loading) {
+    return <LoadingScreen message="AI 正在生成专属穿搭..." />;
+  }
+
+  if (submittedProfile && retryCount > 0) {
+    const canUseLocalRecommendation = retryCount >= 2;
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="space-y-5 p-8 text-center">
+            <AlertCircle className="mx-auto h-10 w-10 text-amber-500" />
+            <div>
+              <h1 className="text-xl font-bold text-slate-900">AI 推荐暂时没有生成成功</h1>
+              <p className="mt-2 text-sm text-slate-500">请稍后重试，已填写的问卷信息会保留。</p>
+            </div>
+            <Button className="w-full bg-slate-900 hover:bg-slate-800" onClick={handleRetry}>
+              重试生成
+            </Button>
+            {canUseLocalRecommendation && (
+              <>
+                <Button className="w-full" variant="outline" onClick={() => navigate('/recommendations', { state: { profile: submittedProfile, skipAI: true } })}>
+                  进入本地推荐
+                </Button>
+                <p className="text-xs leading-5 text-slate-400">AI 推荐更个性化，需要联网生成；本地推荐立即可用，但个性化程度较低。</p>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50">

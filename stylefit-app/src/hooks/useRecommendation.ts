@@ -196,19 +196,19 @@ export interface ScoredItem {
   matchResult: MatchResult;
 }
 
+export function getRecommendations(profile: UserBodyProfile, t?: TFunc): ClothingItem[] {
+  const bmi = calculateBMI(profile.height, profile.weight);
+  const tFunc = t || ((key: string) => key);
+
+  return getProducts()
+    .map((item) => ({ item, score: getScore(item, profile, bmi, tFunc) }))
+    .filter(({ score }) => score > 0)
+    .sort((a, b) => b.score - a.score)
+    .map(({ item }) => item);
+}
+
 export function useRecommendations(profile: UserBodyProfile | null, t?: TFunc): ClothingItem[] {
-  return useMemo(() => {
-    if (!profile) return [];
-    const bmi = calculateBMI(profile.height, profile.weight);
-    const tFunc = t || ((key: string) => key);
-
-    const scored = getProducts()
-      .map((item) => ({ item, score: getScore(item, profile, bmi, tFunc) }))
-      .filter(({ score }) => score > 0)
-      .sort((a, b) => b.score - a.score);
-
-    return scored.map(({ item }) => item);
-  }, [profile, t]);
+  return useMemo(() => profile ? getRecommendations(profile, t) : [], [profile, t]);
 }
 
 /** 获取带匹配度详情的推荐结果 */

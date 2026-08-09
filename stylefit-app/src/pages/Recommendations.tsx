@@ -36,6 +36,7 @@ import LoadingScreen from '@/components/LoadingScreen';
 import { fetchWeatherWithCache, interpretWeather, getWeatherRemark, thicknessTierToSeason, type WeatherInterpretation, type WeatherData } from '../lib/weather';
 import { useT } from '../i18n';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+import { requestAIRecommendation, type AIRecommendation } from '../lib/aiRecommendation';
 
 // 场合快捷切换数据
 const occasionSwitcherItems: { key: Occasion; labelKey: string; icon: React.ReactNode }[] = [
@@ -59,15 +60,6 @@ const catList: { key: string; labelKey: string; icon: React.ReactNode }[] = [
 
 const allSteps = ['survey.step.basic', 'survey.step.body', 'survey.step.style', 'survey.step.result'];
 
-type AIRecommendation = {
-  summary: string;
-  outfits: {
-    name: string;
-    stylingTip: string;
-    items: { id: string; reason: string }[];
-  }[];
-};
-
 export default function Recommendations() {
   const { t } = useT();
   const location = useLocation();
@@ -88,7 +80,8 @@ export default function Recommendations() {
   const aiRequestInFlight = useRef(false);
   const [weatherData, setWeatherData] = useState<WeatherData | null>();
   const [weatherInterp, setWeatherInterp] = useState<WeatherInterpretation | null>(null);
-  const [aiRecommendation, setAIRecommendation] = useState<AIRecommendation | null>(null);
+  const [aiRecommendation, setAIRecommendation] = useState<AIRecommendation | null>(() => location.state?.aiRecommendation ?? null);
+  const skipAI = Boolean(location.state?.skipAI);
 
   // 获取天气（不阻塞渲染）
   const loadWeather = useCallback(async () => {
@@ -149,6 +142,7 @@ export default function Recommendations() {
       // 无画像：使用中性默认
       setProfile(getNeutralProfile(occasion));
     }
+    setAIRecommendation(null);
     setSearchParams({ occasion });
   };
 
@@ -165,35 +159,15 @@ export default function Recommendations() {
   const localOutfits = useMemo(() => generateOutfitSets(recommendations, t as any, profile, weatherForEngine), [recommendations, profile, weatherForEngine, t]);
 
   useEffect(() => {
-    if (!profile || recommendations.length === 0) return;
+    if (skipAI || aiRecommendation || !profile || recommendations.length === 0) return;
     if (aiRequestInFlight.current) return;
 
     aiRequestInFlight.current = true;
-    fetch('/api/recommend', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        profile,
-        candidates: recommendations.slice(0, 15).map((item) => ({
-          id: item.id,
-          name: item.name,
-          category: item.category,
-          colors: item.colors,
-          tags: item.tags,
-          styles: item.styles,
-          occasions: item.occasions,
-        })),
-      }),
-    })
-      .then((response) => response.ok ? response.json() : null)
-      .then((result) => {
-        const recommendation = result?.status === 'ok' ? result.recommendation : null;
-        if (!recommendation) console.warn('AI recommendation fallback:', result);
-        setAIRecommendation(recommendation && Array.isArray(recommendation.outfits) ? recommendation : null);
-      })
+    requestAIRecommendation(profile, recommendations)
+      .then((recommendation) => setAIRecommendation(recommendation))
       .catch(() => setAIRecommendation(null))
       .finally(() => { aiRequestInFlight.current = false; });
-  }, [profile, recommendations]);
+  }, [aiRecommendation, profile, recommendations, skipAI]);
 
   const outfits = useMemo(() => {
     if (!aiRecommendation) return localOutfits;
