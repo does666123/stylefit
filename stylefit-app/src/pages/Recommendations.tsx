@@ -197,6 +197,7 @@ export default function Recommendations() {
       .then((response) => response.ok ? response.json() : null)
       .then((result) => {
         const recommendation = result?.status === 'ok' ? result.recommendation : null;
+        if (!recommendation) console.warn('AI recommendation fallback:', result?.reason ?? 'Unknown error');
         setAIRecommendation(recommendation && Array.isArray(recommendation.outfits) ? recommendation : null);
       })
       .catch(() => setAIRecommendation(null));

@@ -1,67 +1,31 @@
-type JsonRecord = Record<string, unknown>;
-
-type Candidate = {
-  id: string;
-  name: string;
-  category: string;
-  price?: number;
-  brand?: string;
-  colors?: string[];
-  tags?: string[];
-  styles?: string[];
-  occasions?: string[];
-  seasons?: string[];
-  description?: string;
-};
-
-type RecommendationItem = {
-  id: string;
-  reason: string;
-};
-
-type RecommendationOutfit = {
-  name: string;
-  stylingTip: string;
-  items: RecommendationItem[];
-};
-
-type FunctionContext = {
-  request: Request;
-  env: Record<string, string | undefined>;
-};
-
 const endpoint = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
 const model = 'glm-4.7-flash';
 const jsonHeaders = { 'Content-Type': 'application/json; charset=utf-8' };
 
-function json(data: unknown, status = 200): Response {
+function json(data, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: jsonHeaders });
 }
 
-function asRecord(value: unknown): JsonRecord | null {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-    ? value as JsonRecord
-    : null;
+function asRecord(value) {
+  return typeof value === 'object' && value !== null && !Array.isArray(value) ? value : null;
 }
 
-function asText(value: unknown, maxLength: number): string | undefined {
-  return typeof value === 'string' && value.trim()
-    ? value.trim().slice(0, maxLength)
-    : undefined;
+function asText(value, maxLength) {
+  return typeof value === 'string' && value.trim() ? value.trim().slice(0, maxLength) : undefined;
 }
 
-function asTextList(value: unknown, maxItems: number, maxLength: number): string[] | undefined {
+function asTextList(value, maxItems, maxLength) {
   if (!Array.isArray(value)) return undefined;
 
   const values = value
     .map((item) => asText(item, maxLength))
-    .filter((item): item is string => Boolean(item))
+    .filter(Boolean)
     .slice(0, maxItems);
 
   return values.length ? values : undefined;
 }
 
-function parseCandidate(value: unknown): Candidate | null {
+function parseCandidate(value) {
   const record = asRecord(value);
   const id = record && asText(record.id, 80);
   const name = record && asText(record.name, 120);
@@ -84,8 +48,8 @@ function parseCandidate(value: unknown): Candidate | null {
   };
 }
 
-function pick(record: JsonRecord | null, keys: string[]): JsonRecord {
-  return keys.reduce<JsonRecord>((result, key) => {
+function pick(record, keys) {
+  return keys.reduce((result, key) => {
     const value = record?.[key];
     if (typeof value === 'string' || typeof value === 'number' || Array.isArray(value)) {
       result[key] = value;
@@ -94,7 +58,7 @@ function pick(record: JsonRecord | null, keys: string[]): JsonRecord {
   }, {});
 }
 
-function extractJson(content: string): JsonRecord | null {
+function extractJson(content) {
   const start = content.indexOf('{');
   const end = content.lastIndexOf('}');
   if (start < 0 || end < start) return null;
@@ -106,19 +70,19 @@ function extractJson(content: string): JsonRecord | null {
   }
 }
 
-function parseRecommendation(content: string, candidateIds: Set<string>) {
+function parseRecommendation(content, candidateIds) {
   const record = extractJson(content);
   const summary = record && asText(record.summary, 600);
   const sourceOutfits = record && Array.isArray(record.outfits) ? record.outfits : [];
-  const outfits: RecommendationOutfit[] = [];
+  const outfits = [];
 
   for (const sourceOutfit of sourceOutfits.slice(0, 3)) {
     const outfit = asRecord(sourceOutfit);
     const name = outfit && asText(outfit.name, 80);
     const stylingTip = outfit && asText(outfit.stylingTip, 280);
     const sourceItems = outfit && Array.isArray(outfit.items) ? outfit.items : [];
-    const seenIds = new Set<string>();
-    const items: RecommendationItem[] = [];
+    const seenIds = new Set();
+    const items = [];
 
     for (const sourceItem of sourceItems.slice(0, 6)) {
       const item = asRecord(sourceItem);
@@ -138,11 +102,11 @@ function parseRecommendation(content: string, candidateIds: Set<string>) {
   return summary && outfits.length ? { summary, outfits } : null;
 }
 
-function fallback(reason: string): Response {
+function fallback(reason) {
   return json({ status: 'fallback', reason });
 }
 
-export async function onRequest({ request, env }: FunctionContext): Promise<Response> {
+export async function onRequest({ request, env }) {
   if (request.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: { Allow: 'POST, OPTIONS' } });
   }
@@ -156,7 +120,7 @@ export async function onRequest({ request, env }: FunctionContext): Promise<Resp
     return json({ error: 'Request is too large' }, 413);
   }
 
-  let body: JsonRecord | null;
+  let body;
   try {
     body = asRecord(await request.json());
   } catch {
@@ -165,7 +129,7 @@ export async function onRequest({ request, env }: FunctionContext): Promise<Resp
 
   const candidates = (Array.isArray(body?.candidates) ? body.candidates : [])
     .map(parseCandidate)
-    .filter((candidate): candidate is Candidate => Boolean(candidate))
+    .filter(Boolean)
     .slice(0, 30);
 
   if (!candidates.length) {
