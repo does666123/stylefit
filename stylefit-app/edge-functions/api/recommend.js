@@ -1,6 +1,10 @@
 const endpoint = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
 const model = 'glm-4.7-flash';
 const jsonHeaders = { 'Content-Type': 'application/json; charset=utf-8' };
+const cacheTtlMs = 30 * 60 * 1000;
+const cacheLimit = 200;
+const recommendationCache = new Map();
+const inFlightRequests = new Map();
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: jsonHeaders });
@@ -23,6 +27,61 @@ function asTextList(value, maxItems, maxLength) {
     .slice(0, maxItems);
 
   return values.length ? values : undefined;
+}
+
+function temperatureBucket(value) {
+  const temperature = Number(value);
+  if (!Number.isFinite(temperature)) return 'na';
+
+  const start = Math.floor(temperature / 5) * 5;
+  return `${start}-${start + 5}`;
+}
+
+function weatherCategory(weather) {
+  const code = Number(weather?.weathercode ?? weather?.weatherCode);
+  if (Number.isInteger(code)) {
+    if (code === 0) return 'sunny';
+    if ([1, 2, 3].includes(code)) return 'cloudy';
+    if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return 'rain';
+    if ([71, 73, 75, 77, 85, 86].includes(code)) return 'snow';
+  }
+
+  const label = asText(weather?.weatherLabel, 40) || '';
+  if (/雨|rain|drizzle|thunder/i.test(label)) return 'rain';
+  if (/雪|snow/i.test(label)) return 'snow';
+  if (/晴|clear|sunny/i.test(label)) return 'sunny';
+  if (/云|cloud|overcast/i.test(label)) return 'cloudy';
+  return 'other';
+}
+
+function recommendationCacheKey(body, profile, weather) {
+  const locale = (asText(body?.locale, 20) || 'zh').split('-')[0];
+  const style = asText(profile.stylePreference, 40) || asTextList(profile.styleTags, 1, 40)?.[0] || 'any';
+  return [
+    locale,
+    temperatureBucket(weather.temperature),
+    weatherCategory(weather),
+    asText(profile.occasion, 40) || 'any',
+    asText(profile.gender, 20) || 'any',
+    style,
+  ].join('|');
+}
+
+function readCachedRecommendation(key) {
+  const entry = recommendationCache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.createdAt >= cacheTtlMs) {
+    recommendationCache.delete(key);
+    return null;
+  }
+  return entry.recommendation;
+}
+
+function cacheRecommendation(key, recommendation) {
+  while (recommendationCache.size >= cacheLimit) {
+    recommendationCache.delete(recommendationCache.keys().next().value);
+  }
+  recommendationCache.set(key, { createdAt: Date.now(), recommendation });
 }
 
 function parseCandidate(value) {
@@ -103,7 +162,7 @@ function parseRecommendation(content, candidateIds) {
 }
 
 function fallback(reason, details = {}) {
-  return json({ status: 'fallback', reason, ...details });
+  return json({ status: 'fallback', reason, cached: false, ...details });
 }
 
 function providerError(payload) {
@@ -145,11 +204,6 @@ export async function onRequest({ request, env }) {
     return json({ error: 'At least one valid candidate is required' }, 400);
   }
 
-  const apiKey = env.ZHIPU_API_KEY;
-  if (!apiKey) {
-    return fallback('AI service is not configured');
-  }
-
   const profileRecord = asRecord(body?.profile);
   const profile = pick(profileRecord, [
     'gender', 'height', 'weight', 'age', 'budget', 'bodyType', 'skinTone',
@@ -160,13 +214,24 @@ export async function onRequest({ request, env }) {
   ]);
   if (Object.keys(measurements).length) profile.measurements = measurements;
   const weather = pick(asRecord(body?.weather), [
-    'temperature', 'weatherLabel', 'thicknessTier', 'remarks',
+    'temperature', 'weatherLabel', 'weathercode', 'weatherCode', 'thicknessTier', 'remarks',
   ]);
   const userRequest = asText(body?.userRequest, 500) || '';
   const candidateIds = new Set(candidates.map((candidate) => candidate.id));
   const prompt = JSON.stringify({ profile, weather, userRequest, candidates });
+  const cacheKey = recommendationCacheKey(body, profile, weather);
+  const cachedRecommendation = readCachedRecommendation(cacheKey);
+  if (cachedRecommendation) {
+    return json({ status: 'ok', recommendation: cachedRecommendation, cached: true });
+  }
 
-  try {
+  const apiKey = env.ZHIPU_API_KEY;
+  if (!apiKey) {
+    return fallback('AI service is not configured');
+  }
+
+  const generateRecommendation = async () => {
+    try {
     const requestBody = JSON.stringify({
       model,
       temperature: 0.4,
@@ -197,10 +262,10 @@ export async function onRequest({ request, env }) {
       const details = providerError(await response.json().catch(() => null));
       const shouldRetry = response.status === 429 || details.providerCode === '1302';
       if (!shouldRetry || attempt === 2) {
-        return fallback(`AI service request failed (${response.status})`, {
-          providerStatus: response.status,
-          ...details,
-        });
+        return {
+          reason: `AI service request failed (${response.status})`,
+          details: { providerStatus: response.status, ...details },
+        };
       }
 
       await new Promise((resolve) => setTimeout(resolve, 3000));
@@ -213,10 +278,27 @@ export async function onRequest({ request, env }) {
     const content = message && asText(message.content, 12_000);
     const recommendation = content && parseRecommendation(content, candidateIds);
 
-    return recommendation
-      ? json({ status: 'ok', recommendation })
-      : fallback('AI response could not be validated');
-  } catch {
-    return fallback('AI service is temporarily unavailable');
+      return recommendation
+        ? { recommendation }
+        : { reason: 'AI response could not be validated' };
+    } catch {
+      return { reason: 'AI service is temporarily unavailable' };
+    }
+  };
+
+  let modelRequest = inFlightRequests.get(cacheKey);
+  if (!modelRequest) {
+    modelRequest = generateRecommendation()
+      .then((outcome) => {
+        if (outcome.recommendation) cacheRecommendation(cacheKey, outcome.recommendation);
+        return outcome;
+      })
+      .finally(() => inFlightRequests.delete(cacheKey));
+    inFlightRequests.set(cacheKey, modelRequest);
   }
+
+  const outcome = await modelRequest;
+  return outcome.recommendation
+    ? json({ status: 'ok', recommendation: outcome.recommendation, cached: false })
+    : fallback(outcome.reason, outcome.details);
 }
