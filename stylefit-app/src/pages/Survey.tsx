@@ -362,7 +362,6 @@ export default function Survey() {
                           type="number"
                           value={profile.measurements?.shoulderWidth || ''}
                           onChange={(e) => updateMeasurement('shoulderWidth', e.target.value ? Number(e.target.value) : undefined)}
-                          placeholder="42"
                           className="h-10"
                         />
                       </div>
@@ -372,7 +371,6 @@ export default function Survey() {
                           type="number"
                           value={profile.measurements?.waist || ''}
                           onChange={(e) => updateMeasurement('waist', e.target.value ? Number(e.target.value) : undefined)}
-                          placeholder="75"
                           className="h-10"
                         />
                       </div>
@@ -382,7 +380,6 @@ export default function Survey() {
                           type="number"
                           value={profile.measurements?.hip || ''}
                           onChange={(e) => updateMeasurement('hip', e.target.value ? Number(e.target.value) : undefined)}
-                          placeholder="90"
                           className="h-10"
                         />
                       </div>
@@ -392,7 +389,6 @@ export default function Survey() {
                           type="number"
                           value={profile.measurements?.legLength || ''}
                           onChange={(e) => updateMeasurement('legLength', e.target.value ? Number(e.target.value) : undefined)}
-                          placeholder="80"
                           className="h-10"
                         />
                       </div>
