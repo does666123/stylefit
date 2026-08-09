@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "check:products": "node scripts/check-products.mjs",
+    "check:budget": "node scripts/check-budget.mjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },

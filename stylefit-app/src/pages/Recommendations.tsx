@@ -178,14 +178,15 @@ export default function Recommendations() {
         const item = products.get(id);
         return item ? [item] : [];
       });
-      if (selected.length < 2) return [];
+      const totalPrice = selected.reduce((total, item) => total + item.price, 0);
+      if (selected.length < 2 || (profile?.budget && totalPrice > profile.budget)) return [];
 
       return [{
         id: `ai-outfit-${index}`,
         name: outfit.name,
         themeName: outfit.name,
         items: selected,
-        totalPrice: selected.reduce((total, item) => total + item.price, 0),
+        totalPrice,
         description: aiRecommendation.summary,
         tags: [selected[0].styles[0], selected[0].occasions[0]].filter(Boolean),
         occasion: profile?.occasion || selected[0].occasions[0] || 'daily',

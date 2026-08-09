@@ -200,6 +200,7 @@ export function getRecommendations(profile: UserBodyProfile, t?: TFunc): Clothin
   const tFunc = t || ((key: string) => key);
 
   return getProducts()
+    .filter((item) => !profile.budget || profile.budget <= 0 || item.price <= profile.budget)
     .map((item) => ({ item, score: getScore(item, profile, bmi, tFunc) }))
     .filter(({ score }) => score > 0)
     .sort((a, b) => b.score - a.score)
@@ -218,6 +219,7 @@ export function useRecommendationsWithMatch(profile: UserBodyProfile | null, t: 
     const weatherSeason = weather?.season;
 
     return getProducts()
+      .filter((item) => !profile.budget || profile.budget <= 0 || item.price <= profile.budget)
       .map((item) => ({
         item,
         matchResult: calculateMatchResult(item, profile, bmi, t, weatherSeason),
@@ -263,16 +265,26 @@ export function generateOutfitSets(recommendations: ClothingItem[], t: TFunc, pr
   const seasonLabel = profile ? t(`rec.match.season.${profile.season}`) : '';
 
   const bmi = profile ? calculateBMI(profile.height, profile.weight) : 0;
+  const budget = profile?.budget && profile.budget > 0 ? profile.budget : Number.POSITIVE_INFINITY;
+  const usedItemIds = new Set<string>();
 
-  for (let i = 0; i < 3 && i < tops.length; i++) {
-    const top = tops[i];
-    const bottom = bottoms[i];
-    const outer = outerwears[i];
-    const shoe = shoes[i];
-    const acc = accessories[i];
+  for (let i = 0; i < 3; i++) {
+    const top = tops.find((item) => !usedItemIds.has(item.id) && bottoms.some((bottom) => !usedItemIds.has(bottom.id) && item.price + bottom.price <= budget));
+    if (!top) break;
 
-    const items = [top, bottom, outer, shoe, acc].filter((item): item is ClothingItem => !!item);
+    const bottom = bottoms.find((item) => !usedItemIds.has(item.id) && top.price + item.price <= budget);
+    if (!bottom) break;
+
+    const items = [top, bottom];
+    const addIfAffordable = (pool: ClothingItem[]) => {
+      const item = pool.find((candidate) => !usedItemIds.has(candidate.id) && items.reduce((sum, selected) => sum + selected.price, 0) + candidate.price <= budget);
+      if (item) items.push(item);
+    };
+    addIfAffordable(shoes);
+    addIfAffordable(outerwears);
+    addIfAffordable(accessories);
     const totalPrice = items.reduce((sum, item) => sum + item.price, 0);
+    items.forEach((item) => usedItemIds.add(item.id));
 
     const itemReasons: { itemId: string; reason: string }[] = items.map(item => ({
       itemId: item.id,
@@ -310,6 +322,7 @@ export function generateOutfitSets(recommendations: ClothingItem[], t: TFunc, pr
     const topSubCat = top.subCategory || t('rec.category.top');
     const bottomSubCat = bottom ? (bottom.subCategory || t('rec.category.bottom')) : '...';
     const outfitName = t('rec.outfit.name', { top: topSubCat, bottom: bottomSubCat });
+    const outer = items.find((item) => item.category === 'outerwear');
     const outerDesc = outer ? t('rec.outfit.outerwear', { outer: outer.name }) : '';
     const bottomDesc = bottom ? ` ${bottom.name}` : '';
     const outfitDescription = t('rec.outfit.description', { top: top.name, bottom: bottomDesc }) + outerDesc;
