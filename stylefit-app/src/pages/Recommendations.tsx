@@ -85,6 +85,7 @@ export default function Recommendations() {
   const [showFavorites, setShowFavorites] = useState(false);
   const [showOccasionSwitcher, setShowOccasionSwitcher] = useState(false);
   const switcherRef = useRef<HTMLDivElement>(null);
+  const aiRequestInFlight = useRef(false);
   const [weatherData, setWeatherData] = useState<WeatherData | null>();
   const [weatherInterp, setWeatherInterp] = useState<WeatherInterpretation | null>(null);
   const [aiRecommendation, setAIRecommendation] = useState<AIRecommendation | null>(null);
@@ -165,12 +166,12 @@ export default function Recommendations() {
 
   useEffect(() => {
     if (!profile || weatherData === undefined || recommendations.length === 0) return;
+    if (aiRequestInFlight.current) return;
 
-    const controller = new AbortController();
+    aiRequestInFlight.current = true;
     fetch('/api/recommend', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      signal: controller.signal,
       body: JSON.stringify({
         profile,
         weather: weatherInterp ? {
@@ -197,12 +198,11 @@ export default function Recommendations() {
       .then((response) => response.ok ? response.json() : null)
       .then((result) => {
         const recommendation = result?.status === 'ok' ? result.recommendation : null;
-        if (!recommendation) console.warn('AI recommendation fallback:', result?.reason ?? 'Unknown error');
+        if (!recommendation) console.warn('AI recommendation fallback:', result);
         setAIRecommendation(recommendation && Array.isArray(recommendation.outfits) ? recommendation : null);
       })
-      .catch(() => setAIRecommendation(null));
-
-    return () => controller.abort();
+      .catch(() => setAIRecommendation(null))
+      .finally(() => { aiRequestInFlight.current = false; });
   }, [profile, weatherData, weatherInterp, weatherForEngine, recommendations]);
 
   const outfits = useMemo(() => {
