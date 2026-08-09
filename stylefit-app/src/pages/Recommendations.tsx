@@ -165,7 +165,7 @@ export default function Recommendations() {
   const localOutfits = useMemo(() => generateOutfitSets(recommendations, t as any, profile, weatherForEngine), [recommendations, profile, weatherForEngine, t]);
 
   useEffect(() => {
-    if (!profile || weatherData === undefined || recommendations.length === 0) return;
+    if (!profile || recommendations.length === 0) return;
     if (aiRequestInFlight.current) return;
 
     aiRequestInFlight.current = true;
@@ -174,24 +174,14 @@ export default function Recommendations() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         profile,
-        weather: weatherInterp ? {
-          temperature: weatherInterp.temperature,
-          weatherLabel: weatherInterp.weatherLabel,
-          thicknessTier: weatherInterp.thicknessTier,
-          remarks: weatherForEngine?.remarks,
-        } : null,
-        candidates: recommendations.slice(0, 30).map((item) => ({
+        candidates: recommendations.slice(0, 15).map((item) => ({
           id: item.id,
           name: item.name,
           category: item.category,
-          price: item.price,
-          brand: item.brand,
           colors: item.colors,
           tags: item.tags,
           styles: item.styles,
           occasions: item.occasions,
-          seasons: item.seasons,
-          description: item.description,
         })),
       }),
     })
@@ -203,7 +193,7 @@ export default function Recommendations() {
       })
       .catch(() => setAIRecommendation(null))
       .finally(() => { aiRequestInFlight.current = false; });
-  }, [profile, weatherData, weatherInterp, weatherForEngine, recommendations]);
+  }, [profile, recommendations]);
 
   const outfits = useMemo(() => {
     if (!aiRecommendation) return localOutfits;

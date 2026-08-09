@@ -139,7 +139,7 @@ export async function onRequest({ request, env }) {
   const candidates = (Array.isArray(body?.candidates) ? body.candidates : [])
     .map(parseCandidate)
     .filter(Boolean)
-    .slice(0, 30);
+    .slice(0, 15);
 
   if (!candidates.length) {
     return json({ error: 'At least one valid candidate is required' }, 400);
@@ -170,7 +170,7 @@ export async function onRequest({ request, env }) {
     const requestBody = JSON.stringify({
       model,
       temperature: 0.4,
-      max_tokens: 1200,
+      max_tokens: 800,
       thinking: { type: 'disabled' },
       messages: [
         {
