@@ -47,8 +47,7 @@ function calculateMatchResult(
   const maxPossibleScore = 100;
 
   // Gender filter
-  const itemGender = item.id.startsWith('m-') ? 'male' : item.id.startsWith('f-') ? 'female' : null;
-  if (itemGender && itemGender !== profile.gender) {
+  if (item.gender !== 'unisex' && item.gender !== profile.gender) {
     return { score: 0, reasons: [t('rec.match.reason.genderMismatch')] };
   }
 
@@ -267,10 +266,10 @@ export function generateOutfitSets(recommendations: ClothingItem[], t: TFunc, pr
 
   for (let i = 0; i < 3 && i < tops.length; i++) {
     const top = tops[i];
-    const bottom = bottoms.length > 0 ? bottoms[i % bottoms.length] : undefined;
-    const outer = outerwears.length > 0 ? outerwears[i % outerwears.length] : undefined;
-    const shoe = shoes.length > 0 ? shoes[i % shoes.length] : undefined;
-    const acc = accessories.length > 0 ? accessories[i % accessories.length] : undefined;
+    const bottom = bottoms[i];
+    const outer = outerwears[i];
+    const shoe = shoes[i];
+    const acc = accessories[i];
 
     const items = [top, bottom, outer, shoe, acc].filter((item): item is ClothingItem => !!item);
     const totalPrice = items.reduce((sum, item) => sum + item.price, 0);

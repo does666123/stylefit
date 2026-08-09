@@ -15,7 +15,7 @@ export async function requestAIRecommendation(profile: UserBodyProfile, candidat
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       profile,
-      candidates: candidates.slice(0, 15).map((item) => ({
+      candidates: candidates.slice(0, 30).map((item) => ({
         id: item.id,
         name: item.name,
         category: item.category,

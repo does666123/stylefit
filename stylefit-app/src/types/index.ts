@@ -114,6 +114,7 @@ export interface MatchResult {
 export interface ClothingItem {
   id: string;
   name: string;
+  gender: Gender | 'unisex';
   category: ClothingCategory;
   subCategory?: string;
   price: number;
