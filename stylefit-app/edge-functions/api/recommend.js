@@ -1,5 +1,5 @@
 const endpoint = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
-const model = 'glm-4.7-flash';
+const model = 'glm-4-flash-250414';
 const jsonHeaders = { 'Content-Type': 'application/json; charset=utf-8' };
 
 function json(data, status = 200) {
