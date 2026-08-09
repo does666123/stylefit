@@ -215,7 +215,7 @@ export async function onRequest({ request, env }: FunctionContext): Promise<Resp
     });
 
     if (!response.ok) {
-      return fallback('AI service is temporarily unavailable');
+      return fallback(`AI service request failed (${response.status})`);
     }
 
     const result = asRecord(await response.json());
