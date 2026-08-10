@@ -300,12 +300,20 @@ export async function onRequest({ request, env }) {
     const choices = result && Array.isArray(result.choices) ? result.choices : [];
     const firstChoice = asRecord(choices[0]);
     const message = firstChoice && asRecord(firstChoice.message);
-    const content = message && asText(message.content, 12_000);
+    const finishReason = asText(firstChoice?.finish_reason, 80) || 'unknown';
+    const rawContent = typeof message?.content === 'string' ? message.content : '';
+    const content = asText(rawContent, 12_000);
     const recommendation = content && parseRecommendation(content, candidatesById, budget);
 
       return recommendation
         ? { recommendation }
-        : { reason: 'AI response could not be validated' };
+        : {
+          reason: 'AI response could not be validated',
+          details: {
+            providerCode: `finish_reason=${finishReason}`,
+            providerMessage: rawContent.slice(0, 300),
+          },
+        };
     } catch {
       return { reason: 'AI service is temporarily unavailable' };
     }
