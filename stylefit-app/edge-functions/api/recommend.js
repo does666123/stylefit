@@ -136,7 +136,7 @@ function extractJson(content) {
   }
 }
 
-function parseRecommendation(content, candidatesById, budget) {
+function parseRecommendation(content, candidatesById) {
   const record = extractJson(content);
   const summary = record && asText(record.summary, 600);
   const sourceOutfits = record && Array.isArray(record.outfits) ? record.outfits : [];
@@ -159,9 +159,7 @@ function parseRecommendation(content, candidatesById, budget) {
       }
     }
 
-    const totalPrice = items.reduce((total, item) => total + (candidatesById.get(item.id)?.price ?? 0), 0);
-    const hasUnknownPrice = items.some((item) => !Number.isFinite(candidatesById.get(item.id)?.price));
-    if (name && stylingTip && items.length >= 2 && (!budget || (!hasUnknownPrice && totalPrice <= budget))) {
+    if (name && stylingTip && items.length >= 2) {
       items.forEach((item) => selectedIds.add(item.id));
       outfits.push({ name, stylingTip, items });
     }
@@ -303,7 +301,7 @@ export async function onRequest({ request, env }) {
     const finishReason = asText(firstChoice?.finish_reason, 80) || 'unknown';
     const rawContent = typeof message?.content === 'string' ? message.content : '';
     const content = asText(rawContent, 12_000);
-    const recommendation = content && parseRecommendation(content, candidatesById, budget);
+    const recommendation = content && parseRecommendation(content, candidatesById);
 
       return recommendation
         ? { recommendation }
