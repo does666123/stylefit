@@ -355,24 +355,24 @@ export function HomePage() {
           </section>
         )}
 
-        <section id="occasions" className="scroll-mt-20 bg-[#08090C] px-4 py-20 sm:px-6 lg:py-24">
+        <section id="occasions" className="scroll-mt-20 bg-[#08090C] px-4 py-20 sm:px-6 lg:pb-12 lg:pt-24">
           <div className="mx-auto max-w-7xl">
             <SectionHeading title={t('home.occasions.title')} subtitle={t('home.occasions.subtitle')} />
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
               {occasionEntries.map((entry, index) => {
                 const original = occasionQuickEntries.find((item) => item.key === entry.key)!;
                 return (
                   <button
                     key={entry.key}
                     onClick={() => navigate(`/recommendations?occasion=${entry.key}`)}
-                    className="spotlight-card focus-ring stagger-item animate-fade-in-up group min-h-44 rounded-2xl p-5 text-left"
+                    className="spotlight-card focus-ring stagger-item animate-fade-in-up group min-h-[150px] rounded-2xl p-5 text-left sm:min-h-44"
                     style={{ animationDelay: `${index * 55}ms` }}
                   >
-                    <span className="mb-8 flex h-11 w-11 items-center justify-center rounded-xl border border-white/[0.08] bg-[#1B1E26] text-[#AAA49B] transition-colors group-hover:border-[#C9A46A]/25 group-hover:text-[#D7C39D]">
+                    <span className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl border border-white/[0.08] bg-[#1B1E26] text-[#AAA49B] transition-colors group-hover:border-[#C9A46A]/25 group-hover:text-[#D7C39D] sm:mb-8">
                       {original.icon}
                     </span>
                     <span className="block text-sm font-semibold text-[#F7F4EE]">{entry.title}</span>
-                    <span className="mt-1.5 block text-xs leading-5 text-[#77756F] transition-colors group-hover:text-[#AAA49B]">
+                    <span className="occasion-card-desc mt-1.5 block text-xs leading-5 text-[#77756F] transition-colors group-hover:text-[#AAA49B]">
                       {entry.desc}
                     </span>
                   </button>
@@ -382,7 +382,7 @@ export function HomePage() {
           </div>
         </section>
 
-        <section id="how-it-works" className="scroll-mt-20 border-y border-white/[0.08] bg-[#0D0F14] px-4 py-20 sm:px-6 lg:py-24">
+        <section id="how-it-works" className="scroll-mt-20 border-y border-white/[0.08] bg-[#0D0F14] px-4 py-20 sm:px-6 lg:pb-24 lg:pt-12">
           <div className="mx-auto max-w-7xl">
             <SectionHeading title={t('home.steps.title')} subtitle={t('home.steps.subtitle')} />
             <div className="grid gap-4 lg:grid-cols-12">
@@ -402,7 +402,7 @@ export function HomePage() {
                 accent
               />
               <StepCard
-                className="lg:col-span-12 lg:min-h-52"
+                className="step-card-wide lg:col-span-12"
                 icon={<ShoppingBag className="h-6 w-6" />}
                 step="03"
                 title={t('home.steps.step3.title')}
@@ -473,7 +473,7 @@ function StepCard({
     <article className={`step-card animate-fade-in-up ${accent ? 'step-card-accent' : ''} ${className ?? ''}`}>
       <div className={wide ? 'grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end' : ''}>
         <div>
-          <div className="mb-12 flex items-start justify-between">
+          <div className="mb-7 flex items-start justify-between sm:mb-12">
             <span className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/[0.08] bg-[#1B1E26] text-[#D7C39D]">
               {icon}
             </span>

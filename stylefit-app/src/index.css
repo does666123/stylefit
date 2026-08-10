@@ -379,6 +379,16 @@
     var(--sf-card);
 }
 
+@media (min-width: 1024px) {
+  .step-card {
+    min-height: 230px;
+  }
+
+  .step-card-wide {
+    min-height: 238px;
+  }
+}
+
 @media (max-width: 767px) {
   .stylefit-nav {
     background: rgba(8, 9, 12, 0.92);
@@ -424,6 +434,23 @@
     padding: 2.5rem 0.7rem 0.75rem;
     font-size: 0.7rem;
     white-space: nowrap;
+  }
+
+  .occasion-card-desc {
+    display: -webkit-box;
+    overflow: hidden;
+    color: #85827c;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .step-card {
+    min-height: 190px;
+    padding: 1.25rem;
+  }
+
+  .step-card p {
+    color: #bab5ad;
   }
 }
 
