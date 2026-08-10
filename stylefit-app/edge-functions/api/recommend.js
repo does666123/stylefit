@@ -1,5 +1,5 @@
-const endpoint = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
-const model = 'glm-4.7-flash';
+const endpoint = 'https://qianfan.baidubce.com/v2/chat/completions';
+const model = 'ernie-4.5-turbo-32k';
 const jsonHeaders = { 'Content-Type': 'application/json; charset=utf-8' };
 const cacheTtlMs = 30 * 60 * 1000;
 const cacheLimit = 200;
@@ -232,7 +232,7 @@ export async function onRequest({ request, env }) {
     return json({ status: 'ok', recommendation: cachedRecommendation, cached: true });
   }
 
-  const apiKey = env.ZHIPU_API_KEY;
+  const apiKey = env.QIANFAN_API_KEY;
   if (!apiKey) {
     return fallback('AI service is not configured');
   }
@@ -243,7 +243,6 @@ export async function onRequest({ request, env }) {
       model,
       temperature: 0.4,
       max_tokens: 800,
-      thinking: { type: 'disabled' },
       messages: [
         {
           role: 'system',
@@ -267,7 +266,7 @@ export async function onRequest({ request, env }) {
       if (response.ok) break;
 
       const details = providerError(await response.json().catch(() => null));
-      const shouldRetry = response.status === 429 || details.providerCode === '1302';
+      const shouldRetry = response.status === 429 || /limit|rate|overload|throttl/i.test(details.providerCode || '');
       if (!shouldRetry || attempt === 2) {
         return {
           reason: `AI service request failed (${response.status})`,
