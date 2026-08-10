@@ -186,7 +186,7 @@ export default function Survey() {
   }
 
   if (submittedProfile && retryCount > 0) {
-    const canUseLocalRecommendation = retryCount >= 2;
+    const canUseLocalRecommendation = retryCount >= 1;
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
         <Card className="w-full max-w-md">
@@ -201,7 +201,7 @@ export default function Survey() {
             </Button>
             {canUseLocalRecommendation && (
               <>
-                <Button className="w-full" variant="outline" onClick={() => navigate('/recommendations', { state: { profile: submittedProfile, skipAI: true } })}>
+                <Button className="w-full" variant="outline" onClick={() => navigate('/recommendations', { state: { profile: submittedProfile } })}>
                   进入本地推荐
                 </Button>
                 <p className="text-xs leading-5 text-slate-400">AI 推荐更个性化，需要联网生成；本地推荐立即可用，但个性化程度较低。</p>

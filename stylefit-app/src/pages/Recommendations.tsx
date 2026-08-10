@@ -37,6 +37,7 @@ import { fetchWeatherWithCache, interpretWeather, getWeatherRemark, thicknessTie
 import { useT } from '../i18n';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { requestAIRecommendation, type AIRecommendation } from '../lib/aiRecommendation';
+import { Spinner } from '@/components/ui/spinner';
 
 // 场合快捷切换数据
 const occasionSwitcherItems: { key: Occasion; labelKey: string; icon: React.ReactNode }[] = [
@@ -81,7 +82,7 @@ export default function Recommendations() {
   const [weatherData, setWeatherData] = useState<WeatherData | null>();
   const [weatherInterp, setWeatherInterp] = useState<WeatherInterpretation | null>(null);
   const [aiRecommendation, setAIRecommendation] = useState<AIRecommendation | null>(() => location.state?.aiRecommendation ?? null);
-  const skipAI = Boolean(location.state?.skipAI);
+  const [aiLoading, setAILoading] = useState(false);
 
   // 获取天气（不阻塞渲染）
   const loadWeather = useCallback(async () => {
@@ -159,15 +160,19 @@ export default function Recommendations() {
   const localOutfits = useMemo(() => generateOutfitSets(recommendations, t as any, profile, weatherForEngine), [recommendations, profile, weatherForEngine, t]);
 
   useEffect(() => {
-    if (skipAI || aiRecommendation || !profile || recommendations.length === 0) return;
+    if (aiRecommendation || !profile || recommendations.length === 0) return;
     if (aiRequestInFlight.current) return;
 
     aiRequestInFlight.current = true;
+    setAILoading(true);
     requestAIRecommendation(profile, recommendations)
       .then((recommendation) => setAIRecommendation(recommendation))
       .catch(() => setAIRecommendation(null))
-      .finally(() => { aiRequestInFlight.current = false; });
-  }, [aiRecommendation, profile, recommendations, skipAI]);
+      .finally(() => {
+        aiRequestInFlight.current = false;
+        setAILoading(false);
+      });
+  }, [aiRecommendation, profile, recommendations]);
 
   const outfits = useMemo(() => {
     if (!aiRecommendation) return localOutfits;
@@ -480,6 +485,7 @@ export default function Recommendations() {
             <div className="mb-4 flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-amber-500" />
               <h2 className="text-xl font-bold text-slate-900">{t('rec.outfitRecommendations')}</h2>
+              {aiLoading && <span className="inline-flex items-center gap-1 text-xs text-slate-400"><Spinner />AI {t('common.loading')}</span>}
               {aiRecommendation && <Badge variant="secondary">AI</Badge>}
             </div>
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">

@@ -19,6 +19,7 @@ export async function requestAIRecommendation(profile: UserBodyProfile, candidat
         id: item.id,
         name: item.name,
         category: item.category,
+        price: item.price,
         colors: item.colors,
         tags: item.tags,
         styles: item.styles,
