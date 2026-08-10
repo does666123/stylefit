@@ -1,6 +1,7 @@
 const endpoint = 'https://qianfan.baidubce.com/v2/chat/completions';
 const model = 'ernie-4.5-turbo-32k';
 const jsonHeaders = { 'Content-Type': 'application/json; charset=utf-8' };
+const encoder = new TextEncoder();
 const cacheTtlMs = 30 * 60 * 1000;
 const cacheLimit = 200;
 const recommendationCache = new Map();
@@ -120,12 +121,16 @@ function pick(record, keys) {
 }
 
 function extractJson(content) {
-  const start = content.indexOf('{');
-  const end = content.lastIndexOf('}');
+  const trimmed = content.trim();
+  const source = trimmed.startsWith('```')
+    ? trimmed.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
+    : trimmed;
+  const start = source.indexOf('{');
+  const end = source.lastIndexOf('}');
   if (start < 0 || end < start) return null;
 
   try {
-    return asRecord(JSON.parse(content.slice(start, end + 1)));
+    return asRecord(JSON.parse(source.slice(start, end + 1)));
   } catch {
     return null;
   }
@@ -225,7 +230,12 @@ export async function onRequest({ request, env }) {
   const budget = typeof profile.budget === 'number' && Number.isFinite(profile.budget) && profile.budget > 0
     ? profile.budget
     : undefined;
-  const prompt = JSON.stringify({ profile, weather, userRequest, candidates });
+  const prompt = JSON.stringify({
+    profile,
+    weather,
+    userRequest,
+    candidates: candidates.map(({ id, name, category, tags, price }) => ({ id, name, category, tags, price })),
+  });
   const cacheKey = recommendationCacheKey(body, profile, weather);
   const cachedRecommendation = readCachedRecommendation(cacheKey);
   if (cachedRecommendation) {
@@ -239,10 +249,10 @@ export async function onRequest({ request, env }) {
 
   const generateRecommendation = async () => {
     try {
-    const requestBody = JSON.stringify({
+    const requestBody = {
       model,
       temperature: 0.4,
-      max_tokens: 800,
+      max_tokens: 600,
       messages: [
         {
           role: 'system',
@@ -250,7 +260,9 @@ export async function onRequest({ request, env }) {
         },
         { role: 'user', content: prompt },
       ],
-    });
+    };
+    requestBody.messages[0].content += 'summary 不超过 50 字，stylingTip 不超过 30 字，每件商品的 reason 不超过 20 字。';
+    const requestPayload = JSON.stringify(requestBody);
 
     let response;
     for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -260,7 +272,14 @@ export async function onRequest({ request, env }) {
           ...jsonHeaders,
           Authorization: `Bearer ${apiKey}`,
         },
-        body: requestBody,
+        body: requestPayload,
+        eo: {
+          timeoutSetting: {
+            connectTimeout: 10000,
+            readTimeout: 45000,
+            writeTimeout: 10000,
+          },
+        },
       });
 
       if (response.ok) break;
@@ -292,19 +311,44 @@ export async function onRequest({ request, env }) {
     }
   };
 
-  let modelRequest = inFlightRequests.get(cacheKey);
-  if (!modelRequest) {
-    modelRequest = generateRecommendation()
-      .then((outcome) => {
-        if (outcome.recommendation) cacheRecommendation(cacheKey, outcome.recommendation);
-        return outcome;
-      })
-      .finally(() => inFlightRequests.delete(cacheKey));
-    inFlightRequests.set(cacheKey, modelRequest);
-  }
+  let controller;
+  const stream = new ReadableStream({
+    start(value) {
+      controller = value;
+      controller.enqueue(encoder.encode(' '));
+    },
+  });
+  const response = new Response(stream, { headers: jsonHeaders });
 
-  const outcome = await modelRequest;
-  return outcome.recommendation
-    ? json({ status: 'ok', recommendation: outcome.recommendation, cached: false })
-    : fallback(outcome.reason, outcome.details);
+  Promise.resolve().then(async () => {
+    let heartbeat;
+    const complete = (data) => {
+      if (heartbeat) clearInterval(heartbeat);
+      controller.enqueue(encoder.encode(JSON.stringify(data)));
+      controller.close();
+    };
+
+    try {
+      heartbeat = setInterval(() => controller.enqueue(encoder.encode(' ')), 5000);
+      let modelRequest = inFlightRequests.get(cacheKey);
+      if (!modelRequest) {
+        modelRequest = generateRecommendation()
+          .then((outcome) => {
+            if (outcome.recommendation) cacheRecommendation(cacheKey, outcome.recommendation);
+            return outcome;
+          })
+          .finally(() => inFlightRequests.delete(cacheKey));
+        inFlightRequests.set(cacheKey, modelRequest);
+      }
+
+      const outcome = await modelRequest;
+      complete(outcome.recommendation
+        ? { status: 'ok', recommendation: outcome.recommendation, cached: false }
+        : { status: 'fallback', reason: outcome.reason, cached: false, ...outcome.details });
+    } catch {
+      complete({ status: 'fallback', reason: 'AI service is temporarily unavailable', cached: false });
+    }
+  });
+
+  return response;
 }
