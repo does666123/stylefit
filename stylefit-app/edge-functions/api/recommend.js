@@ -136,13 +136,12 @@ function extractJson(content) {
   }
 }
 
-function parseRecommendation(content, candidatesById, budget) {
+function parseRecommendation(content, candidatesById) {
   const record = extractJson(content);
   const summary = record && asText(record.summary, 600);
   const sourceOutfits = record && Array.isArray(record.outfits) ? record.outfits : [];
   const outfits = [];
   const selectedIds = new Set();
-  const hasBudget = Number.isFinite(budget) && budget > 0;
 
   for (const sourceOutfit of sourceOutfits.slice(0, 3)) {
     const outfit = asRecord(sourceOutfit);
@@ -160,19 +159,13 @@ function parseRecommendation(content, candidatesById, budget) {
       }
     }
 
-    const prices = items.map((item) => candidatesById.get(item.id)?.price);
-    const withinBudget = !hasBudget || (
-      prices.every((price) => Number.isFinite(price))
-      && prices.reduce((total, price) => total + price, 0) <= budget
-    );
-
-    if (name && stylingTip && items.length >= 2 && withinBudget) {
+    if (name && stylingTip && items.length >= 2) {
       items.forEach((item) => selectedIds.add(item.id));
       outfits.push({ name, stylingTip, items });
     }
   }
 
-  return summary && outfits.length && (!hasBudget || outfits.length === 3) ? { summary, outfits } : null;
+  return summary && outfits.length ? { summary, outfits } : null;
 }
 
 function fallback(reason, details = {}) {
@@ -308,7 +301,7 @@ export async function onRequest({ request, env }) {
     const finishReason = asText(firstChoice?.finish_reason, 80) || 'unknown';
     const rawContent = typeof message?.content === 'string' ? message.content : '';
     const content = asText(rawContent, 12_000);
-    const recommendation = content && parseRecommendation(content, candidatesById, budget);
+    const recommendation = content && parseRecommendation(content, candidatesById);
 
       return recommendation
         ? { recommendation }
