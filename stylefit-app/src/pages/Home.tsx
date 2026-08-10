@@ -1,30 +1,32 @@
+import { lazy, Suspense, useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
-import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import {
-  Shirt,
-  Ruler,
-  Palette,
-  Sparkles,
-  ShoppingBag,
-  UserCheck,
   ArrowRight,
-  Heart,
-  RefreshCw,
-  CloudSun,
-  Umbrella,
-  Wind,
-  Loader2,
   Briefcase,
-  Heart as HeartIcon,
-  Dumbbell,
-  PartyPopper,
-  Map,
   Building2,
+  CloudSun,
+  Dumbbell,
+  Heart,
+  Heart as HeartIcon,
+  Loader2,
+  Map,
+  Palette,
+  PartyPopper,
+  RefreshCw,
+  Ruler,
+  Shirt,
+  ShoppingBag,
+  Sparkles,
+  Umbrella,
+  UserCheck,
+  Wind,
 } from 'lucide-react';
-import { fetchWeatherWithCache, interpretWeather, type WeatherData } from '@/lib/weather';
-import { useT } from '@/i18n';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+import { useT } from '@/i18n';
+import { fetchWeatherWithCache, interpretWeather, type WeatherData } from '@/lib/weather';
+
+const SilkBackground = lazy(() => import('@/components/SilkBackground'));
 
 interface UserProfile {
   height: number;
@@ -40,51 +42,59 @@ interface UserProfile {
 }
 
 const occasionQuickEntries = [
-  { key: 'work', icon: <Briefcase className="h-6 w-6" /> },
-  { key: 'date', icon: <HeartIcon className="h-6 w-6" /> },
-  { key: 'sport', icon: <Dumbbell className="h-6 w-6" /> },
-  { key: 'party', icon: <PartyPopper className="h-6 w-6" /> },
-  { key: 'travel', icon: <Map className="h-6 w-6" /> },
-  { key: 'formal', icon: <Building2 className="h-6 w-6" /> },
+  { key: 'work', icon: <Briefcase className="h-5 w-5" /> },
+  { key: 'date', icon: <HeartIcon className="h-5 w-5" /> },
+  { key: 'sport', icon: <Dumbbell className="h-5 w-5" /> },
+  { key: 'party', icon: <PartyPopper className="h-5 w-5" /> },
+  { key: 'travel', icon: <Map className="h-5 w-5" /> },
+  { key: 'formal', icon: <Building2 className="h-5 w-5" /> },
 ];
+
+const heroLooks = [
+  {
+    key: 'work',
+    image: 'https://images.unsplash.com/photo-1487222477894-8943e31ef7b2?w=640&h=900&fit=crop&q=86',
+  },
+  {
+    key: 'date',
+    image: 'https://images.unsplash.com/photo-1496747611176-843222e1e57c?w=720&h=980&fit=crop&q=88',
+  },
+  {
+    key: 'travel',
+    image: 'https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=640&h=900&fit=crop&q=86',
+  },
+];
+
+function getSavedProfile(): UserProfile | null {
+  try {
+    const saved = localStorage.getItem('stylefit_profile');
+    if (!saved) return null;
+    const profile = JSON.parse(saved) as UserProfile;
+    return profile.height && profile.weight && profile.bodyType && profile.style ? profile : null;
+  } catch {
+    return null;
+  }
+}
 
 export function HomePage() {
   const navigate = useNavigate();
   const { t } = useT();
-  const [existingProfile, setExistingProfile] = useState<UserProfile | null>(null);
+  const [existingProfile] = useState<UserProfile | null>(getSavedProfile);
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [weatherLoading, setWeatherLoading] = useState(true);
   const [weatherRefreshing, setWeatherRefreshing] = useState(false);
   const [weatherIsDefault, setWeatherIsDefault] = useState(false);
   const [weatherLocationName, setWeatherLocationName] = useState('');
   const [favCount, setFavCount] = useState(0);
+  const [silkReady, setSilkReady] = useState(false);
 
-  // 检测已有画像（回访用户）
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('stylefit_profile');
-      if (saved) {
-        const profile = JSON.parse(saved) as UserProfile;
-        if (profile.height && profile.weight && profile.bodyType && profile.style) {
-          setExistingProfile(profile);
-        }
-      }
-    } catch {
-      // 数据损坏，忽略
-    }
-  }, []);
-
-  // 获取收藏数量
   useEffect(() => {
     const updateFavCount = () => {
       try {
         const saved = localStorage.getItem('stylefit_favorites');
-        if (saved) {
-          const ids = JSON.parse(saved) as string[];
-          setFavCount(ids.length);
-        }
+        if (saved) setFavCount((JSON.parse(saved) as string[]).length);
       } catch {
-        // ignore
+        // 收藏数据损坏时保持当前计数。
       }
     };
     updateFavCount();
@@ -92,22 +102,33 @@ export function HomePage() {
     return () => clearInterval(interval);
   }, []);
 
-  // 获取天气
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    void (async () => {
       setWeatherLoading(true);
       const result = await fetchWeatherWithCache();
       if (!cancelled && result) {
         setWeather(result.data);
         setWeatherIsDefault(result.isDefault);
         setWeatherLocationName(result.locationName);
-        setWeatherLoading(false);
-      } else if (!cancelled) {
-        setWeatherLoading(false);
       }
+      if (!cancelled) setWeatherLoading(false);
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const desktop = window.matchMedia('(min-width: 768px)');
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    if (!desktop.matches || reducedMotion.matches) return;
+
+    const timeoutId = window.setTimeout(() => setSilkReady(true), 450);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
   }, []);
 
   const handleRefreshWeather = useCallback(async () => {
@@ -121,19 +142,22 @@ export function HomePage() {
     setTimeout(() => setWeatherRefreshing(false), 300);
   }, []);
 
-  // 回访用户：直接查看推荐（使用已保存画像）
   const handleViewRecommendations = () => {
-    if (existingProfile) {
-      navigate('/recommendations', { state: { profile: existingProfile } });
-    }
+    if (existingProfile) navigate('/recommendations', { state: { profile: existingProfile } });
   };
 
-  // 意图预取：触碰/悬停按钮时提前加载 Survey chunk
   const prefetchSurvey = () => {
-    import('@/pages/Survey');
+    void import('@/pages/Survey');
   };
 
-  // 场合快捷入口文案（使用翻译）
+  const scrollToOccasions = () => {
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    document.getElementById('occasions')?.scrollIntoView({
+      behavior: reduceMotion ? 'auto' : 'smooth',
+      block: 'start',
+    });
+  };
+
   const occasionEntries = [
     { key: 'work', title: t('home.occasions.work.title'), desc: t('home.occasions.work.desc') },
     { key: 'date', title: t('home.occasions.date.title'), desc: t('home.occasions.date.desc') },
@@ -144,311 +168,286 @@ export function HomePage() {
   ];
 
   return (
-    <div className="min-h-screen bg-white page-enter">
-      {/* Nav */}
-      <nav className="sticky top-0 z-50 border-b bg-white/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900">
-              <Shirt className="h-4 w-4 text-white" />
-            </div>
-            <span className="text-xl font-bold tracking-tight text-slate-900">
-              StyleFit
+    <div className="stylefit-home min-h-screen page-enter">
+      <nav className="stylefit-nav sticky top-0 z-50 border-b border-white/[0.08]">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+          <button
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            className="focus-ring flex items-center gap-2 rounded-xl text-[#F7F4EE]"
+            aria-label="StyleFit"
+          >
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#C9A46A]/35 bg-[#1B1E26] shadow-[0_10px_30px_rgba(0,0,0,0.24)]">
+              <Shirt className="h-4 w-4" />
             </span>
+            <span className="text-lg font-semibold tracking-[-0.02em]">StyleFit</span>
+          </button>
+
+          <div className="hidden items-center gap-7 text-sm text-[#AAA49B] md:flex">
+            <button onClick={scrollToOccasions} className="nav-text-link focus-ring rounded-md">
+              {t('home.occasions.title')}
+            </button>
+            <button
+              onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
+              className="nav-text-link focus-ring rounded-md"
+            >
+              {t('home.steps.title')}
+            </button>
           </div>
+
           <div className="flex items-center gap-2">
-            <LanguageSwitcher />
+            <LanguageSwitcher className="border-white/10 bg-white/[0.04] text-[#AAA49B] shadow-none hover:border-[#C9A46A]/35 hover:bg-white/[0.07] hover:text-[#F7F4EE]" />
             {favCount > 0 && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate('/favorites')}
-                className="relative"
+                className="focus-ring relative h-9 rounded-xl px-2 text-[#AAA49B] hover:bg-white/[0.06] hover:text-[#F7F4EE] sm:px-3"
               >
-                <Heart className="mr-1 h-4 w-4" />
+                <Heart className="h-4 w-4 sm:mr-1" />
                 <span className="hidden sm:inline">{t('common.favorites')}</span>
-                <span className="ml-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                <span className="ml-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#6B4B63] px-1 text-[10px] font-bold text-white">
                   {favCount}
                 </span>
               </Button>
             )}
-            {existingProfile ? (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleViewRecommendations}
-                  className="hidden sm:inline-flex"
-                >
-                  {t('home.nav.viewRecommendations')}
-                </Button>
-                <Button
-                  onClick={() => navigate('/survey')}
-                  className="bg-slate-900 hover:bg-slate-800"
-                >
-                  {t('home.nav.retakeTest')}
-                </Button>
-              </>
-            ) : (
+            {existingProfile && (
               <Button
-                onClick={() => navigate('/survey')}
-                className="bg-slate-900 hover:bg-slate-800"
+                variant="ghost"
+                size="sm"
+                onClick={handleViewRecommendations}
+                className="focus-ring hidden rounded-xl text-[#AAA49B] hover:bg-white/[0.06] hover:text-[#F7F4EE] lg:inline-flex"
               >
-                {t('home.nav.startTest')}
+                {t('home.nav.viewRecommendations')}
               </Button>
             )}
+            <Button
+              onClick={() => navigate('/survey')}
+              onTouchStart={prefetchSurvey}
+              onMouseEnter={prefetchSurvey}
+              className="sf-primary-button focus-ring h-9 px-3 text-xs sm:px-4 sm:text-sm"
+            >
+              {existingProfile ? t('home.nav.retakeTest') : t('home.nav.startTest')}
+            </Button>
           </div>
         </div>
       </nav>
 
-      {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-slate-50 to-white px-4 pt-16 pb-24">
-        <div className="mx-auto max-w-4xl text-center">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border bg-white px-4 py-1.5 text-sm text-slate-600 shadow-sm">
-            <Sparkles className="h-4 w-4 text-amber-500" />
-            {t('home.hero.badge')}
-          </div>
-          <h1 className="mb-6 text-4xl font-extrabold tracking-tight text-slate-900 sm:text-6xl">
-            {t('home.hero.title1')}
-            <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-slate-700 to-slate-900">
-              {t('home.hero.title2')}
-            </span>
-          </h1>
-          <p className="mx-auto mb-10 max-w-2xl text-lg text-slate-500 leading-relaxed">
-            {t('home.hero.desc')}
-          </p>
+      <main>
+        <section className="stylefit-hero relative isolate overflow-hidden border-b border-white/[0.08]">
+          {silkReady && (
+            <div className="pointer-events-none absolute inset-0 hidden md:block" aria-hidden="true">
+              <Suspense fallback={null}>
+                <SilkBackground />
+              </Suspense>
+            </div>
+          )}
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(8,9,12,0.96)_0%,rgba(8,9,12,0.84)_37%,rgba(8,9,12,0.26)_74%,rgba(8,9,12,0.48)_100%)]" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#08090C] to-transparent" />
 
-          {/* 回访用户：显示快捷入口 */}
-          {existingProfile && (
-            <div className="mb-8 inline-flex flex-col items-center gap-3 rounded-2xl border bg-gradient-to-r from-green-50 to-emerald-50 px-6 py-4 shadow-sm">
-              <div className="flex items-center gap-2 text-sm font-medium text-green-700">
-                <UserCheck className="h-4 w-4" />
-                {t('home.hero.welcomeBack')}
+          <div className="relative mx-auto grid min-h-[690px] max-w-7xl items-center gap-12 px-4 py-16 sm:px-6 md:grid-cols-[0.9fr_1.1fr] md:py-20 lg:gap-16 lg:px-8">
+            <div className="relative z-10 max-w-xl animate-fade-in-up">
+              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#C9A46A]/25 bg-[#12141A]/75 px-4 py-2 text-xs font-medium tracking-[0.12em] text-[#D7C39D] shadow-[0_12px_36px_rgba(0,0,0,0.24)] backdrop-blur-md">
+                <Sparkles className="h-3.5 w-3.5" />
+                {t('home.hero.badge')}
               </div>
-              <div className="flex flex-col gap-2 sm:flex-row">
+              <h1 className="hero-title mb-6 text-[clamp(2.75rem,7vw,5.8rem)] font-semibold leading-[0.98] tracking-[-0.055em] text-[#F7F4EE]">
+                <span className="blur-text-piece block">{t('home.hero.title1')}</span>
+                <span className="blur-text-piece blur-text-piece-delayed block text-[#D8C5CF]">
+                  {t('home.hero.title2')}
+                </span>
+              </h1>
+              <p className="max-w-lg text-base leading-7 text-[#AAA49B] sm:text-lg">
+                {t('home.hero.desc')}
+              </p>
+
+              {existingProfile && (
+                <div className="mt-7 inline-flex items-center gap-2 rounded-xl border border-[#C9A46A]/20 bg-[#12141A]/80 px-4 py-2.5 text-sm text-[#D7C39D] backdrop-blur">
+                  <UserCheck className="h-4 w-4" />
+                  {t('home.hero.welcomeBack')}
+                </div>
+              )}
+
+              <div className="mt-9 flex flex-col gap-3 sm:flex-row">
                 <Button
                   size="lg"
-                  onClick={handleViewRecommendations}
-                  className="h-11 px-6 bg-green-600 hover:bg-green-700 text-white"
+                  onClick={existingProfile ? handleViewRecommendations : () => navigate('/survey')}
+                  onTouchStart={prefetchSurvey}
+                  onMouseEnter={prefetchSurvey}
+                  className="sf-primary-button focus-ring h-12 px-6 text-sm sm:text-base"
                 >
-                  {t('home.hero.viewMyRecommendations')}
+                  {existingProfile ? t('home.hero.viewMyRecommendations') : t('home.hero.startTestNow')}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
                 <Button
                   size="lg"
                   variant="outline"
-                  onClick={() => navigate('/survey')}
-                  onTouchStart={prefetchSurvey}
-                  onMouseEnter={prefetchSurvey}
-                  className="h-11 px-6"
+                  onClick={scrollToOccasions}
+                  className="sf-secondary-button focus-ring h-12 px-6 text-sm sm:text-base"
                 >
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  {t('home.hero.retakeTest')}
+                  {t('home.occasions.title')}
                 </Button>
               </div>
             </div>
-          )}
 
-          {/* 新用户：显示测试入口 */}
-          {!existingProfile && (
-            <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-              <Button
-                size="lg"
-                onClick={() => navigate('/survey')}
-                onTouchStart={prefetchSurvey}
-                onMouseEnter={prefetchSurvey}
-                className="h-12 px-8 text-base bg-slate-900 hover:bg-slate-800"
-              >
-                {t('home.hero.startTestNow')}
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
-          )}
-        </div>
-
-        {/* Decorative elements */}
-        <div className="absolute top-20 left-10 h-32 w-32 rounded-full bg-slate-100 opacity-50 blur-2xl" />
-        <div className="absolute bottom-10 right-10 h-40 w-40 rounded-full bg-slate-200 opacity-40 blur-3xl" />
-      </section>
-
-      {/* 天气卡 */}
-      {(weatherLoading || weather) && (
-        <section className="px-4 pt-8 pb-0">
-          <div className="mx-auto max-w-2xl">
-            {weatherLoading && !weather ? (
-              <div className="flex items-center justify-center gap-2 rounded-2xl border bg-white px-5 py-4 shadow-sm">
-                <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
-                <span className="text-sm text-slate-400">{t('home.weather.loading')}</span>
+            <div className="lookbook-gallery relative z-10 mx-auto w-full max-w-[640px] animate-fade-in-up md:mx-0 md:justify-self-end">
+              {heroLooks.map((look, index) => {
+                const entry = occasionEntries.find((item) => item.key === look.key);
+                return (
+                  <figure key={look.key} className={`lookbook-card lookbook-card-${index + 1}`}>
+                    <img
+                      src={look.image}
+                      alt={entry?.title ?? 'StyleFit look'}
+                      className="h-full w-full object-cover"
+                      loading={index === 1 ? 'eager' : 'lazy'}
+                      fetchPriority={index === 1 ? 'high' : 'auto'}
+                    />
+                    <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent p-4 pt-12 text-sm font-medium text-[#F7F4EE]">
+                      {entry?.title}
+                    </figcaption>
+                  </figure>
+                );
+              })}
+              <div className="lookbook-note" aria-hidden="true">
+                <span>STYLE NOTES</span>
+                <span>01 — 03</span>
               </div>
-            ) : weather ? (() => {
-              const wi = interpretWeather(weather, weatherIsDefault, weatherLocationName, t as any);
-              return (
-              <button
-                onClick={() => !weatherRefreshing && handleRefreshWeather()}
-                disabled={weatherRefreshing}
-                className="group flex w-full items-center gap-4 rounded-2xl border bg-white px-5 py-4 text-left shadow-sm transition-all hover:shadow-md active:scale-[0.99] disabled:cursor-not-allowed"
-              >
-                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-600 transition-opacity duration-200 ${weatherRefreshing ? 'opacity-60' : ''}`}>
-                  {wi.rainNote ? (
-                    <Umbrella className="h-5 w-5" />
-                  ) : wi.windNote ? (
-                    <Wind className="h-5 w-5" />
-                  ) : (
-                    <CloudSun className="h-5 w-5" />
-                  )}
-                </div>
-                <div className={`min-w-0 flex-1 transition-opacity duration-200 ${weatherRefreshing ? 'opacity-60' : ''}`}>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-lg font-semibold text-slate-900 transition-all duration-200">
-                      {Math.round(weather.temperature)}°C
-                    </span>
-                    <span className="text-sm text-slate-500 transition-all duration-200">· {t('home.weather.feelsLike')} {Math.round(weather.apparentTemperature)}°C</span>
-                    <span className="text-sm text-slate-500">{wi.weatherLabel}</span>
-                    <span className="hidden text-xs text-slate-400 sm:inline">·</span>
-                    <span className="hidden text-xs text-slate-400 sm:inline">{wi.locationName}</span>
-                  </div>
-                  <p className="mt-0.5 truncate text-xs text-slate-500 transition-all duration-200">
-                    {wi.clothingAdvice}
-                    {wi.rainNote && <span className="ml-1 text-sky-600">· {wi.rainNote}</span>}
-                    {wi.windNote && <span className="ml-1 text-amber-600">· {wi.windNote}</span>}
-                  </p>
-                </div>
-                <RefreshCw className={`h-4 w-4 shrink-0 text-slate-300 transition-all duration-200 group-hover:text-slate-500 ${weatherRefreshing ? 'animate-spin text-sky-500' : ''}`} />
-              </button>
-              );
-            })() : null}
+            </div>
           </div>
         </section>
-      )}
 
-      {/* 今天去哪 - 场合快捷入口 */}
-      <section className="px-4 py-16 bg-white">
-        <div className="mx-auto max-w-6xl">
-          <div className="mb-8 text-center">
-            <h2 className="mb-2 text-2xl font-bold text-slate-900 sm:text-3xl">
-              {t('home.occasions.title')}
-            </h2>
-            <p className="text-sm text-slate-500">
-              {t('home.occasions.subtitle')}
-            </p>
-          </div>
-
-          {/* 移动端横向滑动，桌面端网格 */}
-          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none sm:grid sm:grid-cols-3 sm:gap-4 sm:overflow-visible lg:grid-cols-6 sm:pb-0">
-            {occasionEntries.map((entry) => {
-              const origEntry = occasionQuickEntries.find(e => e.key === entry.key)!;
-              return (
-                <button
-                  key={entry.key}
-                  onClick={() => navigate(`/recommendations?occasion=${entry.key}`)}
-                  className="group flex min-w-[140px] flex-shrink-0 flex-col items-center gap-3 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition-all hover:border-slate-200 hover:shadow-md active:scale-[0.98] sm:min-w-0"
-                >
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-50 text-slate-600 transition-colors group-hover:bg-slate-900 group-hover:text-white">
-                    {origEntry.icon}
-                  </div>
-                  <div className="text-center">
-                    <div className="text-sm font-semibold text-slate-900">
-                      {entry.title}
+        {(weatherLoading || weather) && (
+          <section className="bg-[#08090C] px-4 pt-10 sm:px-6">
+            <div className="mx-auto max-w-3xl">
+              {weatherLoading && !weather ? (
+                <div className="flex items-center justify-center gap-2 rounded-2xl border border-white/[0.08] bg-[#12141A] px-5 py-4 text-[#77756F]">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm">{t('home.weather.loading')}</span>
+                </div>
+              ) : weather ? (() => {
+                const weatherInfo = interpretWeather(weather, weatherIsDefault, weatherLocationName, t as never);
+                return (
+                  <button
+                    onClick={() => !weatherRefreshing && handleRefreshWeather()}
+                    disabled={weatherRefreshing}
+                    className="focus-ring group flex w-full items-center gap-4 rounded-2xl border border-white/[0.08] bg-[#12141A] px-5 py-4 text-left shadow-[0_18px_50px_rgba(0,0,0,0.22)] transition-all hover:border-[#C9A46A]/25 hover:bg-[#171A21] disabled:cursor-not-allowed"
+                  >
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/[0.08] bg-[#1B1E26] text-[#C9A46A]">
+                      {weatherInfo.rainNote ? <Umbrella className="h-5 w-5" /> : weatherInfo.windNote ? <Wind className="h-5 w-5" /> : <CloudSun className="h-5 w-5" />}
                     </div>
-                    <div className="mt-0.5 text-xs text-slate-400 leading-relaxed">
+                    <div className={`min-w-0 flex-1 transition-opacity ${weatherRefreshing ? 'opacity-55' : ''}`}>
+                      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                        <span className="text-lg font-semibold text-[#F7F4EE]">{Math.round(weather.temperature)}°C</span>
+                        <span className="text-sm text-[#AAA49B]">· {t('home.weather.feelsLike', { temp: Math.round(weather.apparentTemperature) })}</span>
+                        <span className="text-sm text-[#AAA49B]">{weatherInfo.weatherLabel}</span>
+                        <span className="hidden text-xs text-[#77756F] sm:inline">· {weatherInfo.locationName}</span>
+                      </div>
+                      <p className="mt-0.5 truncate text-xs text-[#77756F]">
+                        {weatherInfo.clothingAdvice}
+                        {weatherInfo.rainNote && <span className="ml-1 text-[#AAA49B]">· {weatherInfo.rainNote}</span>}
+                        {weatherInfo.windNote && <span className="ml-1 text-[#AAA49B]">· {weatherInfo.windNote}</span>}
+                      </p>
+                    </div>
+                    <RefreshCw className={`h-4 w-4 shrink-0 text-[#77756F] transition-colors group-hover:text-[#C9A46A] ${weatherRefreshing ? 'animate-spin' : ''}`} />
+                  </button>
+                );
+              })() : null}
+            </div>
+          </section>
+        )}
+
+        <section id="occasions" className="scroll-mt-20 bg-[#08090C] px-4 py-20 sm:px-6 lg:py-24">
+          <div className="mx-auto max-w-7xl">
+            <SectionHeading title={t('home.occasions.title')} subtitle={t('home.occasions.subtitle')} />
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+              {occasionEntries.map((entry, index) => {
+                const original = occasionQuickEntries.find((item) => item.key === entry.key)!;
+                return (
+                  <button
+                    key={entry.key}
+                    onClick={() => navigate(`/recommendations?occasion=${entry.key}`)}
+                    className="spotlight-card focus-ring stagger-item animate-fade-in-up group min-h-44 rounded-2xl p-5 text-left"
+                    style={{ animationDelay: `${index * 55}ms` }}
+                  >
+                    <span className="mb-8 flex h-11 w-11 items-center justify-center rounded-xl border border-white/[0.08] bg-[#1B1E26] text-[#AAA49B] transition-colors group-hover:border-[#C9A46A]/25 group-hover:text-[#D7C39D]">
+                      {original.icon}
+                    </span>
+                    <span className="block text-sm font-semibold text-[#F7F4EE]">{entry.title}</span>
+                    <span className="mt-1.5 block text-xs leading-5 text-[#77756F] transition-colors group-hover:text-[#AAA49B]">
                       {entry.desc}
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* How it works */}
-      <section className="border-y bg-slate-50/50 px-4 py-20">
-        <div className="mx-auto max-w-6xl">
-          <div className="mb-12 text-center">
-            <h2 className="mb-3 text-3xl font-bold text-slate-900">
-              {t('home.steps.title')}
-            </h2>
-            <p className="text-slate-500">
-              {t('home.steps.subtitle')}
-            </p>
+        <section id="how-it-works" className="scroll-mt-20 border-y border-white/[0.08] bg-[#0D0F14] px-4 py-20 sm:px-6 lg:py-24">
+          <div className="mx-auto max-w-7xl">
+            <SectionHeading title={t('home.steps.title')} subtitle={t('home.steps.subtitle')} />
+            <div className="grid gap-4 lg:grid-cols-12">
+              <StepCard
+                className="lg:col-span-5"
+                icon={<UserCheck className="h-6 w-6" />}
+                step="01"
+                title={t('home.steps.step1.title')}
+                desc={t('home.steps.step1.desc')}
+              />
+              <StepCard
+                className="lg:col-span-7"
+                icon={<Sparkles className="h-6 w-6" />}
+                step="02"
+                title={t('home.steps.step2.title')}
+                desc={t('home.steps.step2.desc')}
+                accent
+              />
+              <StepCard
+                className="lg:col-span-12 lg:min-h-52"
+                icon={<ShoppingBag className="h-6 w-6" />}
+                step="03"
+                title={t('home.steps.step3.title')}
+                desc={t('home.steps.step3.desc')}
+                wide
+              />
+            </div>
           </div>
+        </section>
 
-          <div className="grid gap-8 sm:grid-cols-3">
-            <StepCard
-              icon={<UserCheck className="h-6 w-6" />}
-              step="01"
-              title={t('home.steps.step1.title')}
-              desc={t('home.steps.step1.desc')}
-            />
-            <StepCard
-              icon={<Sparkles className="h-6 w-6" />}
-              step="02"
-              title={t('home.steps.step2.title')}
-              desc={t('home.steps.step2.desc')}
-            />
-            <StepCard
-              icon={<ShoppingBag className="h-6 w-6" />}
-              step="03"
-              title={t('home.steps.step3.title')}
-              desc={t('home.steps.step3.desc')}
-            />
+        <section className="bg-[#08090C] px-4 py-20 sm:px-6">
+          <div className="mx-auto grid max-w-7xl gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <FeatureCard icon={<Ruler className="h-5 w-5" />} title={t('home.features.feature1.title')} desc={t('home.features.feature1.desc')} />
+            <FeatureCard icon={<Palette className="h-5 w-5" />} title={t('home.features.feature2.title')} desc={t('home.features.feature2.desc')} />
+            <FeatureCard icon={<Shirt className="h-5 w-5" />} title={t('home.features.feature3.title')} desc={t('home.features.feature3.desc')} />
+            <FeatureCard icon={<ShoppingBag className="h-5 w-5" />} title={t('home.features.feature4.title')} desc={t('home.features.feature4.desc')} />
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Features */}
-      <section className="px-4 py-20">
-        <div className="mx-auto max-w-6xl">
-          <div className="grid gap-12 sm:grid-cols-2">
-            <FeatureCard
-              icon={<Ruler className="h-5 w-5" />}
-              title={t('home.features.feature1.title')}
-              desc={t('home.features.feature1.desc')}
-            />
-            <FeatureCard
-              icon={<Palette className="h-5 w-5" />}
-              title={t('home.features.feature2.title')}
-              desc={t('home.features.feature2.desc')}
-            />
-            <FeatureCard
-              icon={<Shirt className="h-5 w-5" />}
-              title={t('home.features.feature3.title')}
-              desc={t('home.features.feature3.desc')}
-            />
-            <FeatureCard
-              icon={<ShoppingBag className="h-5 w-5" />}
-              title={t('home.features.feature4.title')}
-              desc={t('home.features.feature4.desc')}
-            />
+        <section className="border-y border-white/[0.08] bg-[#0D0F14] px-4 py-20 text-[#F7F4EE] sm:px-6">
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="mb-3 text-xs font-medium tracking-[0.18em] text-[#C9A46A]">PERSONAL STYLING</p>
+            <h2 className="mb-4 text-3xl font-semibold tracking-[-0.035em] sm:text-4xl">{t('home.cta.title')}</h2>
+            <p className="mb-8 text-[#AAA49B]">{t('home.cta.desc')}</p>
+            <Button size="lg" onClick={() => navigate('/survey')} className="sf-primary-button focus-ring h-12 px-8 text-base">
+              {t('home.cta.button')}
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
           </div>
-        </div>
-      </section>
+        </section>
+      </main>
 
-      {/* CTA */}
-      <section className="bg-slate-900 px-4 py-20 text-white">
-        <div className="mx-auto max-w-3xl text-center">
-          <h2 className="mb-4 text-3xl font-bold">
-            {t('home.cta.title')}
-          </h2>
-          <p className="mb-8 text-slate-300">
-            {t('home.cta.desc')}
-          </p>
-          <Button
-            size="lg"
-            onClick={() => navigate('/survey')}
-            className="h-12 px-8 text-base bg-white text-slate-900 hover:bg-slate-100"
-          >
-            {t('home.cta.button')}
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="border-t px-4 py-8 text-center text-sm text-slate-400">
-        <p>StyleFit — {t('home.footer.tagline')}</p>
+      <footer className="border-t border-white/[0.08] bg-[#08090C] px-4 py-8 text-center text-sm text-[#77756F]">
+        <p>StyleFit · {t('home.footer.tagline')}</p>
       </footer>
+    </div>
+  );
+}
+
+function SectionHeading({ title, subtitle }: { title: string; subtitle: string }) {
+  return (
+    <div className="mb-10 max-w-2xl animate-fade-in-up">
+      <div className="mb-4 h-px w-10 bg-[#C9A46A]" />
+      <h2 className="text-3xl font-semibold tracking-[-0.035em] text-[#F7F4EE] sm:text-4xl">{title}</h2>
+      <p className="mt-3 text-sm leading-6 text-[#AAA49B] sm:text-base">{subtitle}</p>
     </div>
   );
 }
@@ -458,43 +457,48 @@ function StepCard({
   step,
   title,
   desc,
+  className,
+  accent = false,
+  wide = false,
 }: {
-  icon: React.ReactNode;
+  icon: ReactNode;
   step: string;
   title: string;
   desc: string;
+  className?: string;
+  accent?: boolean;
+  wide?: boolean;
 }) {
   return (
-    <div className="rounded-2xl border bg-white p-6 text-center shadow-sm transition-shadow hover:shadow-md">
-      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
-        {icon}
+    <article className={`step-card animate-fade-in-up ${accent ? 'step-card-accent' : ''} ${className ?? ''}`}>
+      <div className={wide ? 'grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end' : ''}>
+        <div>
+          <div className="mb-12 flex items-start justify-between">
+            <span className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/[0.08] bg-[#1B1E26] text-[#D7C39D]">
+              {icon}
+            </span>
+            <span className="text-xs font-medium tracking-[0.2em] text-[#77756F]">{step}</span>
+          </div>
+          <h3 className="text-2xl font-semibold tracking-[-0.025em] text-[#F7F4EE]">{title}</h3>
+          <p className="mt-3 max-w-xl text-sm leading-6 text-[#AAA49B]">{desc}</p>
+        </div>
+        {wide && (
+          <div className="hidden items-center gap-2 text-xs tracking-[0.18em] text-[#77756F] lg:flex" aria-hidden="true">
+            <span>PROFILE</span><ArrowRight className="h-3.5 w-3.5" /><span>CONTEXT</span><ArrowRight className="h-3.5 w-3.5" /><span>LOOKS</span>
+          </div>
+        )}
       </div>
-      <div className="mb-2 text-xs font-semibold text-slate-400">{step}</div>
-      <h3 className="mb-2 text-lg font-semibold text-slate-900">{title}</h3>
-      <p className="text-sm text-slate-500 leading-relaxed">{desc}</p>
-    </div>
+    </article>
   );
 }
 
-function FeatureCard({
-  icon,
-  title,
-  desc,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  desc: string;
-}) {
+function FeatureCard({ icon, title, desc }: { icon: ReactNode; title: string; desc: string }) {
   return (
-    <div className="flex gap-4">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
-        {icon}
-      </div>
-      <div>
-        <h3 className="mb-1 font-semibold text-slate-900">{title}</h3>
-        <p className="text-sm text-slate-500 leading-relaxed">{desc}</p>
-      </div>
-    </div>
+    <article className="rounded-2xl border border-white/[0.08] bg-[#12141A] p-5">
+      <div className="mb-8 flex h-10 w-10 items-center justify-center rounded-xl bg-[#1B1E26] text-[#AAA49B]">{icon}</div>
+      <h3 className="font-semibold text-[#F7F4EE]">{title}</h3>
+      <p className="mt-2 text-sm leading-6 text-[#77756F]">{desc}</p>
+    </article>
   );
 }
 
