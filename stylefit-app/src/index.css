@@ -161,6 +161,7 @@
 
 .nav-text-link {
   position: relative;
+  color: #c6c1b8;
   transition: color 180ms ease;
 }
 
@@ -192,17 +193,17 @@
 }
 
 .sf-primary-button {
-  border: 1px solid rgba(201, 164, 106, 0.35) !important;
+  border: 1px solid rgba(201, 164, 106, 0.48) !important;
   border-radius: 0.875rem !important;
-  background: #20232b !important;
+  background: #262a34 !important;
   color: var(--sf-text) !important;
-  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.3), 0 0 24px rgba(201, 164, 106, 0.035) !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.38), 0 0 28px rgba(201, 164, 106, 0.07) !important;
   transition: transform 180ms ease, background-color 180ms ease, border-color 180ms ease !important;
 }
 
 .sf-primary-button:hover {
-  border-color: rgba(201, 164, 106, 0.58) !important;
-  background: #272b35 !important;
+  border-color: rgba(201, 164, 106, 0.64) !important;
+  background: #2b303b !important;
   transform: translateY(-1px);
 }
 
@@ -211,7 +212,7 @@
 }
 
 .sf-secondary-button {
-  border: 1px solid rgba(255, 255, 255, 0.13) !important;
+  border: 1px solid rgba(255, 255, 255, 0.11) !important;
   border-radius: 0.875rem !important;
   background: rgba(13, 15, 20, 0.58) !important;
   color: var(--sf-text) !important;
@@ -269,6 +270,14 @@
   border-radius: 1.25rem;
   background: var(--sf-card);
   box-shadow: 0 28px 70px rgba(0, 0, 0, 0.42);
+}
+
+.lookbook-card figcaption {
+  display: flex;
+  min-height: 68px;
+  align-items: flex-end;
+  padding-bottom: 1rem;
+  line-height: 1.2;
 }
 
 .lookbook-card-1,
@@ -408,6 +417,13 @@
 
   .lookbook-note {
     display: none;
+  }
+
+  .lookbook-card figcaption {
+    min-height: 56px;
+    padding: 2.5rem 0.7rem 0.75rem;
+    font-size: 0.7rem;
+    white-space: nowrap;
   }
 }
 

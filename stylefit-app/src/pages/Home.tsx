@@ -182,7 +182,7 @@ export function HomePage() {
             <span className="text-lg font-semibold tracking-[-0.02em]">StyleFit</span>
           </button>
 
-          <div className="hidden items-center gap-7 text-sm text-[#AAA49B] md:flex">
+          <div className="hidden items-center gap-7 text-sm text-[#C6C1B8] md:flex">
             <button onClick={scrollToOccasions} className="nav-text-link focus-ring rounded-md">
               {t('home.occasions.title')}
             </button>
@@ -244,7 +244,7 @@ export function HomePage() {
           <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(8,9,12,0.96)_0%,rgba(8,9,12,0.84)_37%,rgba(8,9,12,0.26)_74%,rgba(8,9,12,0.48)_100%)]" />
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#08090C] to-transparent" />
 
-          <div className="relative mx-auto grid min-h-[690px] max-w-7xl items-center gap-12 px-4 py-16 sm:px-6 md:grid-cols-[0.9fr_1.1fr] md:py-20 lg:gap-16 lg:px-8">
+          <div className="relative mx-auto grid min-h-[690px] max-w-7xl items-center gap-7 px-4 py-16 sm:px-6 md:grid-cols-[0.9fr_1.1fr] md:gap-12 md:py-20 lg:gap-16 lg:px-8">
             <div className="relative z-10 max-w-xl animate-fade-in-up">
               <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#C9A46A]/25 bg-[#12141A]/75 px-4 py-2 text-xs font-medium tracking-[0.12em] text-[#D7C39D] shadow-[0_12px_36px_rgba(0,0,0,0.24)] backdrop-blur-md">
                 <Sparkles className="h-3.5 w-3.5" />
@@ -256,7 +256,7 @@ export function HomePage() {
                   {t('home.hero.title2')}
                 </span>
               </h1>
-              <p className="max-w-lg text-base leading-7 text-[#AAA49B] sm:text-lg">
+              <p className="max-w-lg text-base leading-7 text-[#BDB8B0] sm:text-lg">
                 {t('home.hero.desc')}
               </p>
 

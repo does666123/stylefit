@@ -100,6 +100,10 @@ export default function SilkBackground() {
     let visible = true;
     const startedAt = performance.now();
 
+    const setState = (state: 'running' | 'paused') => {
+      canvas.dataset.silkState = state;
+    };
+
     const resize = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
       const width = Math.max(1, Math.floor(canvas.clientWidth * dpr));
@@ -116,12 +120,22 @@ export default function SilkBackground() {
       resize();
       gl.uniform1f(time, (now - startedAt) / 1000);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
-      if (visible && !document.hidden) animationFrame = requestAnimationFrame(render);
+      if (visible && !document.hidden) {
+        setState('running');
+        animationFrame = requestAnimationFrame(render);
+      } else {
+        setState('paused');
+      }
     };
 
     const resume = () => {
       cancelAnimationFrame(animationFrame);
-      if (visible && !document.hidden) animationFrame = requestAnimationFrame(render);
+      if (visible && !document.hidden) {
+        setState('running');
+        animationFrame = requestAnimationFrame(render);
+      } else {
+        setState('paused');
+      }
     };
 
     const observer = new IntersectionObserver(([entry]) => {
