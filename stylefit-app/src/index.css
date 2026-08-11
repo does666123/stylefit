@@ -228,10 +228,7 @@
 
 .stylefit-hero {
   min-height: 690px;
-  background:
-    radial-gradient(circle at 78% 18%, rgba(107, 75, 99, 0.34), transparent 34%),
-    radial-gradient(circle at 94% 72%, rgba(91, 42, 51, 0.28), transparent 31%),
-    linear-gradient(135deg, #08090c 0%, #111019 56%, #0d0f14 100%);
+  background: #08090c;
 }
 
 .blur-text-piece {
