@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,7 +19,7 @@ import { getRecommendations, saveProfile } from '../hooks/useRecommendation';
 import { requestAIRecommendation } from '../lib/aiRecommendation';
 import LoadingScreen from '@/components/LoadingScreen';
 
-const allSteps = ['survey.step.basic', 'survey.step.body', 'survey.step.style', 'survey.step.result'];
+const allSteps = ['survey.step.basic', 'survey.step.body', 'survey.step.style'];
 
 interface BodyTypeOption { value: BodyType; labelKey: string; descKey: string }
 const bodyTypeOptions: BodyTypeOption[] = [
@@ -80,6 +80,7 @@ export default function Survey() {
   const [retryCount, setRetryCount] = useState(0);
   const [submittedProfile, setSubmittedProfile] = useState<UserBodyProfile | null>(null);
   const [errors, setErrors] = useState<ValidationErrors>({});
+  const submitInFlight = useRef(false);
   const [profile, setProfile] = useState<Partial<UserBodyProfile>>({
     gender: 'male',
     height: 175,
@@ -145,6 +146,8 @@ export default function Survey() {
   };
 
   const generateRecommendation = async (fullProfile: UserBodyProfile) => {
+    if (submitInFlight.current) return;
+    submitInFlight.current = true;
     setLoading(true);
     const recommendation = await requestAIRecommendation(fullProfile, getRecommendations(fullProfile)).catch(() => null);
     if (recommendation) {
@@ -155,6 +158,7 @@ export default function Survey() {
     setSubmittedProfile(fullProfile);
     setRetryCount((count) => count + 1);
     setLoading(false);
+    submitInFlight.current = false;
   };
 
   const handleSubmit = () => {
@@ -188,20 +192,20 @@ export default function Survey() {
   if (submittedProfile && retryCount > 0) {
     const canUseLocalRecommendation = retryCount >= 1;
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
-        <Card className="w-full max-w-md">
+      <div className="phase-two-survey flex min-h-screen items-center justify-center p-4">
+        <Card className="survey-failure-card w-full max-w-md">
           <CardContent className="space-y-5 p-8 text-center">
             <AlertCircle className="mx-auto h-10 w-10 text-amber-500" />
             <div>
               <h1 className="text-xl font-bold text-slate-900">AI 推荐暂时没有生成成功</h1>
               <p className="mt-2 text-sm text-slate-500">请稍后重试，已填写的问卷信息会保留。</p>
             </div>
-            <Button className="w-full bg-slate-900 hover:bg-slate-800" onClick={handleRetry}>
+            <Button className="sf-primary-button w-full" onClick={handleRetry}>
               重试生成
             </Button>
             {canUseLocalRecommendation && (
               <>
-                <Button className="w-full" variant="outline" onClick={() => navigate('/recommendations', { state: { profile: submittedProfile } })}>
+                <Button className="sf-secondary-button w-full" variant="outline" onClick={() => navigate('/recommendations', { state: { profile: submittedProfile } })}>
                   进入本地推荐
                 </Button>
                 <p className="text-xs leading-5 text-slate-400">AI 推荐更个性化，需要联网生成；本地推荐立即可用，但个性化程度较低。</p>
@@ -214,40 +218,43 @@ export default function Survey() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <nav className="sticky top-0 z-50 border-b bg-white/80 backdrop-blur-md">
+    <div className="phase-two-survey min-h-screen">
+      <nav className="survey-nav sticky top-0 z-50">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3">
-          <div className="flex cursor-pointer items-center gap-2" onClick={() => navigate('/')}>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900">
-              <Shirt className="h-4 w-4 text-white" />
+          <button className="focus-ring flex items-center gap-2 rounded-lg" onClick={() => navigate('/')}>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1B1E26]">
+              <Shirt className="h-4 w-4 text-[#F7F4EE]" />
             </div>
-            <span className="text-xl font-bold text-slate-900">StyleFit</span>
+            <span className="text-xl font-bold text-[#F7F4EE]">StyleFit</span>
+          </button>
+          <div className="text-right">
+            <div className="text-sm text-[#D7C39D]">{t('survey.stepIndicator', { step: step + 1, total: allSteps.length })}</div>
+            <div className="mt-0.5 text-xs text-[#AAA49B]">{t(allSteps[step] as any)}</div>
           </div>
-          <div className="text-sm text-slate-400">{t('survey.stepIndicator', { step: step + 1, total: allSteps.length })}</div>
         </div>
       </nav>
 
-      <div className="mx-auto max-w-xl px-4 py-8 page-enter">
+      <div className="mx-auto max-w-xl px-4 py-7 sm:py-10">
         {/* Step Progress Indicator */}
         <div className="mb-6">
-          <Progress value={progress} className="mb-4" />
+          <Progress value={progress} className="survey-progress mb-4" />
           <div className="flex justify-between">
             {allSteps.map((label, idx) => (
               <div key={label} className="flex flex-col items-center gap-1.5">
                 <div
                   className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-all duration-300 ${
                     idx < step
-                      ? 'bg-slate-900 text-white'
+                      ? 'survey-step-done'
                       : idx === step
-                      ? 'bg-slate-900 text-white ring-4 ring-slate-200'
-                      : 'bg-slate-200 text-slate-400'
+                      ? 'survey-step-current'
+                      : 'survey-step-pending'
                   }`}
                 >
                   {idx < step ? <Check className="h-4 w-4" /> : idx + 1}
                 </div>
                 <span
                   className={`text-xs font-medium transition-colors ${
-                    idx <= step ? 'text-slate-700' : 'text-slate-400'
+                    idx <= step ? 'text-[#D7C39D]' : 'text-[#77756F]'
                   }`}
                 >
                   {t(label as any)}
@@ -257,8 +264,9 @@ export default function Survey() {
           </div>
         </div>
 
-        <Card className="border-0 shadow-lg animate-fade-in-up">
+        <Card className="survey-card">
           <CardContent className="p-6 sm:p-8">
+            <div key={step} className="phase-two-step-content">
             {/* Step 0: Basic Info */}
             {step === 0 && (
               <div className="space-y-6">
@@ -277,7 +285,7 @@ export default function Survey() {
                         <button
                           key={opt.value}
                           onClick={() => update('gender', opt.value as Gender)}
-                          className={`rounded-xl border-2 px-4 py-3 text-center font-medium transition-all ${
+                          className={`survey-option rounded-xl border-2 px-4 py-3 text-center font-medium transition-all ${
                             profile.gender === opt.value
                               ? 'border-slate-900 bg-slate-900 text-white'
                               : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
@@ -364,7 +372,7 @@ export default function Survey() {
                         <button
                           key={opt.value}
                           onClick={() => update('bodyType', opt.value)}
-                          className={`flex w-full items-center gap-4 rounded-xl border-2 px-4 py-3 text-left transition-all ${
+                          className={`survey-option flex w-full items-center gap-4 rounded-xl border-2 px-4 py-3 text-left transition-all ${
                             profile.bodyType === opt.value
                               ? 'border-slate-900 bg-slate-900 text-white'
                               : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
@@ -389,7 +397,7 @@ export default function Survey() {
                         <button
                           key={opt.value}
                           onClick={() => update('skinTone', opt.value)}
-                          className={`flex flex-col items-center gap-2 rounded-xl border-2 p-3 transition-all ${
+                          className={`survey-option flex flex-col items-center gap-2 rounded-xl border-2 p-3 transition-all ${
                             profile.skinTone === opt.value ? 'border-slate-900' : 'border-slate-200 hover:border-slate-300'
                           }`}
                         >
@@ -466,7 +474,7 @@ export default function Survey() {
                         <button
                           key={opt.value}
                           onClick={() => update('stylePreference', opt.value)}
-                          className={`rounded-xl border-2 px-3 py-3 text-center transition-all ${
+                          className={`survey-option rounded-xl border-2 px-3 py-3 text-center transition-all ${
                             profile.stylePreference === opt.value
                               ? 'border-slate-900 bg-slate-900 text-white'
                               : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
@@ -523,19 +531,21 @@ export default function Survey() {
               </div>
             )}
 
+            </div>
+
             {/* Navigation */}
             <div className="mt-8 flex gap-3">
               {step > 0 && (
-                <Button variant="outline" className="h-12 flex-1" onClick={() => setStep(step - 1)}>
+                <Button variant="outline" className="sf-secondary-button h-12 flex-1" onClick={() => setStep(step - 1)}>
                   <ArrowLeft className="mr-2 h-4 w-4" />{t('survey.btn.prev')}
                 </Button>
               )}
               {step < 2 ? (
-                <Button className="h-12 flex-1 bg-slate-900 hover:bg-slate-800" disabled={!canProceed()} onClick={handleNext}>
+                <Button className="sf-primary-button h-12 flex-1" disabled={!canProceed()} onClick={handleNext}>
                   {t('survey.btn.next')}<ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               ) : (
-                <Button className="h-12 flex-1 bg-slate-900 hover:bg-slate-800" disabled={!canProceed() || loading} onClick={handleSubmit}>
+                <Button className="sf-primary-button h-12 flex-1" disabled={!canProceed() || loading} onClick={handleSubmit}>
                   {loading ? (
                     <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t('survey.btn.generating')}</>
                   ) : (

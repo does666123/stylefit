@@ -59,8 +59,6 @@ const catList: { key: string; labelKey: string; icon: React.ReactNode }[] = [
   { key: 'accessory', labelKey: 'rec.category.accessory', icon: <Sparkles className="h-4 w-4" /> },
 ];
 
-const allSteps = ['survey.step.basic', 'survey.step.body', 'survey.step.style', 'survey.step.result'];
-
 export default function Recommendations() {
   const { t } = useT();
   const location = useLocation();
@@ -225,8 +223,8 @@ export default function Recommendations() {
   // 没有 profile 数据且无场合参数时显示引导页
   if (!profile) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <Card className="mx-4 max-w-md text-center animate-scale-in">
+      <div className="phase-two-results flex min-h-screen items-center justify-center">
+        <Card className="result-empty-card mx-4 max-w-md text-center animate-scale-in">
           <CardContent className="p-8">
             <div className="mb-4 flex justify-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-100">
@@ -258,9 +256,9 @@ export default function Recommendations() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 page-enter">
+    <div className="phase-two-results min-h-screen page-enter">
       {/* Navbar */}
-      <nav className="sticky top-0 z-50 border-b bg-white/80 backdrop-blur-md">
+      <nav className="result-nav sticky top-0 z-50">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900">
@@ -296,7 +294,16 @@ export default function Recommendations() {
         </div>
       </nav>
 
-      <div className="mx-auto max-w-6xl px-4 py-8">
+      <div className="mx-auto max-w-6xl px-4 py-7 sm:py-8">
+        <div className="result-page-heading mb-5 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="mb-1 text-xs font-medium tracking-[0.16em] text-[#D7C39D]">PERSONAL STYLING</p>
+            <h1 className="text-2xl font-semibold tracking-[-0.035em] text-[#F7F4EE] sm:text-3xl">{t('rec.title')}</h1>
+          </div>
+          <span className="result-ai-state">
+            {aiLoading ? <><Spinner />AI {t('common.loading')}</> : aiRecommendation ? <>✦ AI</> : t('rec.outfitRecommendations')}
+          </span>
+        </div>
         {/* 场合标签 + 未填问卷提示 */}
         {isValidOccasion && (
           <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -352,7 +359,7 @@ export default function Recommendations() {
 
         {/* 天气条 */}
         {weatherInterp && (
-          <div className="mb-6 flex items-center gap-2 rounded-xl border bg-white px-4 py-2.5 shadow-sm">
+          <div className="result-weather mb-4 flex items-center gap-2 rounded-xl px-4 py-2.5">
             <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sky-50 text-sky-600">
               {weatherInterp.rainNote ? (
                 <Umbrella className="h-4 w-4" />
@@ -375,34 +382,12 @@ export default function Recommendations() {
           </div>
         )}
 
-        {/* Step Progress Indicator */}
-        <div className="mb-8">
-          <div className="flex justify-between gap-1">
-            {allSteps.map((label, idx) => (
-              <div key={label} className="flex min-w-0 flex-col items-center gap-1 sm:gap-1.5">
-                <div
-                  className={`flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full text-xs font-bold transition-all ${
-                    idx < 3
-                      ? 'bg-slate-900 text-white'
-                      : 'bg-slate-900 text-white ring-4 ring-slate-200'
-                  }`}
-                >
-                  {idx < 3 ? <Check className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> : idx + 1}
-                </div>
-                <span className={`truncate text-[10px] sm:text-xs font-medium ${idx <= 3 ? 'text-slate-700' : 'text-slate-400'}`}>
-                  {t(label as any)}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-
         {/* Profile Summary */}
-        <Card className="mb-8 border-0 shadow-md overflow-hidden animate-fade-in-up">
+        <Card className="result-summary mb-6 overflow-hidden animate-fade-in-up">
           <CardContent className="p-0">
-            <div className="bg-gradient-to-r from-slate-900 to-slate-800 px-6 py-5 text-white">
-              <div className="flex items-center gap-3 mb-3">
-                <Sparkles className="h-5 w-5 text-amber-400" />
+            <div className="result-summary-main px-5 py-4 text-white">
+              <div className="mb-2 flex items-center gap-3">
+                <Sparkles className="h-5 w-5 text-[#D7C39D]" />
                 <h2 className="text-lg font-bold">{t('rec.bodyReport.title')}</h2>
               </div>
               <div className="flex flex-wrap gap-4 text-sm">
@@ -428,13 +413,13 @@ export default function Recommendations() {
                 )}
               </div>
               {bmiInfo && (
-                <p className="mt-3 text-sm text-slate-300 leading-relaxed">
+                <p className="result-summary-advice mt-2 text-sm leading-relaxed">
                   {bmiInfo.advice}
                 </p>
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4 px-6 py-4 sm:grid-cols-4">
+            <div className="result-summary-tags grid grid-cols-2 gap-3 px-5 py-3 sm:grid-cols-5">
               <ProfileTag
                 icon={<Palette className="h-4 w-4" />}
                 label={t('rec.bodyReport.skinTone')}
@@ -455,6 +440,13 @@ export default function Recommendations() {
                 label={t('occasion')}
                 value={mapOccasion(profile.occasion, t as any)}
               />
+              {profile.budget && profile.budget > 0 && (
+                <ProfileTag
+                  icon={<Check className="h-4 w-4" />}
+                  label={t('survey.budget.label')}
+                  value={`¥${profile.budget}`}
+                />
+              )}
             </div>
 
             {profile.measurements && Object.values(profile.measurements).some((v) => v) && (
@@ -482,11 +474,11 @@ export default function Recommendations() {
         {/* Outfit Recommendations */}
         {!showFavorites && outfits.length > 0 && (
           <div className="mb-10">
-            <div className="mb-4 flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-amber-500" />
-              <h2 className="text-xl font-bold text-slate-900">{t('rec.outfitRecommendations')}</h2>
-              {aiLoading && <span className="inline-flex items-center gap-1 text-xs text-slate-400"><Spinner />AI {t('common.loading')}</span>}
-              {aiRecommendation && <Badge variant="secondary">AI</Badge>}
+            <div className="result-outfit-title mb-4 flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-[#D7C39D]" />
+              <h2 className="text-xl font-bold text-[#F7F4EE]">{t('rec.outfitRecommendations')}</h2>
+              {aiLoading && <span className="inline-flex items-center gap-1 text-xs text-[#AAA49B]"><Spinner />AI {t('common.loading')}</span>}
+              {aiRecommendation && <Badge className="result-ai-badge">AI</Badge>}
             </div>
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {outfits.map((outfit, idx) => (
@@ -496,6 +488,7 @@ export default function Recommendations() {
                     isFavorite={isFavorite}
                     toggleFavorite={toggleFavorite}
                     index={idx}
+                    budget={profile?.budget}
                   />
                 </div>
               ))}
@@ -567,11 +560,13 @@ function OutfitCard({
   isFavorite,
   toggleFavorite,
   index,
+  budget,
 }: {
   outfit: OutfitSet;
   isFavorite: (id: string) => boolean;
   toggleFavorite: (id: string) => void;
   index: number;
+  budget?: number;
 }) {
   const { t } = useT();
   const [expanded, setExpanded] = useState(false);
@@ -593,10 +588,10 @@ function OutfitCard({
   };
 
   return (
-    <Card className="border-0 shadow-sm overflow-hidden transition-shadow hover:shadow-md stagger-item" style={{ animationDelay: `${index * 100}ms` }}>
+    <Card className="result-outfit-card overflow-hidden stagger-item" style={{ animationDelay: `${index * 100}ms` }}>
       <CardContent className="p-0">
         {/* Header with theme name and match score */}
-        <div className="bg-gradient-to-r from-amber-50 to-orange-50 px-4 py-3 border-b">
+        <div className="result-outfit-card-header px-4 py-3">
           <div className="flex items-center justify-between mb-1">
             <h3 className="font-semibold text-slate-800">{outfit.themeName || outfit.name}</h3>
             <div className="flex items-center gap-2">
@@ -612,6 +607,11 @@ function OutfitCard({
               <span className="text-sm font-bold text-amber-600">¥{outfit.totalPrice}</span>
             </div>
           </div>
+          {budget && budget > 0 && (
+            <span className={`outfit-budget-status ${outfit.totalPrice <= budget ? 'outfit-budget-in' : 'outfit-budget-over'}`}>
+              {outfit.totalPrice <= budget ? '预算内' : '预算参考'} · ¥{outfit.totalPrice} / ¥{budget}
+            </span>
+          )}
           {outfit.suitableBodyDesc && (
             <div className="flex items-center gap-1 text-xs text-slate-500 mb-1">
               <User className="h-3 w-3" />
@@ -630,7 +630,7 @@ function OutfitCard({
         </div>
 
         {/* Item thumbnails */}
-        <div className="grid grid-cols-3 gap-1 p-2 sm:grid-cols-5">
+        <div className="result-outfit-images grid grid-cols-3 gap-1 p-2 sm:grid-cols-5">
           {outfit.items.slice(0, 5).map((item: ClothingItem) => (
             <div key={item.id} className="relative aspect-square overflow-hidden rounded-lg bg-slate-100">
               <img src={item.image} alt={item.name} className="h-full w-full object-cover" loading="lazy" />
@@ -654,7 +654,7 @@ function OutfitCard({
         </div>
 
         {/* Item details with reasons and buy buttons */}
-        <div className="px-3 pb-2">
+        <div className="result-outfit-details px-3 pb-2">
           <button
             onClick={() => setExpanded(!expanded)}
             className="flex w-full items-center justify-between py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 transition-colors"
@@ -715,7 +715,7 @@ function OutfitCard({
 
         {/* Styling advice */}
         {outfit.stylingAdvice && (
-          <div className="border-t px-3 py-2">
+          <div className="result-outfit-advice border-t px-3 py-2">
             <p className="text-xs text-slate-500">
               <span className="font-medium text-slate-600">{t('rec.stylingTips')}</span>
               {outfit.stylingAdvice}
@@ -724,7 +724,7 @@ function OutfitCard({
         )}
 
         {/* Tags */}
-        <div className="flex flex-wrap gap-1 px-3 pb-3">
+        <div className="result-outfit-tags flex flex-wrap gap-1 px-3 pb-3">
           {outfit.tags.map((tag: string) => (
             <span
               key={tag}
@@ -753,7 +753,7 @@ function ClothingCard({
   const fav = isFavorite(item.id);
 
   return (
-    <Card className="group overflow-hidden border-0 shadow-sm transition-shadow hover:shadow-lg">
+    <Card className="result-product-card group overflow-hidden">
       <div className="relative aspect-[4/5] overflow-hidden bg-slate-100">
         {!imgError ? (
           <img
