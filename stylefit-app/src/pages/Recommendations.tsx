@@ -32,11 +32,17 @@ import {
 } from 'lucide-react';
 import type { UserBodyProfile, ClothingItem, OutfitSet, Occasion } from '../types';
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
-import LoadingScreen from '@/components/LoadingScreen';
 import { fetchWeatherWithCache, interpretWeather, getWeatherRemark, thicknessTierToSeason, type WeatherInterpretation, type WeatherData } from '../lib/weather';
 import { useT } from '../i18n';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
-import { requestAIRecommendation, type AIRecommendation } from '../lib/aiRecommendation';
+import {
+  cacheAIRecommendation,
+  clearCachedAIRecommendation,
+  getAIRecommendationProfileKey,
+  readCachedAIRecommendation,
+  requestAIRecommendation,
+  type AIRecommendation,
+} from '../lib/aiRecommendation';
 import { Spinner } from '@/components/ui/spinner';
 
 // 场合快捷切换数据
@@ -76,10 +82,13 @@ export default function Recommendations() {
   // 从 URL 读取场合参数
   const urlOccasion = searchParams.get('occasion') || '';
   const isValidOccasion = ['work', 'date', 'daily', 'party', 'travel', 'formal'].includes(urlOccasion);
+  const locationState = location.state as { profile?: UserBodyProfile; aiRecommendation?: AIRecommendation } | null;
 
   // 优先从 location.state 读取，如果没有则从 localStorage 读取（解决刷新后数据丢失问题）
-  const [profile, setProfile] = useState<UserBodyProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [profile, setProfile] = useState<UserBodyProfile | null>(() => {
+    if (locationState?.profile) return locationState.profile;
+    return loadProfile() || (isValidOccasion ? getNeutralProfile(urlOccasion) : null);
+  });
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [showFavorites, setShowFavorites] = useState(false);
   const [showOccasionSwitcher, setShowOccasionSwitcher] = useState(false);
@@ -87,7 +96,16 @@ export default function Recommendations() {
   const aiRequestInFlight = useRef(false);
   const [weatherData, setWeatherData] = useState<WeatherData | null>();
   const [weatherInterp, setWeatherInterp] = useState<WeatherInterpretation | null>(null);
-  const [aiRecommendation, setAIRecommendation] = useState<AIRecommendation | null>(() => location.state?.aiRecommendation ?? null);
+  const [aiRecommendation, setAIRecommendation] = useState<AIRecommendation | null>(() => {
+    if (!profile) return null;
+    const stateRecommendation = locationState?.profile &&
+      locationState.aiRecommendation &&
+      getAIRecommendationProfileKey(locationState.profile) === getAIRecommendationProfileKey(profile)
+      ? locationState.aiRecommendation
+      : null;
+    if (stateRecommendation) cacheAIRecommendation(profile, stateRecommendation);
+    return stateRecommendation || readCachedAIRecommendation(profile);
+  });
   const [aiLoading, setAILoading] = useState(false);
 
   // 获取天气（不阻塞渲染）
@@ -118,26 +136,6 @@ export default function Recommendations() {
     }
   }, [showOccasionSwitcher]);
 
-  // 初始化：尝试从 state 或 localStorage 获取 profile
-  useEffect(() => {
-    const stateProfile: UserBodyProfile | undefined = location.state?.profile;
-    if (stateProfile) {
-      setProfile(stateProfile);
-      setIsLoading(false);
-      return;
-    }
-
-    // fallback: 从 localStorage 读取
-    const stored = loadProfile();
-    if (stored) {
-      setProfile(stored);
-    } else if (isValidOccasion) {
-      // 无画像但有场合参数 → 使用中性默认画像
-      setProfile(getNeutralProfile(urlOccasion));
-    }
-    setIsLoading(false);
-  }, [location.state, isValidOccasion, urlOccasion]);
-
   // 切换场合
   const handleSwitchOccasion = (occasion: Occasion) => {
     setShowOccasionSwitcher(false);
@@ -150,6 +148,7 @@ export default function Recommendations() {
       setProfile(getNeutralProfile(occasion));
     }
     setAIRecommendation(null);
+    clearCachedAIRecommendation();
     setSearchParams({ occasion });
   };
 
@@ -172,7 +171,10 @@ export default function Recommendations() {
     aiRequestInFlight.current = true;
     setAILoading(true);
     requestAIRecommendation(profile, recommendations)
-      .then((recommendation) => setAIRecommendation(recommendation))
+      .then((recommendation) => {
+        if (recommendation) cacheAIRecommendation(profile, recommendation);
+        setAIRecommendation(recommendation);
+      })
       .catch(() => setAIRecommendation(null))
       .finally(() => {
         aiRequestInFlight.current = false;
@@ -222,11 +224,6 @@ export default function Recommendations() {
   }, [recommendations, activeCategory]);
 
   const displayItems = showFavorites ? favoriteItems : filteredByCategory;
-
-  // 加载中显示 LoadingScreen
-  if (isLoading) {
-    return <LoadingScreen message={t('rec.loading')} />;
-  }
 
   // 没有 profile 数据且无场合参数时显示引导页
   if (!profile) {
@@ -279,7 +276,7 @@ export default function Recommendations() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => navigate('/favorites')}
+              onClick={() => navigate('/favorites', { state: { fromRecommendations: true } })}
               className="relative"
             >
               <Heart className="mr-1 h-4 w-4" />
@@ -293,7 +290,10 @@ export default function Recommendations() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => navigate('/survey')}
+              onClick={() => {
+                clearCachedAIRecommendation();
+                navigate('/survey', { state: { restartSurvey: true } });
+              }}
             >
               <ArrowLeft className="mr-1 h-4 w-4" />
               <span className="hidden sm:inline">{t('common.retakeTest')}</span>
@@ -701,15 +701,15 @@ function OutfitCard({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1">
                       <div className="flex items-center gap-1 min-w-0">
-                        <span className="text-xs text-slate-400">{item.brand}</span>
-                        <span className="text-xs font-medium text-slate-700 truncate">
+                        <span className="result-item-brand text-xs">{item.brand}</span>
+                        <span className="result-item-name truncate text-xs font-medium">
                           {categoryLabel[item.category] || item.category} · {item.name}
                         </span>
                       </div>
                       <span className="text-xs font-bold text-slate-900 shrink-0">¥{item.price}</span>
                     </div>
                     {itemReasonMap[item.id] && (
-                      <p className="mt-0.5 text-xs text-slate-500 line-clamp-2">
+                      <p className="result-item-description mt-0.5 text-xs line-clamp-2">
                         {itemReasonMap[item.id]}
                       </p>
                     )}
@@ -722,7 +722,7 @@ function OutfitCard({
                       href={item.buyLink}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700"
+                      className="result-item-buy mt-1 inline-flex items-center gap-1 text-xs font-medium"
                     >
                       <ShoppingBag className="h-3 w-3" />
                       {t('rec.buyNow')}

@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,10 +16,32 @@ import { Shirt, ArrowRight, ArrowLeft, Check, Loader2, Sparkles, Ruler, AlertCir
 import { useT } from '@/i18n';
 import type { UserBodyProfile, Gender, BodyType, SkinTone, StylePreference, Occasion, Season } from '../types';
 import { getRecommendations, saveProfile } from '../hooks/useRecommendation';
-import { requestAIRecommendation } from '../lib/aiRecommendation';
+import { cacheAIRecommendation, requestAIRecommendation } from '../lib/aiRecommendation';
 import LoadingScreen from '@/components/LoadingScreen';
 
 const allSteps = ['survey.step.basic', 'survey.step.body', 'survey.step.style'];
+const DRAFT_KEY = 'stylefit_survey_draft';
+const defaultProfile: Partial<UserBodyProfile> = {
+  gender: 'male',
+  height: 175,
+  weight: 70,
+  measurements: {},
+};
+
+type SurveyDraft = {
+  profile: Partial<UserBodyProfile>;
+  step: number;
+};
+
+function readDraft() {
+  try {
+    const draft = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || 'null') as SurveyDraft | null;
+    return draft && draft.step >= 0 && draft.step < allSteps.length ? draft : null;
+  } catch {
+    sessionStorage.removeItem(DRAFT_KEY);
+    return null;
+  }
+}
 
 interface BodyTypeOption { value: BodyType; labelKey: string; descKey: string }
 const bodyTypeOptions: BodyTypeOption[] = [
@@ -74,19 +96,26 @@ interface ValidationErrors {
 
 export default function Survey() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useT();
-  const [step, setStep] = useState(0);
+  const restartSurvey = Boolean((location.state as { restartSurvey?: boolean } | null)?.restartSurvey);
+  const [initialDraft] = useState<SurveyDraft | null>(() => restartSurvey ? null : readDraft());
+  const [step, setStep] = useState(initialDraft?.step ?? 0);
   const [loading, setLoading] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [submittedProfile, setSubmittedProfile] = useState<UserBodyProfile | null>(null);
   const [errors, setErrors] = useState<ValidationErrors>({});
   const submitInFlight = useRef(false);
-  const [profile, setProfile] = useState<Partial<UserBodyProfile>>({
-    gender: 'male',
-    height: 175,
-    weight: 70,
-    measurements: {},
-  });
+  const [profile, setProfile] = useState<Partial<UserBodyProfile>>(initialDraft?.profile ?? defaultProfile);
+
+  useEffect(() => {
+    if (restartSurvey) sessionStorage.removeItem(DRAFT_KEY);
+  }, [restartSurvey]);
+
+  useEffect(() => {
+    if (loading || submittedProfile) return;
+    sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ profile, step }));
+  }, [profile, step, loading, submittedProfile]);
 
   // Progress: 3 survey steps map to first 3 of 4 total steps
   const progress = ((step + 1) / allSteps.length) * 100;
@@ -151,6 +180,8 @@ export default function Survey() {
     setLoading(true);
     const recommendation = await requestAIRecommendation(fullProfile, getRecommendations(fullProfile)).catch(() => null);
     if (recommendation) {
+      cacheAIRecommendation(fullProfile, recommendation);
+      sessionStorage.removeItem(DRAFT_KEY);
       navigate('/recommendations', { state: { profile: fullProfile, aiRecommendation: recommendation } });
       return;
     }
@@ -403,7 +434,7 @@ export default function Survey() {
                           }`}
                         >
                           <div className="h-10 w-10 rounded-full border border-slate-200" style={{ backgroundColor: opt.color }} />
-                          <span className="text-xs font-medium text-slate-600">{t(opt.labelKey as any)}</span>
+                          <span className="skin-tone-label text-xs font-medium">{t(opt.labelKey as any)}</span>
                           {profile.skinTone === opt.value && <Check className="absolute right-2 top-2 h-4 w-4 text-[#d7c39d]" />}
                         </button>
                       ))}

@@ -456,7 +456,8 @@
 
 .phase-two-survey,
 .phase-two-results,
-.phase-two-loading {
+.phase-two-loading,
+.phase-two-favorites {
   min-width: 0;
   background:
     radial-gradient(circle at 80% 10%, rgba(107, 75, 99, 0.11), transparent 31%),
@@ -468,13 +469,16 @@
 .phase-two-survey input:focus-visible,
 .phase-two-survey [role='combobox']:focus-visible,
 .phase-two-results button:focus-visible,
-.phase-two-results a:focus-visible {
+.phase-two-results a:focus-visible,
+.phase-two-favorites button:focus-visible,
+.phase-two-favorites a:focus-visible {
   outline: 2px solid #c9a46a;
   outline-offset: 3px;
 }
 
 .survey-nav,
-.result-nav {
+.result-nav,
+.favorites-nav {
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(8, 9, 12, 0.9);
   backdrop-filter: blur(16px);
@@ -579,6 +583,15 @@
 .phase-two-survey .survey-card .survey-option.bg-slate-900 .text-slate-300,
 .phase-two-survey .survey-card .survey-option-selected .text-slate-300 {
   color: #d7c39d !important;
+}
+
+.phase-two-survey .survey-card .survey-option-selected .skin-tone-label {
+  color: #f7f4ee !important;
+}
+
+.phase-two-survey .survey-card .survey-option-selected > div:first-child {
+  border-color: #d7c39d !important;
+  box-shadow: 0 0 0 2px rgba(215, 195, 157, 0.3);
 }
 
 .phase-two-survey .sf-primary-button:disabled {
@@ -746,6 +759,24 @@
   color: #f4f0e9 !important;
 }
 
+.result-item-brand,
+.result-item-description {
+  color: #aaa49b !important;
+}
+
+.result-item-name {
+  color: #f4f0e9 !important;
+}
+
+.result-outfit-details > div > div > div > span:last-child {
+  color: #f7f4ee !important;
+}
+
+.result-item-buy,
+.result-item-buy:hover {
+  color: #d7c39d !important;
+}
+
 .result-outfit-advice,
 .result-outfit-tags {
   border-color: rgba(255, 255, 255, 0.08) !important;
@@ -787,6 +818,77 @@
 .phase-two-results .text-amber-600,
 .phase-two-results .text-blue-600 {
   color: #d7c39d !important;
+}
+
+.favorite-card {
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: #12141a !important;
+  box-shadow: 0 20px 55px rgba(0, 0, 0, 0.22) !important;
+}
+
+.favorite-card:hover {
+  border-color: rgba(201, 164, 106, 0.25) !important;
+  background: #171a21 !important;
+}
+
+.favorites-back-button,
+.favorite-remove-icon {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  background: #171a21 !important;
+  color: #f7f4ee !important;
+}
+
+.favorites-back-button:hover,
+.favorite-remove-icon:hover {
+  border-color: rgba(201, 164, 106, 0.38) !important;
+  background: #1b1e26 !important;
+}
+
+.favorite-category-badge,
+.favorite-tag {
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: #1b1e26 !important;
+  color: #aaa49b !important;
+}
+
+.favorite-rating-badge {
+  background: rgba(201, 164, 106, 0.16) !important;
+  color: #d7c39d !important;
+}
+
+.favorite-occasion-tag,
+.favorite-reason,
+.favorite-tips span {
+  color: #d7c39d !important;
+}
+
+.favorite-reason {
+  background: rgba(201, 164, 106, 0.09);
+}
+
+.favorite-tips {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.favorite-remove-button {
+  color: #d7c39d !important;
+}
+
+.favorite-remove-button:hover {
+  background: rgba(201, 164, 106, 0.1) !important;
+  color: #f7f4ee !important;
+}
+
+.favorites-empty {
+  min-height: 18rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1rem;
+  background: #12141a;
+}
+
+.favorites-empty > div {
+  background: #1b1e26;
+  color: #d7c39d;
 }
 
 @keyframes phaseTwoStepIn {
