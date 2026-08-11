@@ -18,6 +18,7 @@ import type { UserBodyProfile, Gender, BodyType, SkinTone, StylePreference, Occa
 import { getRecommendations, saveProfile } from '../hooks/useRecommendation';
 import {
   cacheAIRecommendation,
+  clearCachedAIRecommendation,
   requestAIRecommendation,
   safeSessionGet,
   safeSessionRemove,
@@ -115,7 +116,10 @@ export default function Survey() {
   const [profile, setProfile] = useState<Partial<UserBodyProfile>>(initialDraft?.profile ?? defaultProfile);
 
   useEffect(() => {
-    if (restartSurvey) safeSessionRemove(DRAFT_KEY);
+    if (restartSurvey) {
+      safeSessionRemove(DRAFT_KEY);
+      clearCachedAIRecommendation();
+    }
   }, [restartSurvey]);
 
   useEffect(() => {
