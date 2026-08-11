@@ -90,6 +90,7 @@ export default function Recommendations() {
     return loadProfile() || (isValidOccasion ? getNeutralProfile(urlOccasion) : null);
   });
   const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [visibleCount, setVisibleCount] = useState(12);
   const [showFavorites, setShowFavorites] = useState(false);
   const [showOccasionSwitcher, setShowOccasionSwitcher] = useState(false);
   const switcherRef = useRef<HTMLDivElement>(null);
@@ -164,23 +165,22 @@ export default function Recommendations() {
   }, [weatherData, t]);
   const localOutfits = useMemo(() => generateOutfitSets(recommendations, t as any, profile, weatherForEngine), [recommendations, profile, weatherForEngine, t]);
 
-  useEffect(() => {
-    if (aiRecommendation || !profile || recommendations.length === 0) return;
-    if (aiRequestInFlight.current) return;
+  const regenerateAIRecommendation = useCallback(async () => {
+    if (!profile || !recommendations.length || aiRequestInFlight.current) return;
 
     aiRequestInFlight.current = true;
     setAILoading(true);
-    requestAIRecommendation(profile, recommendations)
-      .then((recommendation) => {
-        if (recommendation) cacheAIRecommendation(profile, recommendation);
-        setAIRecommendation(recommendation);
-      })
-      .catch(() => setAIRecommendation(null))
-      .finally(() => {
-        aiRequestInFlight.current = false;
-        setAILoading(false);
-      });
-  }, [aiRecommendation, profile, recommendations]);
+    try {
+      const recommendation = await requestAIRecommendation(profile, recommendations);
+      if (recommendation) cacheAIRecommendation(profile, recommendation);
+      setAIRecommendation(recommendation);
+    } catch {
+      setAIRecommendation(null);
+    } finally {
+      aiRequestInFlight.current = false;
+      setAILoading(false);
+    }
+  }, [profile, recommendations]);
 
   const outfits = useMemo(() => {
     if (!aiRecommendation) return localOutfits;
@@ -224,6 +224,11 @@ export default function Recommendations() {
   }, [recommendations, activeCategory]);
 
   const displayItems = showFavorites ? favoriteItems : filteredByCategory;
+  const visibleItems = showFavorites ? displayItems : displayItems.slice(0, visibleCount);
+
+  useEffect(() => {
+    setVisibleCount(12);
+  }, [activeCategory, showFavorites]);
 
   // 没有 profile 数据且无场合参数时显示引导页
   if (!profile) {
@@ -312,6 +317,14 @@ export default function Recommendations() {
             {aiLoading ? <><Spinner />AI {t('common.loading')}</> : aiRecommendation ? <>✦ AI</> : t('rec.outfitRecommendations')}
           </span>
         </div>
+        {!aiRecommendation && !aiLoading && (
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#12141A] px-4 py-3 text-sm text-[#AAA49B]">
+            <span>AI 推荐结果已过期，可重新生成</span>
+            <Button className="sf-primary-button" onClick={regenerateAIRecommendation}>
+              重新生成 AI 推荐
+            </Button>
+          </div>
+        )}
         {/* 场合标签 + 未填问卷提示 */}
         {isValidOccasion && (
           <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -513,6 +526,7 @@ export default function Recommendations() {
                 onClick={() => {
                   setActiveCategory(cat.key);
                   setShowFavorites(false);
+                  setVisibleCount(12);
                 }}
                 className={`inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium transition-all ${
                   activeCategory === cat.key && !showFavorites
@@ -540,14 +554,14 @@ export default function Recommendations() {
         </div>
 
         {/* Items Grid */}
-        {displayItems.length === 0 ? (
+        {visibleItems.length === 0 ? (
           <div className="py-20 text-center text-slate-400">
             <Shirt className="mx-auto mb-3 h-12 w-12" />
             <p>{showFavorites ? t('rec.noFavorites') : t('rec.noCategoryResults')}</p>
           </div>
         ) : (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {displayItems.map((item) => (
+            {visibleItems.map((item) => (
               <div key={item.id} className="stagger-item animate-fade-in-up">
                 <ClothingCard
                   item={item}
@@ -556,6 +570,13 @@ export default function Recommendations() {
                 />
               </div>
             ))}
+          </div>
+        )}
+        {!showFavorites && visibleItems.length < displayItems.length && (
+          <div className="mt-6 flex justify-center">
+            <Button className="sf-secondary-button" variant="outline" onClick={() => setVisibleCount((count) => count + 12)}>
+              加载更多
+            </Button>
           </div>
         )}
       </div>
@@ -574,7 +595,7 @@ function ProductImage({ item, className }: { item: ClothingItem; className: stri
     );
   }
 
-  return <img src={item.image} alt={item.name} className={className} onError={() => setHasError(true)} loading="lazy" />;
+  return <img src={item.image} alt={item.name} className={className} onError={() => setHasError(true)} loading="lazy" decoding="async" />;
 }
 
 function OutfitCard({

@@ -41,6 +41,29 @@ export function safeSessionRemove(key: string) {
   } catch {}
 }
 
+function safeLocalGet(key: string) {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function safeLocalSet(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function safeLocalRemove(key: string) {
+  try {
+    localStorage.removeItem(key);
+  } catch {}
+}
+
 export function getAIRecommendationProfileKey(profile: UserBodyProfile) {
   return JSON.stringify([
     profile.gender,
@@ -57,7 +80,7 @@ export function getAIRecommendationProfileKey(profile: UserBodyProfile) {
 
 export function readCachedAIRecommendation(profile: UserBodyProfile) {
   try {
-    const raw = safeSessionGet(AI_CACHE_KEY);
+    const raw = safeLocalGet(AI_CACHE_KEY);
     if (!raw) return null;
 
     const cached = JSON.parse(raw) as CachedAIRecommendation;
@@ -66,20 +89,20 @@ export function readCachedAIRecommendation(profile: UserBodyProfile) {
       cached.profileKey !== getAIRecommendationProfileKey(profile) ||
       Date.now() - cached.generatedAt > AI_CACHE_TTL
     ) {
-      safeSessionRemove(AI_CACHE_KEY);
+      safeLocalRemove(AI_CACHE_KEY);
       return null;
     }
 
     return cached.recommendation;
   } catch {
-    safeSessionRemove(AI_CACHE_KEY);
+    safeLocalRemove(AI_CACHE_KEY);
     return null;
   }
 }
 
 export function cacheAIRecommendation(profile: UserBodyProfile, recommendation: AIRecommendation) {
   try {
-    return safeSessionSet(AI_CACHE_KEY, JSON.stringify({
+    return safeLocalSet(AI_CACHE_KEY, JSON.stringify({
       recommendation,
       profileKey: getAIRecommendationProfileKey(profile),
       generatedAt: Date.now(),
@@ -90,7 +113,7 @@ export function cacheAIRecommendation(profile: UserBodyProfile, recommendation: 
 }
 
 export function clearCachedAIRecommendation() {
-  safeSessionRemove(AI_CACHE_KEY);
+  safeLocalRemove(AI_CACHE_KEY);
 }
 
 export async function requestAIRecommendation(profile: UserBodyProfile, candidates: ClothingItem[]) {
