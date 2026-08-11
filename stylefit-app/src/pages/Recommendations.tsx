@@ -49,6 +49,14 @@ const occasionSwitcherItems: { key: Occasion; labelKey: string; icon: React.Reac
   { key: 'formal', labelKey: 'rec.occasion.formal', icon: <Crown className="h-4 w-4" /> },
 ];
 
+const styleTagLabels: Record<string, string> = {
+  business: '商务',
+  work: '通勤',
+  casual: '休闲',
+  daily: '日常',
+  minimal: '简约',
+};
+
 const catList: { key: string; labelKey: string; icon: React.ReactNode }[] = [
   { key: 'all', labelKey: 'rec.category.all', icon: <Sparkles className="h-4 w-4" /> },
   { key: 'top', labelKey: 'rec.category.top', icon: <Shirt className="h-4 w-4" /> },
@@ -555,6 +563,20 @@ export default function Recommendations() {
   );
 }
 
+function ProductImage({ item, className }: { item: ClothingItem; className: string }) {
+  const [hasError, setHasError] = useState(!item.image);
+
+  if (hasError) {
+    return (
+      <div role="img" aria-label={`${item.name} 图片暂不可用`} className={`product-image-fallback ${className}`}>
+        <Shirt className="h-1/3 w-1/3" aria-hidden="true" />
+      </div>
+    );
+  }
+
+  return <img src={item.image} alt={item.name} className={className} onError={() => setHasError(true)} loading="lazy" />;
+}
+
 function OutfitCard({
   outfit,
   isFavorite,
@@ -586,6 +608,11 @@ function OutfitCard({
   const categoryLabel: Record<string, string> = {
     top: t('rec.category.top'), bottom: t('rec.category.bottom'), dress: t('rec.category.dress'), outerwear: t('rec.category.outerwear'), shoes: t('rec.category.shoes'), accessory: t('rec.category.accessory'),
   };
+  const visibleMatchReasons = Array.from(new Set(
+    (outfit.matchReasons ?? [])
+      .map((reason) => reason.trim())
+      .filter((reason) => reason && reason !== outfit.suitableBodyDesc?.trim()),
+  )).slice(0, 3);
 
   return (
     <Card className="result-outfit-card overflow-hidden stagger-item" style={{ animationDelay: `${index * 100}ms` }}>
@@ -618,10 +645,10 @@ function OutfitCard({
               {outfit.suitableBodyDesc}
             </div>
           )}
-          {outfit.matchReasons && outfit.matchReasons.length > 0 && (
+          {visibleMatchReasons.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-1">
-              {outfit.matchReasons.slice(0, 3).map((reason, idx) => (
-                <span key={idx} className="text-xs text-green-600 bg-green-50 px-1.5 py-0.5 rounded">
+              {visibleMatchReasons.map((reason) => (
+                <span key={reason} className="text-xs text-green-600 bg-green-50 px-1.5 py-0.5 rounded">
                   {reason}
                 </span>
               ))}
@@ -633,7 +660,7 @@ function OutfitCard({
         <div className="result-outfit-images grid grid-cols-3 gap-1 p-2 sm:grid-cols-5">
           {outfit.items.slice(0, 5).map((item: ClothingItem) => (
             <div key={item.id} className="relative aspect-square overflow-hidden rounded-lg bg-slate-100">
-              <img src={item.image} alt={item.name} className="h-full w-full object-cover" loading="lazy" />
+              <ProductImage item={item} className="h-full w-full object-cover" />
               <button
                 onClick={() => toggleFavorite(item.id)}
                 className="absolute top-0.5 right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-white/90 shadow-sm"
@@ -670,12 +697,7 @@ function OutfitCard({
             <div className="space-y-2 pb-2 animate-fade-in">
               {outfit.items.map((item: ClothingItem) => (
                 <div key={item.id} className="flex gap-2.5 rounded-lg bg-slate-50 p-2">
-                  <img
-                    src={item.image}
-                    alt={item.name}
-                    className="h-12 w-12 rounded-md object-cover shrink-0"
-                    loading="lazy"
-                  />
+                  <ProductImage item={item} className="h-12 w-12 rounded-md object-cover shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1">
                       <div className="flex items-center gap-1 min-w-0">
@@ -730,7 +752,7 @@ function OutfitCard({
               key={tag}
               className="rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
             >
-              {tag}
+              {styleTagLabels[tag] ?? tag}
             </span>
           ))}
         </div>
@@ -749,25 +771,12 @@ function ClothingCard({
   toggleFavorite: (id: string) => void;
 }) {
   const { t } = useT();
-  const [imgError, setImgError] = useState(false);
   const fav = isFavorite(item.id);
 
   return (
     <Card className="result-product-card group overflow-hidden">
       <div className="relative aspect-[4/5] overflow-hidden bg-slate-100">
-        {!imgError ? (
-          <img
-            src={item.image}
-            alt={item.name}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-            onError={() => setImgError(true)}
-            loading="lazy"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-slate-300">
-            <Shirt className="h-16 w-16" />
-          </div>
-        )}
+        <ProductImage item={item} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
         <div className="absolute top-3 left-3">
           <Badge variant="secondary" className="bg-white/90 text-xs font-medium">
             {(t as any)(`rec.category.${item.category}`) || item.category}

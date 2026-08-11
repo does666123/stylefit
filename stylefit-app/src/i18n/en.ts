@@ -4,6 +4,7 @@ const en: Record<TranslationKey, string> = {
   // Common
   'common.loading': 'Loading...',
   'common.loadingSub': 'Please wait while AI analyzes your body data',
+  'loading.title': 'Generating your personal looks',
   'loading.analysis.body': 'Analyzing your proportions',
   'loading.analysis.context': 'Matching occasion and weather',
   'loading.analysis.budget': 'Calibrating style and budget',

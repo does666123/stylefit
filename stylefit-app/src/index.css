@@ -717,6 +717,25 @@
   background: #1b1e26 !important;
 }
 
+.product-image-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1b1e26;
+  color: #77756f;
+}
+
+.result-outfit-card .bg-green-50,
+.result-outfit-card .bg-green-100 {
+  border: 1px solid rgba(115, 168, 123, 0.25);
+  background: rgba(42, 93, 56, 0.28) !important;
+}
+
+.result-outfit-card .text-green-600,
+.result-outfit-card .text-green-700 {
+  color: #b5d9b8 !important;
+}
+
 .result-outfit-details button,
 .result-outfit-advice,
 .result-outfit-tags {
@@ -800,6 +819,21 @@
 
   .result-outfit-card .grid-cols-3 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .result-outfit-details .bg-slate-50 {
+    background: #1b1e26 !important;
+  }
+
+  .result-outfit-details .text-slate-700,
+  .result-outfit-details .text-slate-900 {
+    color: #f4f0e9 !important;
+  }
+
+  .result-outfit-details .text-slate-400,
+  .result-outfit-details .text-slate-500,
+  .result-outfit-details .text-blue-600 {
+    color: #bbb6ae !important;
   }
 }
 

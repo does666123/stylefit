@@ -21,7 +21,7 @@ export default function LoadingScreen({ message }: LoadingScreenProps) {
     return () => window.clearInterval(timer);
   }, [stages.length]);
 
-  const displayMessage = message || t('common.loading');
+  const displayMessage = message || t('loading.title');
   return (
     <div className="phase-two-loading flex min-h-screen items-center justify-center px-4">
       <div className="phase-two-loading-card text-center" aria-live="polite">

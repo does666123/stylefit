@@ -2,6 +2,7 @@ const zh = {
   // Common
   'common.loading': '加载中...',
   'common.loadingSub': '请稍候，AI 正在分析你的体型数据',
+  'loading.title': '正在生成专属搭配',
   'loading.analysis.body': '正在分析身材比例',
   'loading.analysis.context': '正在匹配场合与天气',
   'loading.analysis.budget': '正在校准风格与预算',
