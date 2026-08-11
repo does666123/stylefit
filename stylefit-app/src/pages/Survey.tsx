@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import {
   Select,
   SelectContent,
@@ -128,9 +127,6 @@ export default function Survey() {
       safeSessionSet(DRAFT_KEY, JSON.stringify({ profile, step }));
     } catch {}
   }, [profile, step, loading, submittedProfile]);
-
-  // Progress: 3 survey steps map to first 3 of 4 total steps
-  const progress = ((step + 1) / allSteps.length) * 100;
 
   const update = <K extends keyof UserBodyProfile>(key: K, value: UserBodyProfile[K]) => {
     setProfile((p) => ({ ...p, [key]: value }));
@@ -292,34 +288,25 @@ export default function Survey() {
       </nav>
 
       <div className="mx-auto max-w-xl px-4 py-7 sm:py-10">
-        {/* Step Progress Indicator */}
-        <div className="mb-6">
-          <Progress value={progress} className="survey-progress mb-4" />
-          <div className="flex justify-between">
-            {allSteps.map((label, idx) => (
-              <div key={label} className="flex flex-col items-center gap-1.5">
-                <div
-                  className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-all duration-300 ${
-                    idx < step
-                      ? 'survey-step-done'
-                      : idx === step
-                      ? 'survey-step-current'
-                      : 'survey-step-pending'
-                  }`}
-                >
-                  {idx < step ? <Check className="h-4 w-4" /> : idx + 1}
+        <ol className="survey-stepper mb-7" aria-label={t('survey.stepIndicator', { step: step + 1, total: allSteps.length })}>
+          {allSteps.map((label, idx) => {
+            const state = idx < step ? 'done' : idx === step ? 'current' : 'pending';
+
+            return (
+              <li key={label} className={`survey-stepper-item survey-stepper-item-${state}`} aria-current={idx === step ? 'step' : undefined}>
+                <div className="survey-stepper-node" aria-hidden="true">
+                  {idx < step ? <Check className="h-4 w-4" /> : <span>{idx + 1}</span>}
                 </div>
-                <span
-                  className={`text-xs font-medium transition-colors ${
-                    idx <= step ? 'text-[#D7C39D]' : 'text-[#77756F]'
-                  }`}
-                >
-                  {t(label as any)}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+                <span className="survey-stepper-label">{t(label as any)}</span>
+                {idx < allSteps.length - 1 && (
+                  <span className="survey-stepper-connector" aria-hidden="true">
+                    <span className={idx < step ? 'is-complete' : undefined} />
+                  </span>
+                )}
+              </li>
+            );
+          })}
+        </ol>
 
         <Card className="survey-card">
           <CardContent className="p-6 sm:p-8">
