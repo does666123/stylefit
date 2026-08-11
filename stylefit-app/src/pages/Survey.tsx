@@ -186,13 +186,18 @@ export default function Survey() {
     if (submitInFlight.current) return;
     submitInFlight.current = true;
     setLoading(true);
+    let didNavigate = false;
 
     try {
       const recommendation = await requestAIRecommendation(fullProfile, getRecommendations(fullProfile));
       if (recommendation) {
         cacheAIRecommendation(fullProfile, recommendation);
         safeSessionRemove(DRAFT_KEY);
-        navigate('/recommendations', { state: { profile: fullProfile, aiRecommendation: recommendation } });
+        navigate('/recommendations', {
+          replace: true,
+          state: { profile: fullProfile, aiRecommendation: recommendation },
+        });
+        didNavigate = true;
         return;
       }
 
@@ -202,8 +207,10 @@ export default function Survey() {
       setSubmittedProfile(fullProfile);
       setRetryCount((count) => count + 1);
     } finally {
-      setLoading(false);
-      submitInFlight.current = false;
+      if (!didNavigate) {
+        setLoading(false);
+        submitInFlight.current = false;
+      }
     }
   };
 
