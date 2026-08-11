@@ -1,6 +1,8 @@
 import { Shirt, Sparkles } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { useT } from '@/i18n';
+
+const LoadingBallpit = lazy(() => import('./LoadingBallpit'));
 
 interface LoadingScreenProps {
   message?: string;
@@ -15,16 +17,26 @@ export default function LoadingScreen({ message }: LoadingScreenProps) {
     t('loading.analysis.finish'),
   ];
   const [stage, setStage] = useState(0);
+  const [showBallpit, setShowBallpit] = useState(false);
 
   useEffect(() => {
     const timer = window.setInterval(() => setStage((current) => (current + 1) % stages.length), 2600);
     return () => window.clearInterval(timer);
   }, [stages.length]);
 
+  useEffect(() => {
+    const media = window.matchMedia('(min-width: 768px) and (prefers-reduced-motion: no-preference)');
+    const update = () => setShowBallpit(media.matches);
+    update();
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
+
   const displayMessage = message || t('loading.title');
   return (
     <div className="phase-two-loading flex min-h-screen items-center justify-center px-4">
-      <div className="phase-two-loading-card text-center" aria-live="polite">
+      {showBallpit && <Suspense fallback={null}><LoadingBallpit /></Suspense>}
+      <div className="phase-two-loading-card relative z-10 text-center" aria-live="polite">
         <div className="relative mx-auto mb-6 flex h-16 w-16 items-center justify-center">
           <div className="absolute inset-0 rounded-full border border-[#C9A46A]/30" />
           <div className="absolute inset-2 rounded-full border border-[#F7F4EE]/10" />
