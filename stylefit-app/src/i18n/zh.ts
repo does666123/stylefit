@@ -29,13 +29,13 @@ const zh = {
   'home.hero.title1': '穿出你的',
   'home.hero.title2': '专属风格',
   'home.hero.desc': '基于你的身材、风格和场合，AI 为你量身推荐穿搭方案',
-  'home.hero.welcomeBack': '欢迎回来！根据你的风格，为你更新了推荐',
-  'home.hero.viewMyRecommendations': '查看我的推荐',
+  'home.hero.welcomeBack': '欢迎回来，上次推荐与收藏仍为你保留',
+  'home.hero.viewMyRecommendations': '继续上次推荐',
   'home.hero.startTestNow': '开始测试',
   'home.hero.retakeTest': '重新测试',
 
   // Home - Nav
-  'home.nav.viewRecommendations': '查看推荐',
+  'home.nav.viewRecommendations': '继续推荐',
   'home.nav.retakeTest': '重新测试',
   'home.nav.startTest': '开始测试',
 

@@ -25,21 +25,10 @@ import {
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { useT } from '@/i18n';
 import { fetchWeatherWithCache, interpretWeather, type WeatherData } from '@/lib/weather';
+import { loadProfile } from '@/hooks/useRecommendation';
+import type { UserBodyProfile } from '@/types';
 
 const SilkBackground = lazy(() => import('@/components/SilkBackground'));
-
-interface UserProfile {
-  height: number;
-  weight: number;
-  bodyType: string;
-  skinTone: string;
-  age?: number;
-  budget?: number;
-  style: string;
-  gender: string;
-  occasion: string;
-  season: string;
-}
 
 const occasionQuickEntries = [
   { key: 'work', icon: <Briefcase className="h-5 w-5" /> },
@@ -65,21 +54,10 @@ const heroLooks = [
   },
 ];
 
-function getSavedProfile(): UserProfile | null {
-  try {
-    const saved = localStorage.getItem('stylefit_profile');
-    if (!saved) return null;
-    const profile = JSON.parse(saved) as UserProfile;
-    return profile.height && profile.weight && profile.bodyType && profile.style ? profile : null;
-  } catch {
-    return null;
-  }
-}
-
 export function HomePage() {
   const navigate = useNavigate();
   const { t } = useT();
-  const [existingProfile] = useState<UserProfile | null>(getSavedProfile);
+  const [existingProfile] = useState<UserBodyProfile | null>(loadProfile);
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [weatherLoading, setWeatherLoading] = useState(true);
   const [weatherRefreshing, setWeatherRefreshing] = useState(false);
@@ -144,6 +122,10 @@ export function HomePage() {
 
   const handleViewRecommendations = () => {
     if (existingProfile) navigate('/recommendations', { state: { profile: existingProfile } });
+  };
+
+  const startSurvey = () => {
+    navigate('/survey', existingProfile ? { state: { restartSurvey: true } } : undefined);
   };
 
   const prefetchSurvey = () => {
@@ -221,7 +203,7 @@ export function HomePage() {
               </Button>
             )}
             <Button
-              onClick={() => navigate('/survey')}
+              onClick={startSurvey}
               onTouchStart={prefetchSurvey}
               onMouseEnter={prefetchSurvey}
               className="sf-primary-button focus-ring h-9 px-3 text-xs sm:px-4 sm:text-sm"
@@ -270,7 +252,7 @@ export function HomePage() {
               <div className="mt-9 flex flex-col gap-3 sm:flex-row">
                 <Button
                   size="lg"
-                  onClick={existingProfile ? handleViewRecommendations : () => navigate('/survey')}
+                  onClick={existingProfile ? handleViewRecommendations : startSurvey}
                   onTouchStart={prefetchSurvey}
                   onMouseEnter={prefetchSurvey}
                   className="sf-primary-button focus-ring h-12 px-6 text-sm sm:text-base"
@@ -427,7 +409,7 @@ export function HomePage() {
             <p className="mb-3 text-xs font-medium tracking-[0.18em] text-[#C9A46A]">PERSONAL STYLING</p>
             <h2 className="mb-4 text-3xl font-semibold tracking-[-0.035em] sm:text-4xl">{t('home.cta.title')}</h2>
             <p className="mb-8 text-[#AAA49B]">{t('home.cta.desc')}</p>
-            <Button size="lg" onClick={() => navigate('/survey')} className="sf-primary-button focus-ring h-12 px-8 text-base">
+            <Button size="lg" onClick={startSurvey} className="sf-primary-button focus-ring h-12 px-8 text-base">
               {t('home.cta.button')}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>

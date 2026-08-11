@@ -31,13 +31,13 @@ const en: Record<TranslationKey, string> = {
   'home.hero.title1': 'Wear Your',
   'home.hero.title2': 'Unique Style',
   'home.hero.desc': 'AI-curated outfit recommendations based on your body, style, and occasion',
-  'home.hero.welcomeBack': 'Welcome back! We\'ve updated recommendations based on your style',
-  'home.hero.viewMyRecommendations': 'View My Recommendations',
+  'home.hero.welcomeBack': 'Welcome back. Your last recommendations and favorites are still here.',
+  'home.hero.viewMyRecommendations': 'Continue Last Recommendations',
   'home.hero.startTestNow': 'Start Test',
   'home.hero.retakeTest': 'Retake Test',
 
   // Home - Nav
-  'home.nav.viewRecommendations': 'View Recommendations',
+  'home.nav.viewRecommendations': 'Continue Recommendations',
   'home.nav.retakeTest': 'Retake Test',
   'home.nav.startTest': 'Start Test',
 

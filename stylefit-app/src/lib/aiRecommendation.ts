@@ -10,7 +10,7 @@ export type AIRecommendation = {
 };
 
 const AI_CACHE_KEY = 'stylefit_ai_recommendation';
-const AI_CACHE_TTL = 30 * 60 * 1000;
+const AI_CACHE_TTL = 24 * 60 * 60 * 1000;
 
 type CachedAIRecommendation = {
   recommendation: AIRecommendation;
