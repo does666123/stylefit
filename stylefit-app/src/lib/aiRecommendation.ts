@@ -18,6 +18,29 @@ type CachedAIRecommendation = {
   generatedAt: number;
 };
 
+export function safeSessionGet(key: string) {
+  try {
+    return sessionStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+export function safeSessionSet(key: string, value: string) {
+  try {
+    sessionStorage.setItem(key, value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function safeSessionRemove(key: string) {
+  try {
+    sessionStorage.removeItem(key);
+  } catch {}
+}
+
 export function getAIRecommendationProfileKey(profile: UserBodyProfile) {
   return JSON.stringify([
     profile.gender,
@@ -34,7 +57,7 @@ export function getAIRecommendationProfileKey(profile: UserBodyProfile) {
 
 export function readCachedAIRecommendation(profile: UserBodyProfile) {
   try {
-    const raw = sessionStorage.getItem(AI_CACHE_KEY);
+    const raw = safeSessionGet(AI_CACHE_KEY);
     if (!raw) return null;
 
     const cached = JSON.parse(raw) as CachedAIRecommendation;
@@ -43,52 +66,66 @@ export function readCachedAIRecommendation(profile: UserBodyProfile) {
       cached.profileKey !== getAIRecommendationProfileKey(profile) ||
       Date.now() - cached.generatedAt > AI_CACHE_TTL
     ) {
-      sessionStorage.removeItem(AI_CACHE_KEY);
+      safeSessionRemove(AI_CACHE_KEY);
       return null;
     }
 
     return cached.recommendation;
   } catch {
-    sessionStorage.removeItem(AI_CACHE_KEY);
+    safeSessionRemove(AI_CACHE_KEY);
     return null;
   }
 }
 
 export function cacheAIRecommendation(profile: UserBodyProfile, recommendation: AIRecommendation) {
-  sessionStorage.setItem(AI_CACHE_KEY, JSON.stringify({
-    recommendation,
-    profileKey: getAIRecommendationProfileKey(profile),
-    generatedAt: Date.now(),
-  } satisfies CachedAIRecommendation));
+  try {
+    return safeSessionSet(AI_CACHE_KEY, JSON.stringify({
+      recommendation,
+      profileKey: getAIRecommendationProfileKey(profile),
+      generatedAt: Date.now(),
+    } satisfies CachedAIRecommendation));
+  } catch {
+    return false;
+  }
 }
 
 export function clearCachedAIRecommendation() {
-  sessionStorage.removeItem(AI_CACHE_KEY);
+  safeSessionRemove(AI_CACHE_KEY);
 }
 
 export async function requestAIRecommendation(profile: UserBodyProfile, candidates: ClothingItem[]) {
-  const response = await fetch('/api/recommend', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      profile,
-      candidates: candidates.slice(0, 30).map((item) => ({
-        id: item.id,
-        name: item.name,
-        category: item.category,
-        price: item.price,
-        colors: item.colors,
-        tags: item.tags,
-        styles: item.styles,
-        occasions: item.occasions,
-      })),
-    }),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 45_000);
 
-  if (!response.ok) return null;
+  try {
+    const response = await fetch('/api/recommend', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({
+        profile,
+        candidates: candidates.slice(0, 30).map((item) => ({
+          id: item.id,
+          name: item.name,
+          category: item.category,
+          price: item.price,
+          colors: item.colors,
+          tags: item.tags,
+          styles: item.styles,
+          occasions: item.occasions,
+        })),
+      }),
+    });
 
-  const result = await response.json() as { status?: string; recommendation?: AIRecommendation };
-  return result.status === 'ok' && Array.isArray(result.recommendation?.outfits)
-    ? result.recommendation
-    : null;
+    if (!response.ok) return null;
+
+    const result = await response.json() as { status?: string; recommendation?: AIRecommendation };
+    return result.status === 'ok' && Array.isArray(result.recommendation?.outfits)
+      ? result.recommendation
+      : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
 }

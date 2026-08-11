@@ -16,7 +16,13 @@ import { Shirt, ArrowRight, ArrowLeft, Check, Loader2, Sparkles, Ruler, AlertCir
 import { useT } from '@/i18n';
 import type { UserBodyProfile, Gender, BodyType, SkinTone, StylePreference, Occasion, Season } from '../types';
 import { getRecommendations, saveProfile } from '../hooks/useRecommendation';
-import { cacheAIRecommendation, requestAIRecommendation } from '../lib/aiRecommendation';
+import {
+  cacheAIRecommendation,
+  requestAIRecommendation,
+  safeSessionGet,
+  safeSessionRemove,
+  safeSessionSet,
+} from '../lib/aiRecommendation';
 import LoadingScreen from '@/components/LoadingScreen';
 
 const allSteps = ['survey.step.basic', 'survey.step.body', 'survey.step.style'];
@@ -35,10 +41,10 @@ type SurveyDraft = {
 
 function readDraft() {
   try {
-    const draft = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || 'null') as SurveyDraft | null;
+    const draft = JSON.parse(safeSessionGet(DRAFT_KEY) || 'null') as SurveyDraft | null;
     return draft && draft.step >= 0 && draft.step < allSteps.length ? draft : null;
   } catch {
-    sessionStorage.removeItem(DRAFT_KEY);
+    safeSessionRemove(DRAFT_KEY);
     return null;
   }
 }
@@ -109,12 +115,14 @@ export default function Survey() {
   const [profile, setProfile] = useState<Partial<UserBodyProfile>>(initialDraft?.profile ?? defaultProfile);
 
   useEffect(() => {
-    if (restartSurvey) sessionStorage.removeItem(DRAFT_KEY);
+    if (restartSurvey) safeSessionRemove(DRAFT_KEY);
   }, [restartSurvey]);
 
   useEffect(() => {
     if (loading || submittedProfile) return;
-    sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ profile, step }));
+    try {
+      safeSessionSet(DRAFT_KEY, JSON.stringify({ profile, step }));
+    } catch {}
   }, [profile, step, loading, submittedProfile]);
 
   // Progress: 3 survey steps map to first 3 of 4 total steps
@@ -178,18 +186,29 @@ export default function Survey() {
     if (submitInFlight.current) return;
     submitInFlight.current = true;
     setLoading(true);
-    const recommendation = await requestAIRecommendation(fullProfile, getRecommendations(fullProfile)).catch(() => null);
-    if (recommendation) {
-      cacheAIRecommendation(fullProfile, recommendation);
-      sessionStorage.removeItem(DRAFT_KEY);
-      navigate('/recommendations', { state: { profile: fullProfile, aiRecommendation: recommendation } });
-      return;
-    }
+    let navigated = false;
 
-    setSubmittedProfile(fullProfile);
-    setRetryCount((count) => count + 1);
-    setLoading(false);
-    submitInFlight.current = false;
+    try {
+      const recommendation = await requestAIRecommendation(fullProfile, getRecommendations(fullProfile));
+      if (recommendation) {
+        cacheAIRecommendation(fullProfile, recommendation);
+        safeSessionRemove(DRAFT_KEY);
+        navigate('/recommendations', { state: { profile: fullProfile, aiRecommendation: recommendation } });
+        navigated = true;
+        return;
+      }
+
+      setSubmittedProfile(fullProfile);
+      setRetryCount((count) => count + 1);
+    } catch {
+      setSubmittedProfile(fullProfile);
+      setRetryCount((count) => count + 1);
+    } finally {
+      if (!navigated) {
+        setLoading(false);
+        submitInFlight.current = false;
+      }
+    }
   };
 
   const handleSubmit = () => {
