@@ -91,10 +91,15 @@ export default function Recommendations() {
   });
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [visibleCount, setVisibleCount] = useState(12);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [supportsIntersectionObserver] = useState(() => typeof IntersectionObserver !== 'undefined');
   const [showFavorites, setShowFavorites] = useState(false);
   const [showOccasionSwitcher, setShowOccasionSwitcher] = useState(false);
   const switcherRef = useRef<HTMLDivElement>(null);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+  const loadMoreTimerRef = useRef<number | null>(null);
   const aiRequestInFlight = useRef(false);
+  const isLoadingMoreRef = useRef(false);
   const [weatherData, setWeatherData] = useState<WeatherData | null>();
   const [weatherInterp, setWeatherInterp] = useState<WeatherInterpretation | null>(null);
   const [aiRecommendation, setAIRecommendation] = useState<AIRecommendation | null>(() => {
@@ -226,9 +231,41 @@ export default function Recommendations() {
   const displayItems = showFavorites ? favoriteItems : filteredByCategory;
   const visibleItems = showFavorites ? displayItems : displayItems.slice(0, visibleCount);
 
+  const loadMoreItems = useCallback(() => {
+    if (showFavorites || visibleCount >= displayItems.length || isLoadingMoreRef.current) return;
+
+    isLoadingMoreRef.current = true;
+    setIsLoadingMore(true);
+    loadMoreTimerRef.current = window.setTimeout(() => {
+      setVisibleCount((count) => Math.min(count + 12, displayItems.length));
+      setIsLoadingMore(false);
+      isLoadingMoreRef.current = false;
+    }, 120);
+  }, [displayItems.length, showFavorites, visibleCount]);
+
   useEffect(() => {
+    if (loadMoreTimerRef.current) window.clearTimeout(loadMoreTimerRef.current);
+    isLoadingMoreRef.current = false;
+    setIsLoadingMore(false);
     setVisibleCount(12);
   }, [activeCategory, showFavorites]);
+
+  useEffect(() => {
+    if (!supportsIntersectionObserver || showFavorites || visibleCount >= displayItems.length) return;
+    const target = loadMoreRef.current;
+    if (!target) return;
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) loadMoreItems();
+    }, { rootMargin: '300px 0px' });
+
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [displayItems.length, loadMoreItems, showFavorites, supportsIntersectionObserver, visibleCount]);
+
+  useEffect(() => () => {
+    if (loadMoreTimerRef.current) window.clearTimeout(loadMoreTimerRef.current);
+  }, []);
 
   // 没有 profile 数据且无场合参数时显示引导页
   if (!profile) {
@@ -560,7 +597,7 @@ export default function Recommendations() {
             <p>{showFavorites ? t('rec.noFavorites') : t('rec.noCategoryResults')}</p>
           </div>
         ) : (
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-3 lg:gap-5">
             {visibleItems.map((item) => (
               <div key={item.id} className="stagger-item animate-fade-in-up">
                 <ClothingCard
@@ -572,11 +609,17 @@ export default function Recommendations() {
             ))}
           </div>
         )}
-        {!showFavorites && visibleItems.length < displayItems.length && (
-          <div className="mt-6 flex justify-center">
-            <Button className="sf-secondary-button" variant="outline" onClick={() => setVisibleCount((count) => count + 12)}>
-              加载更多
-            </Button>
+        {!showFavorites && displayItems.length > 0 && (
+          <div ref={loadMoreRef} className="mt-6 flex min-h-10 justify-center">
+            {visibleItems.length >= displayItems.length ? (
+              <span className="text-sm text-[#AAA49B]">已展示全部 {displayItems.length} 件商品</span>
+            ) : isLoadingMore ? (
+              <span className="inline-flex items-center gap-2 text-sm text-[#AAA49B]"><Spinner />正在加载更多…</span>
+            ) : !supportsIntersectionObserver ? (
+              <Button className="sf-secondary-button" variant="outline" onClick={loadMoreItems}>
+                加载更多
+              </Button>
+            ) : null}
           </div>
         )}
       </div>
@@ -795,44 +838,44 @@ function ClothingCard({
   const fav = isFavorite(item.id);
 
   return (
-    <Card className="result-product-card group overflow-hidden">
-      <div className="relative aspect-[4/5] overflow-hidden bg-slate-100">
+    <Card className="result-product-card group overflow-hidden rounded-xl">
+      <div className="relative aspect-square overflow-hidden bg-slate-100 sm:aspect-[4/5]">
         <ProductImage item={item} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-        <div className="absolute top-3 left-3">
-          <Badge variant="secondary" className="bg-white/90 text-xs font-medium">
+        <div className="absolute left-2 top-2 sm:left-3 sm:top-3">
+          <Badge variant="secondary" className="bg-white/90 text-[10px] font-medium sm:text-xs">
             {(t as any)(`rec.category.${item.category}`) || item.category}
           </Badge>
         </div>
-        <div className="absolute top-3 right-3">
-          <Badge className="bg-amber-500 text-white text-xs">
+        <div className="absolute right-2 top-2 sm:right-3 sm:top-3">
+          <Badge className="bg-amber-500 text-[10px] text-white sm:text-xs">
             <Star className="mr-0.5 h-3 w-3 fill-current" />
             {item.rating}
           </Badge>
         </div>
         <button
           onClick={() => toggleFavorite(item.id)}
-          className="absolute bottom-3 right-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 shadow-md transition-transform hover:scale-110"
+          className="absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 shadow-md transition-transform hover:scale-110 sm:bottom-3 sm:right-3 sm:h-9 sm:w-9"
         >
           <Heart className={`h-5 w-5 ${fav ? 'fill-red-500 text-red-500' : 'text-slate-400'}`} />
         </button>
       </div>
 
-      <CardContent className="p-4">
-        <div className="mb-1 text-xs text-slate-400">{item.brand}</div>
-        <h3 className="mb-2 text-base font-semibold text-slate-900 line-clamp-1">{item.name}</h3>
+      <CardContent className="p-2.5 sm:p-4">
+        <div className="mb-1 truncate text-[10px] text-[#AAA49B] sm:text-xs">{item.brand}</div>
+        <h3 className="mb-2 line-clamp-2 text-sm font-semibold text-[#F7F4EE] sm:text-base sm:line-clamp-1">{item.name}</h3>
 
         {/* Recommend reason */}
         {item.recommendReason && (
-          <div className="mb-2 flex items-start gap-1.5 rounded-lg bg-amber-50 px-2.5 py-1.5">
+          <div className="mb-2 hidden items-start gap-1.5 rounded-lg bg-amber-50 px-2.5 py-1.5 sm:flex">
             <Lightbulb className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
             <p className="text-xs text-amber-800 leading-relaxed">{item.recommendReason}</p>
           </div>
         )}
 
-        <p className="mb-3 text-sm text-slate-500 line-clamp-2 leading-relaxed">{item.description}</p>
+        <p className="mb-3 hidden text-sm text-slate-500 line-clamp-2 leading-relaxed sm:block">{item.description}</p>
 
         {/* Suitable info */}
-        <div className="mb-2 flex flex-wrap gap-1.5">
+        <div className="mb-2 hidden flex-wrap gap-1.5 sm:flex">
           {item.suitableBodyTypes.slice(0, 3).map(bt => (
             <span key={bt} className="inline-flex items-center gap-0.5 rounded-md bg-slate-100 px-1.5 py-0.5 text-xs text-slate-500">
               <User className="h-2.5 w-2.5" />
@@ -847,7 +890,7 @@ function ClothingCard({
           ))}
         </div>
 
-        <div className="mb-3 flex flex-wrap gap-1">
+        <div className="mb-3 hidden flex-wrap gap-1 sm:flex">
           {item.tags.slice(0, 3).map((tag) => (
             <span key={tag} className="rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-600">{tag}</span>
           ))}
@@ -855,33 +898,33 @@ function ClothingCard({
 
         {/* Material */}
         {item.material && (
-          <div className="mb-3 text-xs text-slate-400">
+          <div className="mb-3 hidden text-xs text-slate-400 sm:block">
             <span className="font-medium">{t('rec.material')}</span>{item.material}
           </div>
         )}
 
-        <div className="mb-3 text-xs text-slate-400">{t('rec.availableColors')}: {item.colors.join(' / ')}</div>
+        <div className="mb-3 hidden text-xs text-slate-400 sm:block">{t('rec.availableColors')}: {item.colors.join(' / ')}</div>
 
         {/* Styling tips */}
         {item.stylingTips && (
-          <div className="mb-3 rounded-lg border border-dashed border-slate-200 px-2.5 py-1.5">
+          <div className="mb-3 hidden rounded-lg border border-dashed border-slate-200 px-2.5 py-1.5 sm:block">
             <p className="text-xs text-slate-500">
               <span className="font-medium text-slate-600">{t('rec.stylingTips')}</span>{item.stylingTips}
             </p>
           </div>
         )}
 
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <div>
-            <span className="text-xl font-bold text-slate-900">
+            <span className="text-lg font-bold text-[#D7C39D] sm:text-xl">
               {item.currency}{item.price}
             </span>
             {item.priceRange && (
               <span className="ml-1.5 text-xs text-slate-400">{item.priceRange}</span>
             )}
           </div>
-          <Button size="sm" className="bg-slate-900 hover:bg-slate-800" onClick={() => window.open(item.buyLink, '_blank')}>
-            {t('rec.goToBuy')}<ExternalLink className="ml-1 h-3 w-3" />
+          <Button size="sm" className="h-8 w-8 bg-slate-900 p-0 hover:bg-slate-800 sm:h-9 sm:w-auto sm:px-3" onClick={() => window.open(item.buyLink, '_blank')} aria-label={t('rec.goToBuy')}>
+            <span className="hidden sm:inline">{t('rec.goToBuy')}</span><ExternalLink className="h-3 w-3 sm:ml-1" />
           </Button>
         </div>
       </CardContent>
