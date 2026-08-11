@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
 import {
@@ -55,6 +55,7 @@ const heroLooks = [
 ];
 
 export function HomePage() {
+  const homeRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { t } = useT();
   const [existingProfile] = useState<UserBodyProfile | null>(loadProfile);
@@ -78,6 +79,74 @@ export function HomePage() {
     updateFavCount();
     const interval = setInterval(updateFavCount, 1000);
     return () => clearInterval(interval);
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!homeRef.current || window.matchMedia('(prefers-reduced-motion: reduce)').matches || !window.matchMedia('(min-width: 768px)').matches) return;
+
+    let cancelled = false;
+    let context: { revert: () => void } | undefined;
+
+    void Promise.all([import('gsap'), import('gsap/ScrollTrigger')]).then(([{ gsap }, { ScrollTrigger }]) => {
+      if (cancelled || !homeRef.current) return;
+
+      gsap.registerPlugin(ScrollTrigger);
+      context = gsap.context(() => {
+      const hero = homeRef.current?.querySelector<HTMLElement>('[data-hero]');
+      const heroLooks = gsap.utils.toArray<HTMLElement>('[data-hero-look]');
+      const heroImages = gsap.utils.toArray<HTMLElement>('[data-hero-look-image]');
+
+      gsap.set('[data-hero-nav]', { autoAlpha: 0, y: -18 });
+      gsap.set('[data-hero-title-line]', { autoAlpha: 0, yPercent: 115, scaleY: 0.72, transformOrigin: 'bottom' });
+      gsap.set('[data-hero-meta], [data-hero-copy], [data-hero-actions], [data-hero-gallery], [data-hero-note]', { autoAlpha: 0, y: 30 });
+      gsap.set(heroLooks, { clipPath: 'inset(0 0 100% 0 round 1.25rem)' });
+      gsap.set(heroImages, { scale: 1.1, transformOrigin: 'center' });
+
+      gsap.timeline({ defaults: { ease: 'power4.out' } })
+        .to('[data-hero-nav]', { autoAlpha: 1, y: 0, duration: 0.72 })
+        .to('[data-hero-title-line]', { autoAlpha: 1, yPercent: 0, scaleY: 1, duration: 1.15, stagger: 0.14 }, '<0.12')
+        .to('[data-hero-meta], [data-hero-copy]', { autoAlpha: 1, y: 0, duration: 0.8, stagger: 0.1 }, '<0.28')
+        .to('[data-hero-gallery]', { autoAlpha: 1, y: 0, duration: 0.95 }, '<0.18')
+        .to(heroLooks, { clipPath: 'inset(0 0 0% 0 round 1.25rem)', duration: 1.05, stagger: 0.14 }, '<0.06')
+        .to('[data-hero-actions], [data-hero-note]', { autoAlpha: 1, y: 0, duration: 0.75, stagger: 0.12 }, '<0.12');
+
+      if (hero) {
+        gsap.to('[data-hero-gallery]', {
+          yPercent: -7,
+          ease: 'none',
+          scrollTrigger: { trigger: hero, start: 'top top', end: 'bottom top', scrub: 0.8 },
+        });
+        gsap.to(heroImages, {
+          yPercent: -6,
+          scale: 1.03,
+          ease: 'none',
+          scrollTrigger: { trigger: hero, start: 'top top', end: 'bottom top', scrub: 0.8 },
+        });
+      }
+
+      gsap.utils.toArray<HTMLElement>('[data-motion-section]').forEach((section) => {
+        const displayTitle = section.querySelector<HTMLElement>('[data-motion-display]');
+        const heading = section.querySelector<HTMLElement>('[data-motion-heading-main]');
+        const cards = gsap.utils.toArray<HTMLElement>(section.querySelectorAll('[data-motion-card]'));
+        const trigger = { trigger: section, start: 'top 76%', once: true };
+
+        if (displayTitle) {
+          gsap.fromTo(displayTitle, { autoAlpha: 0, xPercent: -14 }, { autoAlpha: 1, xPercent: 0, duration: 1.15, ease: 'power4.out', scrollTrigger: trigger });
+        }
+        if (heading) {
+          gsap.fromTo(heading, { autoAlpha: 0, y: 88, scaleY: 0.78, transformOrigin: 'bottom' }, { autoAlpha: 1, y: 0, scaleY: 1, duration: 1.05, ease: 'power4.out', scrollTrigger: trigger });
+        }
+        if (cards.length) {
+          gsap.fromTo(cards, { autoAlpha: 0, y: 68, scale: 0.94 }, { autoAlpha: 1, y: 0, scale: 1, duration: 0.9, stagger: 0.12, ease: 'power4.out', scrollTrigger: trigger });
+        }
+      });
+      }, homeRef);
+    }).catch(() => {});
+
+    return () => {
+      cancelled = true;
+      context?.revert();
+    };
   }, []);
 
   useEffect(() => {
@@ -150,8 +219,8 @@ export function HomePage() {
   ];
 
   return (
-    <div className="stylefit-home min-h-screen page-enter">
-      <nav className="stylefit-nav sticky top-0 z-50 border-b border-white/[0.08]">
+    <div ref={homeRef} className="stylefit-home min-h-screen">
+      <nav data-hero-nav className="stylefit-nav sticky top-0 z-50 border-b border-white/[0.08]">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <button
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
@@ -215,7 +284,7 @@ export function HomePage() {
       </nav>
 
       <main>
-        <section className="stylefit-hero relative isolate overflow-hidden border-b border-white/[0.08]">
+        <section data-hero className="stylefit-hero relative isolate overflow-hidden border-b border-white/[0.08]">
           {silkReady && (
             <div className="pointer-events-none absolute inset-0 hidden md:block" aria-hidden="true">
               <Suspense fallback={null}>
@@ -227,18 +296,16 @@ export function HomePage() {
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#08090C] to-transparent" />
 
           <div className="relative mx-auto grid min-h-[690px] max-w-7xl items-center gap-7 px-4 py-16 sm:px-6 md:grid-cols-[0.9fr_1.1fr] md:gap-12 md:py-20 lg:gap-16 lg:px-8">
-            <div className="relative z-10 max-w-xl animate-fade-in-up">
-              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#C9A46A]/25 bg-[#12141A]/75 px-4 py-2 text-xs font-medium tracking-[0.12em] text-[#D7C39D] shadow-[0_12px_36px_rgba(0,0,0,0.24)] backdrop-blur-md">
+            <div className="relative z-10 max-w-xl">
+              <div data-hero-meta className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#C9A46A]/25 bg-[#12141A]/75 px-4 py-2 text-xs font-medium tracking-[0.12em] text-[#D7C39D] shadow-[0_12px_36px_rgba(0,0,0,0.24)] backdrop-blur-md">
                 <Sparkles className="h-3.5 w-3.5" />
                 {t('home.hero.badge')}
               </div>
               <h1 className="hero-title mb-6 text-[clamp(2.75rem,7vw,5.8rem)] font-semibold leading-[0.98] tracking-[-0.055em] text-[#F7F4EE]">
-                <span className="blur-text-piece block">{t('home.hero.title1')}</span>
-                <span className="blur-text-piece blur-text-piece-delayed block text-[#D8C5CF]">
-                  {t('home.hero.title2')}
-                </span>
+                <span className="hero-title-mask block"><span data-hero-title-line className="hero-title-line block">{t('home.hero.title1')}</span></span>
+                <span className="hero-title-mask block"><span data-hero-title-line className="hero-title-line block text-[#D8C5CF]">{t('home.hero.title2')}</span></span>
               </h1>
-              <p className="max-w-lg text-base leading-7 text-[#BDB8B0] sm:text-lg">
+              <p data-hero-copy className="max-w-lg text-base leading-7 text-[#BDB8B0] sm:text-lg">
                 {t('home.hero.desc')}
               </p>
 
@@ -249,7 +316,7 @@ export function HomePage() {
                 </div>
               )}
 
-              <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+              <div data-hero-actions className="mt-9 flex flex-col gap-3 sm:flex-row">
                 <Button
                   size="lg"
                   onClick={existingProfile ? handleViewRecommendations : startSurvey}
@@ -271,14 +338,15 @@ export function HomePage() {
               </div>
             </div>
 
-            <div className="lookbook-gallery relative z-10 mx-auto w-full max-w-[640px] animate-fade-in-up md:mx-0 md:justify-self-end">
+            <div data-hero-gallery className="lookbook-gallery relative z-10 mx-auto w-full max-w-[640px] md:mx-0 md:justify-self-end">
               {heroLooks.map((look, index) => {
                 const entry = occasionEntries.find((item) => item.key === look.key);
                 return (
-                  <figure key={look.key} className={`lookbook-card lookbook-card-${index + 1}`}>
+                  <figure data-hero-look key={look.key} className={`lookbook-card lookbook-card-${index + 1}`}>
                     <img
                       src={look.image}
                       alt={entry?.title ?? 'StyleFit look'}
+                      data-hero-look-image
                       className="h-full w-full object-cover"
                       loading={index === 1 ? 'eager' : 'lazy'}
                       fetchPriority={index === 1 ? 'high' : 'auto'}
@@ -289,7 +357,7 @@ export function HomePage() {
                   </figure>
                 );
               })}
-              <div className="lookbook-note" aria-hidden="true">
+              <div data-hero-note className="lookbook-note" aria-hidden="true">
                 <span>STYLE NOTES</span>
                 <span>01 — 03</span>
               </div>
@@ -337,18 +405,18 @@ export function HomePage() {
           </section>
         )}
 
-        <section id="occasions" className="scroll-mt-20 bg-[#08090C] px-4 py-20 sm:px-6 lg:pb-12 lg:pt-24">
+        <section data-motion-section id="occasions" className="scroll-mt-20 bg-[#08090C] px-4 py-20 sm:px-6 lg:pb-12 lg:pt-24">
           <div className="mx-auto max-w-7xl">
-            <SectionHeading title={t('home.occasions.title')} subtitle={t('home.occasions.subtitle')} />
+            <SectionHeading display="OCCASIONS" title={t('home.occasions.title')} subtitle={t('home.occasions.subtitle')} />
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-              {occasionEntries.map((entry, index) => {
+              {occasionEntries.map((entry) => {
                 const original = occasionQuickEntries.find((item) => item.key === entry.key)!;
                 return (
                   <button
                     key={entry.key}
                     onClick={() => navigate(`/recommendations?occasion=${entry.key}`)}
-                    className="spotlight-card focus-ring stagger-item animate-fade-in-up group min-h-[150px] rounded-2xl p-5 text-left sm:min-h-44"
-                    style={{ animationDelay: `${index * 55}ms` }}
+                    data-motion-card
+                    className="spotlight-card focus-ring group min-h-[150px] rounded-2xl p-5 text-left sm:min-h-44"
                   >
                     <span className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl border border-white/[0.08] bg-[#1B1E26] text-[#AAA49B] transition-colors group-hover:border-[#C9A46A]/25 group-hover:text-[#D7C39D] sm:mb-8">
                       {original.icon}
@@ -364,9 +432,9 @@ export function HomePage() {
           </div>
         </section>
 
-        <section id="how-it-works" className="scroll-mt-20 border-y border-white/[0.08] bg-[#0D0F14] px-4 py-20 sm:px-6 lg:pb-24 lg:pt-12">
+        <section data-motion-section id="how-it-works" className="scroll-mt-20 border-y border-white/[0.08] bg-[#0D0F14] px-4 py-20 sm:px-6 lg:pb-24 lg:pt-12">
           <div className="mx-auto max-w-7xl">
-            <SectionHeading title={t('home.steps.title')} subtitle={t('home.steps.subtitle')} />
+            <SectionHeading display="PROCESS" title={t('home.steps.title')} subtitle={t('home.steps.subtitle')} />
             <div className="grid gap-4 lg:grid-cols-12">
               <StepCard
                 className="lg:col-span-5"
@@ -395,7 +463,7 @@ export function HomePage() {
           </div>
         </section>
 
-        <section className="bg-[#08090C] px-4 py-20 sm:px-6">
+        <section data-motion-section className="bg-[#08090C] px-4 py-20 sm:px-6">
           <div className="mx-auto grid max-w-7xl gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <FeatureCard icon={<Ruler className="h-5 w-5" />} title={t('home.features.feature1.title')} desc={t('home.features.feature1.desc')} />
             <FeatureCard icon={<Palette className="h-5 w-5" />} title={t('home.features.feature2.title')} desc={t('home.features.feature2.desc')} />
@@ -404,8 +472,8 @@ export function HomePage() {
           </div>
         </section>
 
-        <section className="border-y border-white/[0.08] bg-[#0D0F14] px-4 py-20 text-[#F7F4EE] sm:px-6">
-          <div className="mx-auto max-w-3xl text-center">
+        <section data-motion-section className="border-y border-white/[0.08] bg-[#0D0F14] px-4 py-20 text-[#F7F4EE] sm:px-6">
+          <div data-motion-card className="mx-auto max-w-3xl text-center">
             <p className="mb-3 text-xs font-medium tracking-[0.18em] text-[#C9A46A]">PERSONAL STYLING</p>
             <h2 className="mb-4 text-3xl font-semibold tracking-[-0.035em] sm:text-4xl">{t('home.cta.title')}</h2>
             <p className="mb-8 text-[#AAA49B]">{t('home.cta.desc')}</p>
@@ -424,12 +492,15 @@ export function HomePage() {
   );
 }
 
-function SectionHeading({ title, subtitle }: { title: string; subtitle: string }) {
+function SectionHeading({ display, title, subtitle }: { display: string; title: string; subtitle: string }) {
   return (
-    <div className="mb-10 max-w-2xl animate-fade-in-up">
-      <div className="mb-4 h-px w-10 bg-[#C9A46A]" />
-      <h2 className="text-3xl font-semibold tracking-[-0.035em] text-[#F7F4EE] sm:text-4xl">{title}</h2>
-      <p className="mt-3 text-sm leading-6 text-[#AAA49B] sm:text-base">{subtitle}</p>
+    <div className="relative mb-10 max-w-2xl overflow-hidden py-4">
+      <span data-motion-display aria-hidden="true" className="motion-display-title">{display}</span>
+      <div data-motion-heading-main className="relative">
+        <div className="mb-4 h-px w-10 bg-[#C9A46A]" />
+        <h2 className="text-3xl font-semibold tracking-[-0.035em] text-[#F7F4EE] sm:text-4xl">{title}</h2>
+        <p className="mt-3 text-sm leading-6 text-[#AAA49B] sm:text-base">{subtitle}</p>
+      </div>
     </div>
   );
 }
@@ -452,7 +523,7 @@ function StepCard({
   wide?: boolean;
 }) {
   return (
-    <article className={`step-card animate-fade-in-up ${accent ? 'step-card-accent' : ''} ${className ?? ''}`}>
+    <article data-motion-card className={`step-card ${accent ? 'step-card-accent' : ''} ${className ?? ''}`}>
       <div className={wide ? 'grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end' : ''}>
         <div>
           <div className="mb-7 flex items-start justify-between sm:mb-12">
@@ -476,7 +547,7 @@ function StepCard({
 
 function FeatureCard({ icon, title, desc }: { icon: ReactNode; title: string; desc: string }) {
   return (
-    <article className="rounded-2xl border border-white/[0.08] bg-[#12141A] p-5">
+    <article data-motion-card className="rounded-2xl border border-white/[0.08] bg-[#12141A] p-5">
       <div className="mb-8 flex h-10 w-10 items-center justify-center rounded-xl bg-[#1B1E26] text-[#AAA49B]">{icon}</div>
       <h3 className="font-semibold text-[#F7F4EE]">{title}</h3>
       <p className="mt-2 text-sm leading-6 text-[#77756F]">{desc}</p>

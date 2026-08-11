@@ -231,25 +231,27 @@
   background: #08090c;
 }
 
-.blur-text-piece {
-  animation: heroBlurIn 0.72s cubic-bezier(0.22, 1, 0.36, 1) both;
+.hero-title-mask {
+  overflow: hidden;
 }
 
-.blur-text-piece-delayed {
-  animation-delay: 100ms;
+.hero-title-line,
+.motion-display-title {
+  will-change: transform, opacity;
 }
 
-@keyframes heroBlurIn {
-  from {
-    opacity: 0;
-    filter: blur(12px);
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    filter: blur(0);
-    transform: translateY(0);
-  }
+.motion-display-title {
+  position: absolute;
+  top: 0;
+  left: -0.06em;
+  z-index: 0;
+  color: rgba(247, 244, 238, 0.045);
+  font-size: clamp(3.6rem, 9vw, 8rem);
+  font-weight: 600;
+  line-height: 0.82;
+  letter-spacing: -0.075em;
+  pointer-events: none;
+  user-select: none;
 }
 
 .lookbook-gallery {
