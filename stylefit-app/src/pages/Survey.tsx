@@ -397,12 +397,14 @@ export default function Survey() {
                         <button
                           key={opt.value}
                           onClick={() => update('skinTone', opt.value)}
-                          className={`survey-option flex flex-col items-center gap-2 rounded-xl border-2 p-3 transition-all ${
-                            profile.skinTone === opt.value ? 'border-slate-900' : 'border-slate-200 hover:border-slate-300'
+                          aria-pressed={profile.skinTone === opt.value}
+                          className={`survey-option relative flex flex-col items-center gap-2 rounded-xl border-2 p-3 transition-all ${
+                            profile.skinTone === opt.value ? 'survey-option-selected' : 'border-slate-200 hover:border-slate-300'
                           }`}
                         >
                           <div className="h-10 w-10 rounded-full border border-slate-200" style={{ backgroundColor: opt.color }} />
                           <span className="text-xs font-medium text-slate-600">{t(opt.labelKey as any)}</span>
+                          {profile.skinTone === opt.value && <Check className="absolute right-2 top-2 h-4 w-4 text-[#d7c39d]" />}
                         </button>
                       ))}
                     </div>

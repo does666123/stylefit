@@ -742,6 +742,10 @@
   color: #bdb8b0;
 }
 
+.result-outfit-details .text-slate-700 {
+  color: #f4f0e9 !important;
+}
+
 .result-outfit-advice,
 .result-outfit-tags {
   border-color: rgba(255, 255, 255, 0.08) !important;
