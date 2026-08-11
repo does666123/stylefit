@@ -25,7 +25,7 @@ void main() {
   vec2 uv = vUv;
   uv.x *= uResolution.x / max(uResolution.y, 1.0);
 
-  float time = uTime * 0.12;
+  float time = uTime * 0.18;
   float firstFold = sin((uv.x * 3.6 + uv.y * 2.1) * 3.1 + time);
   float secondFold = sin((uv.x * 1.7 - uv.y * 3.8) * 2.4 - time * 0.72);
   float fineFold = sin((uv.x + uv.y) * 14.0 + firstFold * 1.35 + time * 0.42);
@@ -34,10 +34,10 @@ void main() {
   float grain = (hash(gl_FragCoord.xy) - 0.5) * 0.018;
 
   vec3 charcoal = vec3(0.031, 0.035, 0.047);
-  vec3 blackberry = vec3(0.165, 0.095, 0.145);
-  vec3 wineBlack = vec3(0.115, 0.052, 0.068);
-  vec3 color = mix(charcoal, blackberry, sheen * 0.62);
-  color = mix(color, wineBlack, smoothstep(0.32, 0.9, secondFold) * 0.35);
+  vec3 violetShadow = vec3(0.145, 0.075, 0.235);
+  vec3 silkViolet = vec3(0.510, 0.329, 0.816);
+  vec3 color = mix(charcoal, violetShadow, sheen * 0.62);
+  color = mix(color, silkViolet, smoothstep(0.62, 0.98, sheen) * 0.42);
   color += grain;
 
   float vignette = smoothstep(0.95, 0.18, distance(vUv, vec2(0.62, 0.5)));
