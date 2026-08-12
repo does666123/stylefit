@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "check:products": "node scripts/check-products.mjs",
     "check:budget": "node scripts/check-budget.mjs",
+    "check:taobao": "node scripts/check-taobao-endpoint.mjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },
