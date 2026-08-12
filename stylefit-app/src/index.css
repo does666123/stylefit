@@ -685,6 +685,29 @@
   text-shadow: 0 2px 18px rgba(0, 0, 0, 0.48);
 }
 
+.site-footer {
+  position: relative;
+  z-index: 2;
+  padding: 1.25rem 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: #08090c;
+  color: #77756f;
+  font-size: 0.75rem;
+  line-height: 1.25rem;
+  text-align: center;
+}
+
+.site-footer a {
+  color: #aaa49b;
+  text-decoration: none;
+  transition: color 180ms ease;
+}
+
+.site-footer a:hover,
+.site-footer a:focus-visible {
+  color: #d7c39d;
+}
+
 .phase-two-loading-stage {
   animation: phaseTwoStepIn 360ms ease both;
 }
