@@ -91,6 +91,21 @@ function asText(value, maxLength = 300) {
   return typeof value === 'string' && value.trim() ? value.trim().slice(0, maxLength) : '';
 }
 
+function diagnosticText(value, maxLength = 120) {
+  return (typeof value === 'string' || typeof value === 'number')
+    ? String(value).replace(/\s+/g, ' ').trim().slice(0, maxLength)
+    : '';
+}
+
+function logTaobaoResponse(status, apiError) {
+  console.warn('Taobao material search response', {
+    httpStatus: status,
+    code: diagnosticText(apiError?.code, 40) || 'unknown',
+    subCode: diagnosticText(apiError?.sub_code, 80) || 'none',
+    message: diagnosticText(apiError?.msg),
+  });
+}
+
 function asNumber(value) {
   const number = Number(value);
   return Number.isFinite(number) ? number : 0;
@@ -160,15 +175,19 @@ export async function searchTaobaoProducts(env, sceneKey) {
       signal: controller.signal,
       eo: { timeoutSetting: { connectTimeout: 5_000, readTimeout: 10_000, writeTimeout: 5_000 } },
     });
-    if (!response.ok) {
-      console.warn('Taobao material search request failed', { status: response.status });
+    const responseText = await response.text();
+    let payloadJson = null;
+    try {
+      payloadJson = asRecord(JSON.parse(responseText));
+    } catch {
+      console.warn('Taobao material search response', { httpStatus: response.status, code: 'invalid_json' });
       return { error: 'upstream_failed' };
     }
-    const payloadJson = asRecord(await response.json());
+
     const responseBody = asRecord(payloadJson?.taobao_tbk_dg_material_optional_response);
     const apiError = asRecord(payloadJson?.error_response);
-    if (apiError || !responseBody) {
-      console.warn('Taobao material search returned an API error', { code: asText(apiError?.code, 40) || 'unknown' });
+    if (!response.ok || apiError || !responseBody) {
+      logTaobaoResponse(response.status, apiError);
       return { error: 'upstream_failed' };
     }
     const resultList = asRecord(responseBody.result_list);
