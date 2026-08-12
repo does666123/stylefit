@@ -97,7 +97,7 @@ function diagnosticText(value, maxLength = 160) {
     : '';
 }
 
-function topDiagnostic(status, apiError) {
+function topDiagnostic(status, apiError, requestId = '') {
   return {
     kind: apiError ? 'top_error' : 'http',
     httpStatus: status,
@@ -105,6 +105,7 @@ function topDiagnostic(status, apiError) {
     subCode: diagnosticText(apiError?.sub_code, 80) || '',
     message: diagnosticText(apiError?.msg),
     errorName: '',
+    requestId: diagnosticText(apiError?.request_id || requestId, 120),
   };
 }
 
@@ -191,6 +192,7 @@ export async function searchTaobaoProducts(env, sceneKey) {
           subCode: '',
           message: '',
           errorName: '',
+          requestId: '',
         },
       };
     }
@@ -198,7 +200,7 @@ export async function searchTaobaoProducts(env, sceneKey) {
     const responseBody = asRecord(payloadJson?.taobao_tbk_dg_material_optional_response);
     const apiError = asRecord(payloadJson?.error_response);
     if (!response.ok || apiError || !responseBody) {
-      return { error: 'upstream_failed', diagnostic: topDiagnostic(response.status, apiError) };
+      return { error: 'upstream_failed', diagnostic: topDiagnostic(response.status, apiError, payloadJson?.request_id) };
     }
     const resultList = asRecord(responseBody.result_list);
     const sourceItems = Array.isArray(resultList?.map_data) ? resultList.map_data : [];
@@ -213,6 +215,7 @@ export async function searchTaobaoProducts(env, sceneKey) {
         subCode: '',
         message: '',
         errorName: diagnosticText(error?.name, 80) || 'Error',
+        requestId: '',
       },
     };
   } finally {

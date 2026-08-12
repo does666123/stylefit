@@ -23,7 +23,7 @@ let upstreamCalls = 0;
 globalThis.fetch = async () => {
   upstreamCalls += 1;
   return new Response(JSON.stringify({
-  error_response: { code: 15, sub_code: 'isv.invalid-app', msg: 'Invalid application credentials' },
+  error_response: { code: 15, sub_code: 'isv.invalid-app', msg: 'Invalid application credentials', request_id: 'safe-request-id' },
   }), { status: 200 });
 };
 const configuredEnv = {
@@ -53,6 +53,7 @@ try {
       subCode: 'isv.invalid-app',
       message: 'Invalid application credentials',
       errorName: '',
+      requestId: 'safe-request-id',
     },
   });
 
