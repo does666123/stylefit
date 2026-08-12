@@ -47,6 +47,7 @@ export default function LoadingScreen({ message }: LoadingScreenProps) {
         </p>
         <h2 className="mb-2 text-lg font-semibold text-[#F7F4EE]">{displayMessage}</h2>
         <p key={stage} className="phase-two-loading-stage text-sm text-[#BDB8B0]">{stages[stage]}</p>
+        <p className="mt-3 text-xs text-[#AAA49B]">通常约需 15–30 秒，网络较慢时可能更久</p>
       </div>
     </div>
   );
