@@ -29,6 +29,7 @@ import {
   CloudSun,
   Umbrella,
   Wind,
+  Search,
 } from 'lucide-react';
 import type { UserBodyProfile, ClothingItem, OutfitSet, Occasion } from '../types';
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
@@ -90,6 +91,7 @@ export default function Recommendations() {
     return loadProfile() || (isValidOccasion ? getNeutralProfile(urlOccasion) : null);
   });
   const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [productSearch, setProductSearch] = useState('');
   const [visibleCount, setVisibleCount] = useState(12);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [supportsIntersectionObserver] = useState(() => typeof IntersectionObserver !== 'undefined');
@@ -224,9 +226,16 @@ export default function Recommendations() {
   const { isFavorite, toggleFavorite, favoriteItems } = useFavorites();
 
   const filteredByCategory = useMemo(() => {
-    if (activeCategory === 'all') return recommendations;
-    return recommendations.filter((item) => item.category === activeCategory);
-  }, [recommendations, activeCategory]);
+    const categoryItems = activeCategory === 'all'
+      ? recommendations
+      : recommendations.filter((item) => item.category === activeCategory);
+    const query = productSearch.trim().toLocaleLowerCase();
+    if (!query) return categoryItems;
+    return categoryItems.filter((item) => [item.name, item.brand, item.category, ...item.tags]
+      .join(' ')
+      .toLocaleLowerCase()
+      .includes(query));
+  }, [recommendations, activeCategory, productSearch]);
 
   const displayItems = showFavorites ? favoriteItems : filteredByCategory;
   const visibleItems = showFavorites ? displayItems : displayItems.slice(0, visibleCount);
@@ -248,7 +257,7 @@ export default function Recommendations() {
     isLoadingMoreRef.current = false;
     setIsLoadingMore(false);
     setVisibleCount(12);
-  }, [activeCategory, showFavorites]);
+  }, [activeCategory, productSearch, showFavorites]);
 
   useEffect(() => {
     if (!supportsIntersectionObserver || showFavorites || visibleCount >= displayItems.length) return;
@@ -556,25 +565,37 @@ export default function Recommendations() {
 
         {/* Category Filter */}
         {!showFavorites && (
-          <div className="mb-6 flex flex-wrap gap-2">
-            {catList.map((cat) => (
-              <button
-                key={cat.key}
-                onClick={() => {
-                  setActiveCategory(cat.key);
-                  setShowFavorites(false);
-                  setVisibleCount(12);
-                }}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium transition-all ${
-                  activeCategory === cat.key && !showFavorites
-                    ? 'border-slate-900 bg-slate-900 text-white'
-                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
-                }`}
-              >
-                {cat.icon}
-                {(t as any)(cat.labelKey)}
-              </button>
-            ))}
+          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap gap-2">
+              {catList.map((cat) => (
+                <button
+                  key={cat.key}
+                  onClick={() => {
+                    setActiveCategory(cat.key);
+                    setShowFavorites(false);
+                    setVisibleCount(12);
+                  }}
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium transition-all ${
+                    activeCategory === cat.key && !showFavorites
+                      ? 'border-slate-900 bg-slate-900 text-white'
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                  }`}
+                >
+                  {cat.icon}
+                  {(t as any)(cat.labelKey)}
+                </button>
+              ))}
+            </div>
+            <label className="relative block w-full sm:w-56">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#AAA49B]" aria-hidden="true" />
+              <input
+                type="search"
+                value={productSearch}
+                onChange={(event) => setProductSearch(event.target.value)}
+                placeholder="搜索衣服、品牌或标签"
+                className="focus-ring h-10 w-full rounded-xl border border-white/[0.1] bg-[#12141A] py-2 pl-9 pr-3 text-sm text-[#F7F4EE] placeholder:text-[#77756F]"
+              />
+            </label>
           </div>
         )}
 
@@ -655,8 +676,6 @@ function OutfitCard({
   budget?: number;
 }) {
   const { t } = useT();
-  const [expanded, setExpanded] = useState(false);
-
   const itemReasonMap = useMemo(() => {
     const map: Record<string, string> = {};
     outfit.itemReasons?.forEach(r => { map[r.itemId] = r.reason; });
@@ -746,19 +765,7 @@ function OutfitCard({
 
         {/* Item details with reasons and buy buttons */}
         <div className="result-outfit-details px-3 pb-2">
-          <button
-            onClick={() => setExpanded(!expanded)}
-            className="flex w-full items-center justify-between py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 transition-colors"
-          >
-            <span className="flex items-center gap-1">
-              <Lightbulb className="h-3 w-3 text-amber-500" />
-              {t('rec.viewDetails')}
-            </span>
-            <span className="text-slate-400">{expanded ? t('rec.collapse') : t('rec.expand')}</span>
-          </button>
-
-          {expanded && (
-            <div className="space-y-2 pb-2 animate-fade-in">
+          <div className="space-y-2 pb-2">
               {outfit.items.map((item: ClothingItem) => (
                 <div key={item.id} className="flex gap-2.5 rounded-lg bg-slate-50 p-2">
                   <ProductImage item={item} className="h-12 w-12 rounded-md object-cover shrink-0" />
@@ -795,8 +802,7 @@ function OutfitCard({
                   </div>
                 </div>
               ))}
-            </div>
-          )}
+          </div>
         </div>
 
         {/* Styling advice */}
