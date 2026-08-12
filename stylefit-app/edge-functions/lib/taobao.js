@@ -91,19 +91,21 @@ function asText(value, maxLength = 300) {
   return typeof value === 'string' && value.trim() ? value.trim().slice(0, maxLength) : '';
 }
 
-function diagnosticText(value, maxLength = 120) {
+function diagnosticText(value, maxLength = 160) {
   return (typeof value === 'string' || typeof value === 'number')
     ? String(value).replace(/\s+/g, ' ').trim().slice(0, maxLength)
     : '';
 }
 
-function logTaobaoResponse(status, apiError) {
-  console.warn('Taobao material search response', {
+function topDiagnostic(status, apiError) {
+  return {
+    kind: apiError ? 'top_error' : 'http',
     httpStatus: status,
-    code: diagnosticText(apiError?.code, 40) || 'unknown',
-    subCode: diagnosticText(apiError?.sub_code, 80) || 'none',
+    code: diagnosticText(apiError?.code, 40) || (apiError ? 'unknown' : 'unexpected_response'),
+    subCode: diagnosticText(apiError?.sub_code, 80) || '',
     message: diagnosticText(apiError?.msg),
-  });
+    errorName: '',
+  };
 }
 
 function asNumber(value) {
@@ -180,22 +182,39 @@ export async function searchTaobaoProducts(env, sceneKey) {
     try {
       payloadJson = asRecord(JSON.parse(responseText));
     } catch {
-      console.warn('Taobao material search response', { httpStatus: response.status, code: 'invalid_json' });
-      return { error: 'upstream_failed' };
+      return {
+        error: 'upstream_failed',
+        diagnostic: {
+          kind: 'http',
+          httpStatus: response.status,
+          code: 'invalid_json',
+          subCode: '',
+          message: '',
+          errorName: '',
+        },
+      };
     }
 
     const responseBody = asRecord(payloadJson?.taobao_tbk_dg_material_optional_response);
     const apiError = asRecord(payloadJson?.error_response);
     if (!response.ok || apiError || !responseBody) {
-      logTaobaoResponse(response.status, apiError);
-      return { error: 'upstream_failed' };
+      return { error: 'upstream_failed', diagnostic: topDiagnostic(response.status, apiError) };
     }
     const resultList = asRecord(responseBody.result_list);
     const sourceItems = Array.isArray(resultList?.map_data) ? resultList.map_data : [];
     return { products: sourceItems.slice(0, PAGE_SIZE).map(asRecord).filter(Boolean).map((item) => mapProduct(item, scene.category)) };
   } catch (error) {
-    console.warn('Taobao material search unavailable', { timeout: error?.name === 'AbortError' });
-    return { error: 'upstream_failed' };
+    return {
+      error: 'upstream_failed',
+      diagnostic: {
+        kind: 'network',
+        httpStatus: 0,
+        code: '',
+        subCode: '',
+        message: '',
+        errorName: diagnosticText(error?.name, 80) || 'Error',
+      },
+    };
   } finally {
     clearTimeout(timeout);
   }

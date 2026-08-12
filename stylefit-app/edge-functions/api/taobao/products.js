@@ -10,10 +10,14 @@ export async function onRequest({ request, env }) {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: { Allow: 'GET, OPTIONS' } });
   if (request.method !== 'GET') return json({ error: 'Method not allowed' }, 405);
 
-  const scene = new URL(request.url).searchParams.get('scene') || '';
+  const searchParams = new URL(request.url).searchParams;
+  const scene = searchParams.get('scene') || '';
   const result = await searchTaobaoProducts(env, scene);
   if (result.error === 'invalid_scene') return json({ error: '不支持的检索场景' }, 400);
   if (result.error === 'not_configured') return json({ error: '服务未配置' }, 503);
-  if (result.error) return json({ error: '商品服务暂时不可用' }, 502);
+  if (result.error) {
+    const diagnostic = scene === 'mens_work' && searchParams.get('diagnostic') === '1' ? result.diagnostic : null;
+    return json(diagnostic ? { error: '商品服务暂时不可用', diagnostic } : { error: '商品服务暂时不可用' }, 502);
+  }
   return json({ products: result.products });
 }
