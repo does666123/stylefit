@@ -5,6 +5,17 @@
   text-align: center;
 }
 
+.legal-copy h2 {
+  color: #F7F4EE;
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.legal-copy p {
+  margin-top: 0.6rem;
+}
+
 .logo {
   height: 6em;
   padding: 1.5em;

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -600,6 +600,14 @@ export default function Survey() {
                 </Button>
               )}
             </div>
+            {step === 0 && (
+              <p className="mt-4 text-center text-xs leading-5 text-[#AAA49B]">
+                提交即表示你已阅读并同意
+                <Link to="/terms" className="focus-ring mx-1 rounded text-[#D7C39D] underline-offset-2 hover:underline">《用户协议》</Link>
+                和
+                <Link to="/privacy" className="focus-ring ml-1 rounded text-[#D7C39D] underline-offset-2 hover:underline">《隐私政策》</Link>。
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -26,6 +26,7 @@ import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { useT } from '@/i18n';
 import { fetchWeatherWithCache, interpretWeather, type WeatherData } from '@/lib/weather';
 import { loadProfile } from '@/hooks/useRecommendation';
+import { STYLEFIT_DATA_CLEARED_EVENT } from '@/lib/localData';
 import type { UserBodyProfile } from '@/types';
 
 const SilkBackground = lazy(() => import('@/components/SilkBackground'));
@@ -58,7 +59,7 @@ export function HomePage() {
   const homeRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { t } = useT();
-  const [existingProfile] = useState<UserBodyProfile | null>(loadProfile);
+  const [existingProfile, setExistingProfile] = useState<UserBodyProfile | null>(loadProfile);
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [weatherLoading, setWeatherLoading] = useState(true);
   const [weatherRefreshing, setWeatherRefreshing] = useState(false);
@@ -66,6 +67,15 @@ export function HomePage() {
   const [weatherLocationName, setWeatherLocationName] = useState('');
   const [favCount, setFavCount] = useState(0);
   const [silkReady, setSilkReady] = useState(false);
+
+  useEffect(() => {
+    const clearProfileState = () => {
+      setExistingProfile(null);
+      setFavCount(0);
+    };
+    window.addEventListener(STYLEFIT_DATA_CLEARED_EVENT, clearProfileState);
+    return () => window.removeEventListener(STYLEFIT_DATA_CLEARED_EVENT, clearProfileState);
+  }, []);
 
   useEffect(() => {
     const updateFavCount = () => {
@@ -485,9 +495,6 @@ export function HomePage() {
         </section>
       </main>
 
-      <footer className="border-t border-white/[0.08] bg-[#08090C] px-4 py-8 text-center text-sm text-[#77756F]">
-        <p>StyleFit · {t('home.footer.tagline')}</p>
-      </footer>
     </div>
   );
 }
