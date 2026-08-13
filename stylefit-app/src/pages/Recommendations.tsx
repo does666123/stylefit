@@ -45,6 +45,37 @@ import {
   type AIRecommendation,
 } from '../lib/aiRecommendation';
 import { Spinner } from '@/components/ui/spinner';
+import { Skeleton } from '@/components/ui/skeleton';
+
+type ProductSourceStatus = 'loading' | 'demo' | 'live' | 'empty';
+
+type TaobaoProduct = {
+  itemId?: string;
+  title?: string;
+  image?: string;
+  price?: number;
+  couponAmount?: number;
+  couponPrice?: number;
+  commissionRate?: number;
+  shopTitle?: string;
+  volume?: number;
+  category?: string;
+  promotionUrl?: string;
+};
+
+type TaobaoProductMeta = {
+  price: number;
+  couponAmount: number;
+  commissionRate: number;
+};
+
+type TaobaoSourceResult = { products: TaobaoProduct[]; message?: string };
+
+const taobaoSourceCache = new Map<string, TaobaoSourceResult>();
+const taobaoSourceRequests = new Map<string, Promise<TaobaoSourceResult>>();
+
+const wearableTaobaoTerms = /上衣|T恤|t恤|衬衫|针织|毛衣|卫衣|Polo|polo|外套|夹克|大衣|风衣|羽绒|西装|裤|牛仔|半身裙|连衣裙|鞋|靴|凉鞋|拖鞋|包|腰带|领带|袜/;
+const excludedTaobaoTerms = /手机|电脑|数码|耳机|充电|数据线|壳|家居|家具|床|枕|餐具|食品|零食|美妆|口红|护肤|洗发|香水/;
 
 // 场合快捷切换数据
 const occasionSwitcherItems: { key: Occasion; labelKey: string; icon: React.ReactNode }[] = [
@@ -74,6 +105,94 @@ const catList: { key: string; labelKey: string; icon: React.ReactNode }[] = [
   { key: 'accessory', labelKey: 'rec.category.accessory', icon: <Sparkles className="h-4 w-4" /> },
 ];
 
+function getTaobaoScene(profile: UserBodyProfile): string | null {
+  if (profile.gender === 'female') return profile.occasion === 'work' ? 'womens_work' : 'womens_minimal_top';
+  return profile.occasion === 'work' ? 'mens_work' : 'mens_casual_outerwear';
+}
+
+function isWearableTaobaoProduct(product: TaobaoProduct) {
+  const text = `${product.category || ''} ${product.title || ''}`;
+  return wearableTaobaoTerms.test(text) && !excludedTaobaoTerms.test(text);
+}
+
+function getTaobaoCategory(text: string): ClothingItem['category'] {
+  if (/鞋|靴|凉鞋|拖鞋/.test(text)) return 'shoes';
+  if (/裙|连衣/.test(text)) return 'dress';
+  if (/裤|牛仔|半身/.test(text)) return 'bottom';
+  if (/外套|夹克|大衣|风衣|羽绒/.test(text)) return 'outerwear';
+  if (/包|帽|围巾|腰带|眼镜|首饰|领带|袜/.test(text)) return 'accessory';
+  return 'top';
+}
+
+function toTaobaoClothingItem(product: TaobaoProduct, profile: UserBodyProfile): ClothingItem | null {
+  const itemId = typeof product.itemId === 'string' ? product.itemId.trim() : '';
+  const name = typeof product.title === 'string' ? product.title.trim() : '';
+  const image = typeof product.image === 'string' ? product.image.trim() : '';
+  const buyLink = typeof product.promotionUrl === 'string' ? product.promotionUrl.trim() : '';
+  const price = Number(product.couponPrice || product.price);
+  if (!itemId || !name || !buyLink || !Number.isFinite(price) || price <= 0) return null;
+
+  return {
+    id: `taobao-${itemId}`,
+    name,
+    gender: profile.gender,
+    category: getTaobaoCategory(`${product.category || ''} ${name}`),
+    subCategory: typeof product.category === 'string' ? product.category : '淘宝联盟商品',
+    price,
+    currency: '¥',
+    image,
+    buyLink,
+    brand: typeof product.shopTitle === 'string' ? product.shopTitle : '淘宝联盟',
+    colors: [],
+    sizes: [],
+    fit: 'regular',
+    suitableBodyTypes: [profile.bodyType],
+    suitableSkinTones: [profile.skinTone],
+    styles: [profile.stylePreference],
+    occasions: [profile.occasion],
+    seasons: ['all'],
+    description: typeof product.volume === 'number' && product.volume > 0 ? `已售 ${product.volume}` : '淘宝联盟精选商品',
+    rating: 0,
+    tags: ['淘宝联盟'],
+  };
+}
+
+function toTaobaoProductMeta(product: TaobaoProduct): TaobaoProductMeta {
+  return {
+    price: Number(product.price) || 0,
+    couponAmount: Number(product.couponAmount) || 0,
+    commissionRate: Number(product.commissionRate) || 0,
+  };
+}
+
+function requestTaobaoProducts(scene: string, retry = false): Promise<TaobaoSourceResult> {
+  if (!retry) {
+    const cached = taobaoSourceCache.get(scene);
+    if (cached) return Promise.resolve(cached);
+    const inFlight = taobaoSourceRequests.get(scene);
+    if (inFlight) return inFlight;
+  }
+
+  const request = fetch(`/api/taobao/products?scene=${scene}`)
+    .then(async (response) => {
+      if (!response.ok) throw new Error('unavailable');
+      const payload: unknown = await response.json();
+      const products = typeof payload === 'object' && payload !== null && Array.isArray((payload as { products?: unknown }).products)
+        ? (payload as { products: TaobaoProduct[] }).products
+        : [];
+      const message = typeof payload === 'object' && payload !== null && typeof (payload as { message?: unknown }).message === 'string'
+        ? (payload as { message: string }).message
+        : undefined;
+      const result = { products, message };
+      taobaoSourceCache.set(scene, result);
+      return result;
+    })
+    .finally(() => taobaoSourceRequests.delete(scene));
+
+  taobaoSourceRequests.set(scene, request);
+  return request;
+}
+
 export default function Recommendations() {
   const { t } = useT();
   const location = useLocation();
@@ -93,6 +212,11 @@ export default function Recommendations() {
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [productSearch, setProductSearch] = useState('');
   const [visibleCount, setVisibleCount] = useState(12);
+  const [productSourceStatus, setProductSourceStatus] = useState<ProductSourceStatus>('loading');
+  const [liveProducts, setLiveProducts] = useState<ClothingItem[]>([]);
+  const [taobaoProductMeta, setTaobaoProductMeta] = useState<Record<string, TaobaoProductMeta>>({});
+  const [productSourceMessage, setProductSourceMessage] = useState('');
+  const [productSourceAttempt, setProductSourceAttempt] = useState(0);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [supportsIntersectionObserver] = useState(() => typeof IntersectionObserver !== 'undefined');
   const [showFavorites, setShowFavorites] = useState(false);
@@ -225,17 +349,56 @@ export default function Recommendations() {
 
   const { isFavorite, toggleFavorite, favoriteItems } = useFavorites();
 
+  const loadTaobaoProducts = useCallback(async (retry = false) => {
+    if (!profile) return;
+    const scene = getTaobaoScene(profile);
+    if (!scene) {
+      setProductSourceStatus('demo');
+      setProductSourceMessage('演示搭配，真实商品正在接入。');
+      return;
+    }
+    setProductSourceStatus('loading');
+    setProductSourceMessage('');
+
+    try {
+      const payload = await requestTaobaoProducts(scene, retry);
+      const products = payload.products.filter(isWearableTaobaoProduct);
+      const items = products.map((product) => toTaobaoClothingItem(product, profile)).filter((item): item is ClothingItem => item !== null);
+      const meta = Object.fromEntries(products.map((product) => [`taobao-${product.itemId}`, toTaobaoProductMeta(product)]));
+      setLiveProducts(items);
+      setTaobaoProductMeta(meta);
+      setProductSourceStatus(items.length >= 3 ? 'live' : 'empty');
+      setProductSourceMessage(items.length >= 3 ? '' : payload.message || '本场景暂未找到合适服装。');
+    } catch {
+      setLiveProducts([]);
+      setTaobaoProductMeta({});
+      setProductSourceStatus('empty');
+      setProductSourceMessage('商品服务暂时不可用，请稍后重试。');
+    }
+  }, [profile]);
+
+  useEffect(() => {
+    loadTaobaoProducts(productSourceAttempt > 0);
+  }, [loadTaobaoProducts, productSourceAttempt]);
+
+  const catalogItems = productSourceStatus === 'live'
+    ? liveProducts
+    : productSourceStatus === 'demo'
+      ? recommendations
+      : [];
+  const showProductSourceEmptyState = !showFavorites
+    && productSourceStatus === 'empty';
   const filteredByCategory = useMemo(() => {
     const categoryItems = activeCategory === 'all'
-      ? recommendations
-      : recommendations.filter((item) => item.category === activeCategory);
+      ? catalogItems
+      : catalogItems.filter((item) => item.category === activeCategory);
     const query = productSearch.trim().toLocaleLowerCase();
     if (!query) return categoryItems;
     return categoryItems.filter((item) => [item.name, item.brand, item.category, ...item.tags]
       .join(' ')
       .toLocaleLowerCase()
       .includes(query));
-  }, [recommendations, activeCategory, productSearch]);
+  }, [catalogItems, activeCategory, productSearch]);
 
   const displayItems = showFavorites ? favoriteItems : filteredByCategory;
   const visibleItems = showFavorites ? displayItems : displayItems.slice(0, visibleCount);
@@ -601,34 +764,72 @@ export default function Recommendations() {
 
         {/* Section Title */}
         <div className="mb-4">
-          <h2 className="text-2xl font-bold text-slate-900">
-            {showFavorites ? t('rec.favoriteItems') : t('rec.forYou')}
-          </h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-2xl font-bold text-slate-900">
+              {showFavorites ? t('rec.favoriteItems') : t('rec.forYou')}
+            </h2>
+            {!showFavorites && productSourceStatus === 'live' && (
+              <Badge className="border border-[#C9A46A]/30 bg-[#C9A46A]/10 text-[#D7C39D]">淘宝联盟精选</Badge>
+            )}
+            {!showFavorites && productSourceStatus === 'demo' && (
+              <Badge className="border border-white/[0.1] bg-white/[0.05] text-[#AAA49B]">演示搭配</Badge>
+            )}
+          </div>
           <p className="text-sm text-slate-500">
             {showFavorites
               ? t('rec.itemCount', { count: favoriteItems.length })
-              : t('rec.itemCount', { count: recommendations.length })}
+              : productSourceStatus === 'live'
+                ? `共 ${catalogItems.length} 件淘宝联盟商品`
+                : productSourceStatus === 'demo'
+                  ? '演示搭配，真实商品正在接入'
+                  : '正在查找适合本场景的服装'}
           </p>
         </div>
 
         {/* Items Grid */}
-        {visibleItems.length === 0 ? (
-          <div className="py-20 text-center text-slate-400">
-            <Shirt className="mx-auto mb-3 h-12 w-12" />
-            <p>{showFavorites ? t('rec.noFavorites') : t('rec.noCategoryResults')}</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-3 lg:gap-5">
-            {visibleItems.map((item) => (
-              <div key={item.id} className="stagger-item animate-fade-in-up">
-                <ClothingCard
-                  item={item}
-                  isFavorite={isFavorite}
-                  toggleFavorite={toggleFavorite}
-                />
+        {!showFavorites && productSourceStatus === 'loading' ? (
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-3 lg:gap-5" aria-label="商品加载中">
+            {Array.from({ length: 6 }, (_, index) => (
+              <div key={index} className="overflow-hidden rounded-xl border border-white/[0.08] bg-[#12141A] p-2.5 sm:p-4">
+                <Skeleton className="aspect-square w-full bg-white/[0.08] sm:aspect-[4/5]" />
+                <Skeleton className="mt-3 h-3 w-1/3 bg-white/[0.08]" />
+                <Skeleton className="mt-2 h-4 w-4/5 bg-white/[0.08]" />
+                <Skeleton className="mt-4 h-5 w-1/4 bg-white/[0.08]" />
               </div>
             ))}
           </div>
+        ) : visibleItems.length === 0 ? (
+          <div className="rounded-2xl border border-white/[0.08] bg-[#12141A] px-6 py-16 text-center">
+            <ShoppingBag className="mx-auto mb-3 h-12 w-12 text-[#D7C39D]" />
+            <p className="text-base font-medium text-[#F7F4EE]">
+              {showFavorites ? t('rec.noFavorites') : showProductSourceEmptyState ? '暂时没有可展示的商品' : t('rec.noCategoryResults')}
+            </p>
+            {!showFavorites && showProductSourceEmptyState && <p className="mx-auto mt-2 max-w-sm text-sm text-[#AAA49B]">{productSourceMessage || '淘宝联盟商品暂时未返回结果，请稍后再试。'}</p>}
+            {!showFavorites && showProductSourceEmptyState && (
+              <Button className="sf-secondary-button mt-5" variant="outline" onClick={() => setProductSourceAttempt((count) => count + 1)}>重试</Button>
+            )}
+          </div>
+        ) : (
+          <>
+            {!showFavorites && productSourceStatus === 'demo' && (
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#C9A46A]/20 bg-[#C9A46A]/[0.06] px-4 py-3 text-sm text-[#AAA49B]">
+                <span>{productSourceMessage}</span>
+                <Button className="sf-secondary-button h-8" variant="outline" onClick={() => setProductSourceAttempt((count) => count + 1)}>稍后重试</Button>
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-3 lg:gap-5">
+              {visibleItems.map((item) => (
+                <div key={item.id} className="stagger-item animate-fade-in-up">
+                  <ClothingCard
+                    item={item}
+                    isFavorite={isFavorite}
+                    toggleFavorite={toggleFavorite}
+                    taobaoMeta={taobaoProductMeta[item.id]}
+                  />
+                </div>
+              ))}
+            </div>
+          </>
         )}
         {!showFavorites && displayItems.length > 0 && (
           <div ref={loadMoreRef} className="mt-6 flex min-h-10 justify-center">
@@ -835,10 +1036,12 @@ function ClothingCard({
   item,
   isFavorite,
   toggleFavorite,
+  taobaoMeta,
 }: {
   item: ClothingItem;
   isFavorite: (id: string) => boolean;
   toggleFavorite: (id: string) => void;
+  taobaoMeta?: TaobaoProductMeta;
 }) {
   const { t } = useT();
   const fav = isFavorite(item.id);
@@ -933,6 +1136,12 @@ function ClothingCard({
             <span className="hidden sm:inline">{t('rec.goToBuy')}</span><ExternalLink className="h-3 w-3 sm:ml-1" />
           </Button>
         </div>
+        {taobaoMeta && (
+          <p className="mt-2 text-[10px] text-[#AAA49B] sm:text-xs">
+            {taobaoMeta.couponAmount > 0 ? `优惠 ¥${taobaoMeta.couponAmount}` : `售价 ¥${taobaoMeta.price}`}
+            {taobaoMeta.commissionRate > 0 ? ` · 佣金 ${taobaoMeta.commissionRate}%` : ''}
+          </p>
+        )}
       </CardContent>
     </Card>
   );
