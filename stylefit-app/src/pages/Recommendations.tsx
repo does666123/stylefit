@@ -70,6 +70,17 @@ type TaobaoProductMeta = {
 };
 
 type TaobaoSourceResult = { products: TaobaoProduct[]; page: number; hasMore: boolean; message?: string };
+type TaobaoCategory = 'all' | 'top' | 'bottom' | 'outerwear' | 'shoes' | 'accessory' | 'dress';
+type TaobaoFeed = {
+  products: ClothingItem[];
+  meta: Record<string, TaobaoProductMeta>;
+  page: number;
+  hasMore: boolean;
+  status: ProductSourceStatus;
+  message: string;
+  isLoadingMore: boolean;
+  loadMoreError: boolean;
+};
 
 const taobaoSourceCache = new Map<string, TaobaoSourceResult>();
 const taobaoSourceRequests = new Map<string, Promise<TaobaoSourceResult>>();
@@ -95,7 +106,7 @@ const styleTagLabels: Record<string, string> = {
   minimal: '简约',
 };
 
-const catList: { key: string; labelKey: string; icon: React.ReactNode }[] = [
+const catList: { key: TaobaoCategory; labelKey: string; icon: React.ReactNode }[] = [
   { key: 'all', labelKey: 'rec.category.all', icon: <Sparkles className="h-4 w-4" /> },
   { key: 'top', labelKey: 'rec.category.top', icon: <Shirt className="h-4 w-4" /> },
   { key: 'bottom', labelKey: 'rec.category.bottom', icon: <Shirt className="h-4 w-4" /> },
@@ -117,14 +128,14 @@ function isWearableTaobaoProduct(product: TaobaoProduct) {
 
 function getTaobaoCategory(text: string): ClothingItem['category'] {
   if (/鞋|靴|凉鞋|拖鞋/.test(text)) return 'shoes';
-  if (/裙|连衣/.test(text)) return 'dress';
-  if (/裤|牛仔|半身/.test(text)) return 'bottom';
-  if (/外套|夹克|大衣|风衣|羽绒/.test(text)) return 'outerwear';
+  if (/裤|牛仔|半身裙/.test(text)) return 'bottom';
+  if (/外套|夹克|大衣|风衣|羽绒|西装/.test(text)) return 'outerwear';
   if (/包|帽|围巾|腰带|眼镜|首饰|领带|袜/.test(text)) return 'accessory';
+  if (/连衣裙/.test(text)) return 'dress';
   return 'top';
 }
 
-function toTaobaoClothingItem(product: TaobaoProduct, profile: UserBodyProfile): ClothingItem | null {
+function toTaobaoClothingItem(product: TaobaoProduct, profile: UserBodyProfile, requestedCategory: TaobaoCategory): ClothingItem | null {
   const itemId = typeof product.itemId === 'string' ? product.itemId.trim() : '';
   const name = typeof product.title === 'string' ? product.title.trim() : '';
   const image = typeof product.image === 'string' ? product.image.trim() : '';
@@ -136,7 +147,7 @@ function toTaobaoClothingItem(product: TaobaoProduct, profile: UserBodyProfile):
     id: `taobao-${itemId}`,
     name,
     gender: profile.gender,
-    category: getTaobaoCategory(`${product.category || ''} ${name}`),
+    category: requestedCategory === 'all' ? getTaobaoCategory(`${product.category || ''} ${name}`) : requestedCategory,
     subCategory: typeof product.category === 'string' ? product.category : '淘宝联盟商品',
     price,
     currency: '¥',
@@ -157,6 +168,10 @@ function toTaobaoClothingItem(product: TaobaoProduct, profile: UserBodyProfile):
   };
 }
 
+function matchesTaobaoCategory(product: TaobaoProduct, category: TaobaoCategory) {
+  return category === 'all' || getTaobaoCategory(`${product.category || ''} ${product.title || ''}`) === category;
+}
+
 function toTaobaoProductMeta(product: TaobaoProduct): TaobaoProductMeta {
   return {
     price: Number(product.price) || 0,
@@ -165,8 +180,8 @@ function toTaobaoProductMeta(product: TaobaoProduct): TaobaoProductMeta {
   };
 }
 
-function requestTaobaoProducts(scene: string, page: number, retry = false): Promise<TaobaoSourceResult> {
-  const key = `${scene}:${page}`;
+function requestTaobaoProducts(scene: string, category: TaobaoCategory, page: number, retry = false): Promise<TaobaoSourceResult> {
+  const key = `${scene}:${category}:${page}`;
   if (!retry) {
     const cached = taobaoSourceCache.get(key);
     if (cached) return Promise.resolve(cached);
@@ -174,7 +189,7 @@ function requestTaobaoProducts(scene: string, page: number, retry = false): Prom
     if (inFlight) return inFlight;
   }
 
-  const request = fetch(`/api/taobao/products?scene=${scene}&page=${page}`)
+  const request = fetch(`/api/taobao/products?scene=${scene}&category=${category}&page=${page}`)
     .then(async (response) => {
       if (!response.ok) throw new Error('unavailable');
       const payload: unknown = await response.json();
@@ -216,17 +231,9 @@ export default function Recommendations() {
     if (locationState?.profile) return locationState.profile;
     return loadProfile() || (isValidOccasion ? getNeutralProfile(urlOccasion) : null);
   });
-  const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [activeCategory, setActiveCategory] = useState<TaobaoCategory>('all');
   const [productSearch, setProductSearch] = useState('');
-  const [productSourceStatus, setProductSourceStatus] = useState<ProductSourceStatus>('loading');
-  const [liveProducts, setLiveProducts] = useState<ClothingItem[]>([]);
-  const [taobaoProductMeta, setTaobaoProductMeta] = useState<Record<string, TaobaoProductMeta>>({});
-  const [productSourceMessage, setProductSourceMessage] = useState('');
-  const [productSourceAttempt, setProductSourceAttempt] = useState(0);
-  const [taobaoPage, setTaobaoPage] = useState(1);
-  const [hasMoreTaobaoProducts, setHasMoreTaobaoProducts] = useState(false);
-  const [isLoadingMoreProducts, setIsLoadingMoreProducts] = useState(false);
-  const [loadMoreError, setLoadMoreError] = useState(false);
+  const [categoryFeeds, setCategoryFeeds] = useState<Partial<Record<TaobaoCategory, TaobaoFeed>>>({});
   const [hasUserScrolled, setHasUserScrolled] = useState(false);
   const [showFavorites, setShowFavorites] = useState(false);
   const [showOccasionSwitcher, setShowOccasionSwitcher] = useState(false);
@@ -234,8 +241,8 @@ export default function Recommendations() {
   const productSentinelRef = useRef<HTMLDivElement>(null);
   const hasUserScrolledRef = useRef(false);
   const loadMoreUnlockedRef = useRef(false);
-  const requestedTaobaoPagesRef = useRef(new Set<number>());
-  const liveProductIdsRef = useRef(new Set<string>());
+  const requestedTaobaoPagesRef = useRef(new Set<string>());
+  const categoryFeedsRef = useRef<Partial<Record<TaobaoCategory, TaobaoFeed>>>({});
   const aiRequestInFlight = useRef(false);
   const [weatherData, setWeatherData] = useState<WeatherData | null>();
   const [weatherInterp, setWeatherInterp] = useState<WeatherInterpretation | null>(null);
@@ -250,6 +257,12 @@ export default function Recommendations() {
     return stateRecommendation || readCachedAIRecommendation(profile);
   });
   const [aiLoading, setAILoading] = useState(false);
+
+  const setCategoryFeed = useCallback((category: TaobaoCategory, feed: TaobaoFeed) => {
+    const next = { ...categoryFeedsRef.current, [category]: feed };
+    categoryFeedsRef.current = next;
+    setCategoryFeeds(next);
+  }, []);
 
   // 获取天气（不阻塞渲染）
   const loadWeather = useCallback(async () => {
@@ -275,8 +288,11 @@ export default function Recommendations() {
 
   useEffect(() => {
     const markUserScroll = () => {
-      hasUserScrolledRef.current = true;
-      setHasUserScrolled(true);
+      if (!hasUserScrolledRef.current) {
+        hasUserScrolledRef.current = true;
+        loadMoreUnlockedRef.current = true;
+        setHasUserScrolled(true);
+      }
     };
     window.addEventListener('scroll', markUserScroll, { passive: true });
     return () => window.removeEventListener('scroll', markUserScroll);
@@ -309,10 +325,9 @@ export default function Recommendations() {
     setAIRecommendation(null);
     clearCachedAIRecommendation();
     setSearchParams({ occasion });
-    setTaobaoPage(1);
-    setHasMoreTaobaoProducts(false);
     requestedTaobaoPagesRef.current.clear();
-    liveProductIdsRef.current.clear();
+    categoryFeedsRef.current = {};
+    setCategoryFeeds({});
     hasUserScrolledRef.current = false;
     setHasUserScrolled(false);
     loadMoreUnlockedRef.current = false;
@@ -383,66 +398,110 @@ export default function Recommendations() {
 
   const { isFavorite, toggleFavorite, favoriteItems } = useFavorites();
 
-  const loadTaobaoProducts = useCallback(async (page = 1, retry = false) => {
+  const loadTaobaoProducts = useCallback(async (category: TaobaoCategory, page = 1, retry = false) => {
     if (!profile) return;
     const scene = getTaobaoScene(profile);
     if (!scene) {
-      setProductSourceStatus('demo');
-      setProductSourceMessage('演示搭配，真实商品正在接入。');
       return;
     }
-    if (requestedTaobaoPagesRef.current.has(page) && !retry) return;
-    requestedTaobaoPagesRef.current.add(page);
+    const requestKey = `${scene}:${category}:${page}`;
+    if (requestedTaobaoPagesRef.current.has(requestKey) && !retry) return;
+    requestedTaobaoPagesRef.current.add(requestKey);
+    const currentFeed = categoryFeedsRef.current[category];
     if (page === 1) {
-      setProductSourceStatus('loading');
-      setProductSourceMessage('');
-      setLoadMoreError(false);
+      setCategoryFeed(category, {
+        products: currentFeed?.products || [],
+        meta: currentFeed?.meta || {},
+        page: 0,
+        hasMore: false,
+        status: 'loading',
+        message: '',
+        isLoadingMore: false,
+        loadMoreError: false,
+      });
     } else {
-      setIsLoadingMoreProducts(true);
-      setLoadMoreError(false);
+      setCategoryFeed(category, {
+        products: currentFeed?.products || [],
+        meta: currentFeed?.meta || {},
+        page: currentFeed?.page || 1,
+        hasMore: currentFeed?.hasMore || false,
+        status: currentFeed?.status || 'loading',
+        message: currentFeed?.message || '',
+        isLoadingMore: true,
+        loadMoreError: false,
+      });
     }
 
     try {
-      const payload = await requestTaobaoProducts(scene, page, retry);
-      const products = payload.products.filter(isWearableTaobaoProduct);
-      const items = products.map((product) => toTaobaoClothingItem(product, profile)).filter((item): item is ClothingItem => item !== null);
+      const payload = await requestTaobaoProducts(scene, category, page, retry);
+      const products = payload.products.filter((product) => isWearableTaobaoProduct(product) && matchesTaobaoCategory(product, category));
+      const items = products.map((product) => toTaobaoClothingItem(product, profile, category)).filter((item): item is ClothingItem => item !== null);
       const meta = Object.fromEntries(products.map((product) => [`taobao-${product.itemId}`, toTaobaoProductMeta(product)]));
-      const newItems = page === 1 ? items : items.filter((item) => !liveProductIdsRef.current.has(item.id));
-      if (page === 1) liveProductIdsRef.current = new Set(newItems.map((item) => item.id));
-      else newItems.forEach((item) => liveProductIdsRef.current.add(item.id));
-      setLiveProducts((current) => page === 1 ? newItems : [...current, ...newItems]);
-      setTaobaoProductMeta((current) => page === 1 ? meta : { ...current, ...meta });
-      setTaobaoPage(page);
-      setHasMoreTaobaoProducts(payload.hasMore && newItems.length > 0);
-      if (page === 1) {
-        setProductSourceStatus(items.length >= 3 ? 'live' : 'empty');
-        setProductSourceMessage(items.length >= 3 ? '' : payload.message || '本场景暂未找到合适服装。');
-      }
+      const previousItems = page === 1 ? [] : categoryFeedsRef.current[category]?.products || [];
+      const previousIds = new Set(previousItems.map((item) => item.id));
+      const newItems = items.filter((item) => !previousIds.has(item.id));
+      const nextItems = page === 1 ? newItems : [...previousItems, ...newItems];
+      setCategoryFeed(category, {
+        products: nextItems,
+        meta: page === 1 ? meta : { ...(categoryFeedsRef.current[category]?.meta || {}), ...meta },
+        page,
+        hasMore: payload.hasMore && newItems.length > 0,
+        status: nextItems.length ? 'live' : 'empty',
+        message: nextItems.length ? '' : payload.message || '本场景暂未找到合适服装。',
+        isLoadingMore: false,
+        loadMoreError: false,
+      });
     } catch {
+      requestedTaobaoPagesRef.current.delete(requestKey);
       if (page === 1) {
-        setLiveProducts([]);
-        setTaobaoProductMeta({});
-        setProductSourceStatus('empty');
-        setProductSourceMessage('商品服务暂时不可用，请稍后重试。');
+        setCategoryFeed(category, {
+          products: [],
+          meta: {},
+          page: 0,
+          hasMore: false,
+          status: 'empty',
+          message: '商品服务暂时不可用，请稍后重试。',
+          isLoadingMore: false,
+          loadMoreError: false,
+        });
       } else {
-        requestedTaobaoPagesRef.current.delete(page);
-        setLoadMoreError(true);
+        const failedFeed = categoryFeedsRef.current[category];
+        if (failedFeed) setCategoryFeed(category, { ...failedFeed, isLoadingMore: false, loadMoreError: true });
       }
-    } finally {
-      if (page > 1) setIsLoadingMoreProducts(false);
     }
-  }, [profile]);
+  }, [profile, setCategoryFeed]);
 
   useEffect(() => {
     requestedTaobaoPagesRef.current.clear();
-    liveProductIdsRef.current.clear();
+    categoryFeedsRef.current = {};
+    setCategoryFeeds({});
     hasUserScrolledRef.current = false;
     setHasUserScrolled(false);
     loadMoreUnlockedRef.current = false;
-    setTaobaoPage(1);
-    setHasMoreTaobaoProducts(false);
-    loadTaobaoProducts(1, productSourceAttempt > 0);
-  }, [loadTaobaoProducts, productSourceAttempt]);
+    loadTaobaoProducts('all', 1);
+  }, [loadTaobaoProducts]);
+
+  const activeFeed = categoryFeeds[activeCategory];
+  const taobaoProductMeta = useMemo(() => Object.values(categoryFeeds).reduce<Record<string, TaobaoProductMeta>>(
+    (combined, feed) => ({ ...combined, ...(feed?.meta || {}) }),
+    {},
+  ), [categoryFeeds]);
+  const catalogItems = useMemo(() => {
+    if (activeCategory !== 'all') return activeFeed?.products || [];
+    const ids = new Set<string>();
+    return Object.values(categoryFeeds).flatMap((feed) => (feed?.products || []).filter((item) => {
+      if (ids.has(item.id)) return false;
+      ids.add(item.id);
+      return true;
+    }));
+  }, [activeCategory, activeFeed?.products, categoryFeeds]);
+  const productSourceStatus = activeCategory === 'all' && catalogItems.length
+    ? 'live'
+    : activeFeed?.status || 'loading';
+  const productSourceMessage = activeFeed?.message || '';
+  const hasMoreTaobaoProducts = activeFeed?.hasMore || false;
+  const isLoadingMoreProducts = activeFeed?.isLoadingMore || false;
+  const loadMoreError = activeFeed?.loadMoreError || false;
 
   useEffect(() => {
     const sentinel = productSentinelRef.current;
@@ -451,38 +510,38 @@ export default function Recommendations() {
     const observer = new IntersectionObserver(([entry]) => {
       if (!entry.isIntersecting) {
         loadMoreUnlockedRef.current = true;
-        if (loadMoreError) setLoadMoreError(false);
+        if (loadMoreError && activeFeed) setCategoryFeed(activeCategory, { ...activeFeed, loadMoreError: false });
         return;
       }
       if (!hasUserScrolled || !loadMoreUnlockedRef.current || isLoadingMoreProducts || loadMoreError) return;
       loadMoreUnlockedRef.current = false;
-      loadTaobaoProducts(taobaoPage + 1);
+      loadTaobaoProducts(activeCategory, (activeFeed?.page || 0) + 1);
     }, { rootMargin: '300px 0px' });
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [hasMoreTaobaoProducts, hasUserScrolled, isLoadingMoreProducts, loadMoreError, loadTaobaoProducts, productSourceStatus, showFavorites, taobaoPage]);
+  }, [activeCategory, activeFeed, hasMoreTaobaoProducts, hasUserScrolled, isLoadingMoreProducts, loadMoreError, loadTaobaoProducts, productSourceStatus, setCategoryFeed, showFavorites]);
 
-  const catalogItems = productSourceStatus === 'live'
-    ? liveProducts
-    : productSourceStatus === 'demo'
-      ? recommendations
-      : [];
   const showProductSourceEmptyState = !showFavorites
-    && productSourceStatus === 'empty';
+    && productSourceStatus === 'empty'
+    && catalogItems.length === 0;
   const filteredByCategory = useMemo(() => {
-    const categoryItems = activeCategory === 'all'
-      ? catalogItems
-      : catalogItems.filter((item) => item.category === activeCategory);
     const query = productSearch.trim().toLocaleLowerCase();
-    if (!query) return categoryItems;
-    return categoryItems.filter((item) => [item.name, item.brand, item.category, ...item.tags]
+    if (!query) return catalogItems;
+    return catalogItems.filter((item) => [item.name, item.brand, item.category, ...item.tags]
       .join(' ')
       .toLocaleLowerCase()
       .includes(query));
-  }, [catalogItems, activeCategory, productSearch]);
+  }, [catalogItems, productSearch]);
 
   const displayItems = showFavorites ? favoriteItems : filteredByCategory;
+  const visibleCatList = profile?.gender === 'male' ? catList.filter((category) => category.key !== 'dress') : catList;
+  const selectProductCategory = (category: TaobaoCategory) => {
+    setActiveCategory(category);
+    setShowFavorites(false);
+    loadMoreUnlockedRef.current = false;
+    if (!categoryFeedsRef.current[category]) loadTaobaoProducts(category, 1);
+  };
 
   // 没有 profile 数据且无场合参数时显示引导页
   if (!profile) {
@@ -775,14 +834,10 @@ export default function Recommendations() {
         {!showFavorites && (
           <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-wrap gap-2">
-              {catList.map((cat) => (
+              {visibleCatList.map((cat) => (
                 <button
                   key={cat.key}
-                  onClick={() => {
-                    setActiveCategory(cat.key);
-                    setShowFavorites(false);
-                    setProductSourceAttempt((count) => count + 1);
-                  }}
+                  onClick={() => selectProductCategory(cat.key)}
                   className={`inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium transition-all ${
                     activeCategory === cat.key && !showFavorites
                       ? 'border-slate-900 bg-slate-900 text-white'
@@ -851,7 +906,7 @@ export default function Recommendations() {
             </p>
             {!showFavorites && showProductSourceEmptyState && <p className="mx-auto mt-2 max-w-sm text-sm text-[#AAA49B]">{productSourceMessage || '淘宝联盟商品暂时未返回结果，请稍后再试。'}</p>}
             {!showFavorites && showProductSourceEmptyState && (
-              <Button className="sf-secondary-button mt-5" variant="outline" onClick={() => setProductSourceAttempt((count) => count + 1)}>重试</Button>
+              <Button className="sf-secondary-button mt-5" variant="outline" onClick={() => loadTaobaoProducts(activeCategory, 1, true)}>重试</Button>
             )}
           </div>
         ) : (
@@ -859,7 +914,7 @@ export default function Recommendations() {
             {!showFavorites && productSourceStatus === 'demo' && (
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#C9A46A]/20 bg-[#C9A46A]/[0.06] px-4 py-3 text-sm text-[#AAA49B]">
                 <span>{productSourceMessage}</span>
-                <Button className="sf-secondary-button h-8" variant="outline" onClick={() => setProductSourceAttempt((count) => count + 1)}>稍后重试</Button>
+                <Button className="sf-secondary-button h-8" variant="outline" onClick={() => loadTaobaoProducts(activeCategory, 1, true)}>稍后重试</Button>
               </div>
             )}
             <div className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-3 lg:gap-5">

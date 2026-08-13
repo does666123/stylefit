@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createTopSign } from '../edge-functions/lib/taobao.js';
+import { createTopSign, TAOBAO_SCENES } from '../edge-functions/lib/taobao.js';
 import { onRequest } from '../edge-functions/api/taobao/products.js';
 
 assert.equal(createTopSign({ foo_bar: '3', foo: '1', bar: '2', foobar: '4' }, 'helloworld'), '5AAF1C690262A24768F5478B084C2C8A');
@@ -17,6 +17,17 @@ const invalidSceneResponse = await onRequest({
 });
 assert.equal(invalidSceneResponse.status, 400);
 assert.deepEqual(await invalidSceneResponse.json(), { error: '不支持的检索场景' });
+
+const invalidCategoryResponse = await onRequest({
+  request: new Request('https://stylefit.example/api/taobao/products?scene=mens_work&category=anything'),
+  env: {},
+});
+assert.equal(invalidCategoryResponse.status, 400);
+assert.deepEqual(await invalidCategoryResponse.json(), { error: '不支持的商品分类' });
+assert.equal(TAOBAO_SCENES.mens_work.queries.top, '男士 通勤 衬衫');
+assert.equal(TAOBAO_SCENES.mens_work.queries.bottom, '男士 通勤 西裤');
+assert.equal(TAOBAO_SCENES.mens_work.queries.shoes, '男士 通勤 皮鞋');
+assert.equal(TAOBAO_SCENES.mens_work.queries.accessory, '男士 通勤 腰带 领带');
 
 const originalFetch = globalThis.fetch;
 let upstreamCalls = 0;
@@ -66,6 +77,13 @@ try {
   assert.equal(invalidDiagnostic.status, 400);
   assert.equal(upstreamCalls, 2);
 
+  const invalidConfiguredCategory = await onRequest({
+    request: new Request('https://stylefit.example/api/taobao/products?scene=mens_work&category=anything'),
+    env: configuredEnv,
+  });
+  assert.equal(invalidConfiguredCategory.status, 400);
+  assert.equal(upstreamCalls, 2);
+
   globalThis.fetch = async (_url, options) => {
     upstreamCalls += 1;
     upstreamBody = options.body;
@@ -78,21 +96,21 @@ try {
             publish_info: { coupon_share_url: '//uland.taobao.com/coupon/example' },
             income_info: { commission_rate: '12.5' },
             price_promotion_info: { reserve_price: '120', zk_final_price: '100', final_promotion_price: '80' },
-            item_basic_info: { title: '升级接口测试衬衫', pict_url: '//img.alicdn.com/test.jpg', shop_title: '测试店铺', volume: 12, category_name: '男装' },
+            item_basic_info: { title: '升级接口测试皮鞋', pict_url: '//img.alicdn.com/test.jpg', shop_title: '测试店铺', volume: 12, category_name: '鞋履' },
           }],
         },
       },
     }), { status: 200 });
   };
   const success = await onRequest({
-    request: new Request('https://stylefit.example/api/taobao/products?scene=mens_work'),
+    request: new Request('https://stylefit.example/api/taobao/products?scene=mens_work&category=shoes'),
     env: configuredEnv,
   });
   assert.equal(success.status, 200);
   assert.deepEqual(await success.json(), {
     products: [{
       itemId: 'upgrade-item-1',
-      title: '升级接口测试衬衫',
+      title: '升级接口测试皮鞋',
       image: 'https://img.alicdn.com/test.jpg',
       price: 100,
       couponAmount: 20,
@@ -100,13 +118,14 @@ try {
       commissionRate: 12.5,
       shopTitle: '测试店铺',
       volume: 12,
-      category: '男装',
+      category: 'shoes',
       promotionUrl: 'https://uland.taobao.com/coupon/example',
     }],
     page: 1,
     hasMore: true,
   });
   assert.match(upstreamBody, /method=taobao.tbk.dg.material.optional.upgrade/);
+  assert.equal(new URLSearchParams(upstreamBody).get('q'), '男士 通勤 皮鞋');
 
   const secondPage = await onRequest({
     request: new Request('https://stylefit.example/api/taobao/products?scene=mens_work&page=2'),

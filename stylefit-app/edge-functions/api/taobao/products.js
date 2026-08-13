@@ -12,10 +12,12 @@ export async function onRequest({ request, env }) {
 
   const searchParams = new URL(request.url).searchParams;
   const scene = searchParams.get('scene') || '';
+  const category = searchParams.get('category') || 'all';
   const requestedPage = Number.parseInt(searchParams.get('page') || '1', 10);
   const page = Number.isFinite(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, 100) : 1;
-  const result = await searchTaobaoProducts(env, scene, page);
+  const result = await searchTaobaoProducts(env, scene, category, page);
   if (result.error === 'invalid_scene') return json({ error: '不支持的检索场景' }, 400);
+  if (result.error === 'invalid_category') return json({ error: '不支持的商品分类' }, 400);
   if (result.error === 'not_configured') return json({ error: '服务未配置' }, 503);
   if (result.error) {
     const diagnostic = scene === 'mens_work' && searchParams.get('diagnostic') === '1' ? result.diagnostic : null;

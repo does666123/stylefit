@@ -3,11 +3,27 @@ const API_METHOD = 'taobao.tbk.dg.material.optional.upgrade';
 const PAGE_SIZE = 20;
 
 export const TAOBAO_SCENES = {
-  mens_work: { query: '男士 通勤 衬衫', category: '男装' },
-  womens_work: { query: '女士 通勤 连衣裙', category: '女装' },
-  mens_casual_outerwear: { query: '男士 休闲 外套', category: '男装' },
-  womens_minimal_top: { query: '女士 简约 上衣', category: '女装' },
+  mens_work: {
+    category: '男装',
+    queries: { all: '男士 通勤 服装', top: '男士 通勤 衬衫', bottom: '男士 通勤 西裤', outerwear: '男士 通勤 西装外套', shoes: '男士 通勤 皮鞋', accessory: '男士 通勤 腰带 领带' },
+  },
+  womens_work: {
+    category: '女装',
+    queries: { all: '女士 通勤 服装', top: '女士 通勤 衬衫', bottom: '女士 通勤 西裤 半身裙', dress: '女士 通勤 连衣裙', outerwear: '女士 通勤 西装外套', shoes: '女士 通勤 单鞋', accessory: '女士 通勤 包包 丝巾' },
+  },
+  mens_casual_outerwear: {
+    category: '男装',
+    queries: { all: '男士 休闲 服装', top: '男士 休闲 T恤', bottom: '男士 休闲 牛仔裤', outerwear: '男士 休闲 夹克', shoes: '男士 休闲 运动鞋', accessory: '男士 休闲 帽子 腰带' },
+  },
+  womens_minimal_top: {
+    category: '女装',
+    queries: { all: '女士 简约 服装', top: '女士 简约 上衣', bottom: '女士 简约 半身裙', dress: '女士 简约 连衣裙', outerwear: '女士 简约 外套', shoes: '女士 简约 单鞋', accessory: '女士 简约 包包' },
+  },
 };
+
+const TAOBAO_CATEGORIES = new Set(['all', 'top', 'bottom', 'outerwear', 'shoes', 'accessory', 'dress']);
+const WEARABLE_TERMS = /上衣|T恤|t恤|衬衫|衬衣|针织|毛衣|卫衣|Polo|polo|外套|夹克|大衣|风衣|羽绒|西装|裤|牛仔|半身裙|连衣裙|鞋|靴|凉鞋|拖鞋|包|腰带|皮带|领带|袜|丝巾|帽/;
+const EXCLUDED_TERMS = /手机|电脑|数码|耳机|充电|数据线|壳|家居|家具|床|枕|餐具|食品|零食|美妆|口红|护肤|洗发|香水/;
 
 function leftRotate(value, amount) {
   return (value << amount) | (value >>> (32 - amount));
@@ -129,16 +145,29 @@ export function createTopSign(params, secret) {
   return md5Hex(`${secret}${source}${secret}`);
 }
 
+function getProductCategory(text) {
+  if (/鞋|靴|凉鞋|拖鞋/.test(text)) return 'shoes';
+  if (/裤|牛仔|半身裙/.test(text)) return 'bottom';
+  if (/外套|夹克|大衣|风衣|羽绒|西装/.test(text)) return 'outerwear';
+  if (/包|帽|围巾|腰带|皮带|眼镜|首饰|领带|袜|丝巾/.test(text)) return 'accessory';
+  if (/连衣裙/.test(text)) return 'dress';
+  return 'top';
+}
+
 function mapProduct(item, category) {
   const publishInfo = asRecord(item.publish_info) || {};
   const incomeInfo = asRecord(item.income_info) || {};
   const priceInfo = asRecord(item.price_promotion_info) || {};
   const itemInfo = asRecord(item.item_basic_info) || {};
+  const title = asText(itemInfo.title ?? item.title, 200);
+  const sourceCategory = asText(itemInfo.category_name ?? item.category_name, 80);
+  const categoryText = `${sourceCategory} ${title}`;
+  if (!WEARABLE_TERMS.test(categoryText) || EXCLUDED_TERMS.test(categoryText)) return null;
   const price = asNumber(priceInfo.zk_final_price ?? priceInfo.reserve_price ?? item.zk_final_price ?? item.reserve_price);
   const couponPrice = asNumber(priceInfo.final_promotion_price ?? item.final_promotion_price) || price;
   return {
     itemId: asText(item.item_id, 80),
-    title: asText(itemInfo.title ?? item.title, 200),
+    title,
     image: asPromotionUrl(itemInfo.pict_url ?? itemInfo.white_image ?? item.pict_url ?? item.white_image),
     price,
     couponAmount: Math.max(0, Number((price - couponPrice).toFixed(2))),
@@ -146,14 +175,15 @@ function mapProduct(item, category) {
     commissionRate: asNumber(incomeInfo.commission_rate),
     shopTitle: asText(itemInfo.shop_title ?? item.shop_title, 120),
     volume: asNumber(itemInfo.volume ?? item.volume),
-    category: asText(itemInfo.category_name ?? item.category_name, 80) || category,
+    category: getProductCategory(categoryText) || category,
     promotionUrl: asPromotionUrl(publishInfo.coupon_share_url ?? publishInfo.click_url ?? item.coupon_share_url ?? item.url),
   };
 }
 
-export async function searchTaobaoProducts(env, sceneKey, page = 1) {
+export async function searchTaobaoProducts(env, sceneKey, category = 'all', page = 1) {
   const scene = TAOBAO_SCENES[sceneKey];
   if (!scene) return { error: 'invalid_scene' };
+  if (!TAOBAO_CATEGORIES.has(category) || !scene.queries[category]) return { error: 'invalid_category' };
 
   const appKey = asText(env?.TAOBAO_APP_KEY, 80);
   const appSecret = asText(env?.TAOBAO_APP_SECRET, 200);
@@ -170,7 +200,7 @@ export async function searchTaobaoProducts(env, sceneKey, page = 1) {
     adzone_id: adzoneId,
     page_no: String(page),
     page_size: String(PAGE_SIZE),
-    q: scene.query,
+    q: scene.queries[category],
   };
   const payload = new URLSearchParams({ ...params, sign: createTopSign(params, appSecret) });
   const controller = new AbortController();
@@ -210,7 +240,11 @@ export async function searchTaobaoProducts(env, sceneKey, page = 1) {
     }
     const resultList = asRecord(responseBody.result_list);
     const sourceItems = Array.isArray(resultList?.map_data) ? resultList.map_data : [];
-    const products = sourceItems.slice(0, PAGE_SIZE).map(asRecord).filter(Boolean).map((item) => mapProduct(item, scene.category));
+    const products = sourceItems.slice(0, PAGE_SIZE)
+      .map(asRecord)
+      .filter(Boolean)
+      .map((item) => mapProduct(item, scene.category))
+      .filter((item) => item && (category === 'all' || item.category === category));
     const totalResults = asNumber(responseBody.total_results);
     const hasMore = totalResults > 0 ? page * PAGE_SIZE < totalResults : sourceItems.length === PAGE_SIZE;
     return products.length ? { products, page, hasMore } : { products, page, hasMore: false, message: '暂无匹配的淘宝联盟商品' };
