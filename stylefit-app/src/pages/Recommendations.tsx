@@ -211,21 +211,15 @@ export default function Recommendations() {
   });
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [productSearch, setProductSearch] = useState('');
-  const [visibleCount, setVisibleCount] = useState(12);
   const [productSourceStatus, setProductSourceStatus] = useState<ProductSourceStatus>('loading');
   const [liveProducts, setLiveProducts] = useState<ClothingItem[]>([]);
   const [taobaoProductMeta, setTaobaoProductMeta] = useState<Record<string, TaobaoProductMeta>>({});
   const [productSourceMessage, setProductSourceMessage] = useState('');
   const [productSourceAttempt, setProductSourceAttempt] = useState(0);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [supportsIntersectionObserver] = useState(() => typeof IntersectionObserver !== 'undefined');
   const [showFavorites, setShowFavorites] = useState(false);
   const [showOccasionSwitcher, setShowOccasionSwitcher] = useState(false);
   const switcherRef = useRef<HTMLDivElement>(null);
-  const loadMoreRef = useRef<HTMLDivElement>(null);
-  const loadMoreTimerRef = useRef<number | null>(null);
   const aiRequestInFlight = useRef(false);
-  const isLoadingMoreRef = useRef(false);
   const [weatherData, setWeatherData] = useState<WeatherData | null>();
   const [weatherInterp, setWeatherInterp] = useState<WeatherInterpretation | null>(null);
   const [aiRecommendation, setAIRecommendation] = useState<AIRecommendation | null>(() => {
@@ -254,6 +248,13 @@ export default function Recommendations() {
   useEffect(() => {
     loadWeather();
   }, [loadWeather]);
+
+  useEffect(() => {
+    const previousScrollRestoration = window.history.scrollRestoration;
+    window.history.scrollRestoration = 'manual';
+    window.scrollTo(0, 0);
+    return () => { window.history.scrollRestoration = previousScrollRestoration; };
+  }, []);
 
   // 点击外部关闭场合切换器
   useEffect(() => {
@@ -401,43 +402,6 @@ export default function Recommendations() {
   }, [catalogItems, activeCategory, productSearch]);
 
   const displayItems = showFavorites ? favoriteItems : filteredByCategory;
-  const visibleItems = showFavorites ? displayItems : displayItems.slice(0, visibleCount);
-
-  const loadMoreItems = useCallback(() => {
-    if (showFavorites || visibleCount >= displayItems.length || isLoadingMoreRef.current) return;
-
-    isLoadingMoreRef.current = true;
-    setIsLoadingMore(true);
-    loadMoreTimerRef.current = window.setTimeout(() => {
-      setVisibleCount((count) => Math.min(count + 12, displayItems.length));
-      setIsLoadingMore(false);
-      isLoadingMoreRef.current = false;
-    }, 120);
-  }, [displayItems.length, showFavorites, visibleCount]);
-
-  useEffect(() => {
-    if (loadMoreTimerRef.current) window.clearTimeout(loadMoreTimerRef.current);
-    isLoadingMoreRef.current = false;
-    setIsLoadingMore(false);
-    setVisibleCount(12);
-  }, [activeCategory, productSearch, showFavorites]);
-
-  useEffect(() => {
-    if (!supportsIntersectionObserver || showFavorites || visibleCount >= displayItems.length) return;
-    const target = loadMoreRef.current;
-    if (!target) return;
-
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) loadMoreItems();
-    }, { rootMargin: '300px 0px' });
-
-    observer.observe(target);
-    return () => observer.disconnect();
-  }, [displayItems.length, loadMoreItems, showFavorites, supportsIntersectionObserver, visibleCount]);
-
-  useEffect(() => () => {
-    if (loadMoreTimerRef.current) window.clearTimeout(loadMoreTimerRef.current);
-  }, []);
 
   // 没有 profile 数据且无场合参数时显示引导页
   if (!profile) {
@@ -736,7 +700,6 @@ export default function Recommendations() {
                   onClick={() => {
                     setActiveCategory(cat.key);
                     setShowFavorites(false);
-                    setVisibleCount(12);
                   }}
                   className={`inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium transition-all ${
                     activeCategory === cat.key && !showFavorites
@@ -798,7 +761,7 @@ export default function Recommendations() {
               </div>
             ))}
           </div>
-        ) : visibleItems.length === 0 ? (
+        ) : displayItems.length === 0 ? (
           <div className="rounded-2xl border border-white/[0.08] bg-[#12141A] px-6 py-16 text-center">
             <ShoppingBag className="mx-auto mb-3 h-12 w-12 text-[#D7C39D]" />
             <p className="text-base font-medium text-[#F7F4EE]">
@@ -818,7 +781,7 @@ export default function Recommendations() {
               </div>
             )}
             <div className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-3 lg:gap-5">
-              {visibleItems.map((item) => (
+              {displayItems.map((item) => (
                 <div key={item.id} className="stagger-item animate-fade-in-up">
                   <ClothingCard
                     item={item}
@@ -832,16 +795,8 @@ export default function Recommendations() {
           </>
         )}
         {!showFavorites && displayItems.length > 0 && (
-          <div ref={loadMoreRef} className="mt-6 flex min-h-10 justify-center">
-            {visibleItems.length >= displayItems.length ? (
-              <span className="text-sm text-[#AAA49B]">已展示全部 {displayItems.length} 件商品</span>
-            ) : isLoadingMore ? (
-              <span className="inline-flex items-center gap-2 text-sm text-[#AAA49B]"><Spinner />正在加载更多…</span>
-            ) : !supportsIntersectionObserver ? (
-              <Button className="sf-secondary-button" variant="outline" onClick={loadMoreItems}>
-                加载更多
-              </Button>
-            ) : null}
+          <div className="mt-6 flex min-h-10 justify-center">
+            <span className="text-sm text-[#AAA49B]">已展示全部商品</span>
           </div>
         )}
       </div>
