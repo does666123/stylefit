@@ -1,6 +1,6 @@
 const API_ENDPOINT = 'https://eco.taobao.com/router/rest';
 const API_METHOD = 'taobao.tbk.dg.material.optional.upgrade';
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 20;
 
 export const TAOBAO_SCENES = {
   mens_work: { query: '男士 通勤 衬衫', category: '男装' },
@@ -151,7 +151,7 @@ function mapProduct(item, category) {
   };
 }
 
-export async function searchTaobaoProducts(env, sceneKey) {
+export async function searchTaobaoProducts(env, sceneKey, page = 1) {
   const scene = TAOBAO_SCENES[sceneKey];
   if (!scene) return { error: 'invalid_scene' };
 
@@ -168,7 +168,7 @@ export async function searchTaobaoProducts(env, sceneKey) {
     timestamp: chinaTimestamp(),
     v: '2.0',
     adzone_id: adzoneId,
-    page_no: '1',
+    page_no: String(page),
     page_size: String(PAGE_SIZE),
     q: scene.query,
   };
@@ -211,7 +211,9 @@ export async function searchTaobaoProducts(env, sceneKey) {
     const resultList = asRecord(responseBody.result_list);
     const sourceItems = Array.isArray(resultList?.map_data) ? resultList.map_data : [];
     const products = sourceItems.slice(0, PAGE_SIZE).map(asRecord).filter(Boolean).map((item) => mapProduct(item, scene.category));
-    return products.length ? { products } : { products, message: '暂无匹配的淘宝联盟商品' };
+    const totalResults = asNumber(responseBody.total_results);
+    const hasMore = totalResults > 0 ? page * PAGE_SIZE < totalResults : sourceItems.length === PAGE_SIZE;
+    return products.length ? { products, page, hasMore } : { products, page, hasMore: false, message: '暂无匹配的淘宝联盟商品' };
   } catch (error) {
     return {
       error: 'upstream_failed',

@@ -69,7 +69,7 @@ type TaobaoProductMeta = {
   commissionRate: number;
 };
 
-type TaobaoSourceResult = { products: TaobaoProduct[]; message?: string };
+type TaobaoSourceResult = { products: TaobaoProduct[]; page: number; hasMore: boolean; message?: string };
 
 const taobaoSourceCache = new Map<string, TaobaoSourceResult>();
 const taobaoSourceRequests = new Map<string, Promise<TaobaoSourceResult>>();
@@ -165,15 +165,16 @@ function toTaobaoProductMeta(product: TaobaoProduct): TaobaoProductMeta {
   };
 }
 
-function requestTaobaoProducts(scene: string, retry = false): Promise<TaobaoSourceResult> {
+function requestTaobaoProducts(scene: string, page: number, retry = false): Promise<TaobaoSourceResult> {
+  const key = `${scene}:${page}`;
   if (!retry) {
-    const cached = taobaoSourceCache.get(scene);
+    const cached = taobaoSourceCache.get(key);
     if (cached) return Promise.resolve(cached);
-    const inFlight = taobaoSourceRequests.get(scene);
+    const inFlight = taobaoSourceRequests.get(key);
     if (inFlight) return inFlight;
   }
 
-  const request = fetch(`/api/taobao/products?scene=${scene}`)
+  const request = fetch(`/api/taobao/products?scene=${scene}&page=${page}`)
     .then(async (response) => {
       if (!response.ok) throw new Error('unavailable');
       const payload: unknown = await response.json();
@@ -183,13 +184,19 @@ function requestTaobaoProducts(scene: string, retry = false): Promise<TaobaoSour
       const message = typeof payload === 'object' && payload !== null && typeof (payload as { message?: unknown }).message === 'string'
         ? (payload as { message: string }).message
         : undefined;
-      const result = { products, message };
-      taobaoSourceCache.set(scene, result);
+      const responsePage = typeof payload === 'object' && payload !== null && Number.isInteger((payload as { page?: unknown }).page)
+        ? (payload as { page: number }).page
+        : page;
+      const hasMore = typeof payload === 'object' && payload !== null && typeof (payload as { hasMore?: unknown }).hasMore === 'boolean'
+        ? (payload as { hasMore: boolean }).hasMore
+        : false;
+      const result = { products, page: responsePage, hasMore, message };
+      taobaoSourceCache.set(key, result);
       return result;
     })
-    .finally(() => taobaoSourceRequests.delete(scene));
+    .finally(() => taobaoSourceRequests.delete(key));
 
-  taobaoSourceRequests.set(scene, request);
+  taobaoSourceRequests.set(key, request);
   return request;
 }
 
@@ -216,9 +223,18 @@ export default function Recommendations() {
   const [taobaoProductMeta, setTaobaoProductMeta] = useState<Record<string, TaobaoProductMeta>>({});
   const [productSourceMessage, setProductSourceMessage] = useState('');
   const [productSourceAttempt, setProductSourceAttempt] = useState(0);
+  const [taobaoPage, setTaobaoPage] = useState(1);
+  const [hasMoreTaobaoProducts, setHasMoreTaobaoProducts] = useState(false);
+  const [isLoadingMoreProducts, setIsLoadingMoreProducts] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState(false);
   const [showFavorites, setShowFavorites] = useState(false);
   const [showOccasionSwitcher, setShowOccasionSwitcher] = useState(false);
   const switcherRef = useRef<HTMLDivElement>(null);
+  const productSentinelRef = useRef<HTMLDivElement>(null);
+  const hasUserScrolledRef = useRef(false);
+  const loadMoreUnlockedRef = useRef(false);
+  const requestedTaobaoPagesRef = useRef(new Set<number>());
+  const liveProductIdsRef = useRef(new Set<string>());
   const aiRequestInFlight = useRef(false);
   const [weatherData, setWeatherData] = useState<WeatherData | null>();
   const [weatherInterp, setWeatherInterp] = useState<WeatherInterpretation | null>(null);
@@ -256,6 +272,14 @@ export default function Recommendations() {
     return () => { window.history.scrollRestoration = previousScrollRestoration; };
   }, []);
 
+  useEffect(() => {
+    const markUserScroll = () => {
+      hasUserScrolledRef.current = true;
+    };
+    window.addEventListener('scroll', markUserScroll, { passive: true });
+    return () => window.removeEventListener('scroll', markUserScroll);
+  }, []);
+
   // 点击外部关闭场合切换器
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -283,6 +307,12 @@ export default function Recommendations() {
     setAIRecommendation(null);
     clearCachedAIRecommendation();
     setSearchParams({ occasion });
+    setTaobaoPage(1);
+    setHasMoreTaobaoProducts(false);
+    requestedTaobaoPagesRef.current.clear();
+    liveProductIdsRef.current.clear();
+    hasUserScrolledRef.current = false;
+    loadMoreUnlockedRef.current = false;
   };
 
   const recommendations = useRecommendations(profile, t as any);
@@ -350,7 +380,7 @@ export default function Recommendations() {
 
   const { isFavorite, toggleFavorite, favoriteItems } = useFavorites();
 
-  const loadTaobaoProducts = useCallback(async (retry = false) => {
+  const loadTaobaoProducts = useCallback(async (page = 1, retry = false) => {
     if (!profile) return;
     const scene = getTaobaoScene(profile);
     if (!scene) {
@@ -358,29 +388,76 @@ export default function Recommendations() {
       setProductSourceMessage('演示搭配，真实商品正在接入。');
       return;
     }
-    setProductSourceStatus('loading');
-    setProductSourceMessage('');
+    if (requestedTaobaoPagesRef.current.has(page) && !retry) return;
+    requestedTaobaoPagesRef.current.add(page);
+    if (page === 1) {
+      setProductSourceStatus('loading');
+      setProductSourceMessage('');
+      setLoadMoreError(false);
+    } else {
+      setIsLoadingMoreProducts(true);
+      setLoadMoreError(false);
+    }
 
     try {
-      const payload = await requestTaobaoProducts(scene, retry);
+      const payload = await requestTaobaoProducts(scene, page, retry);
       const products = payload.products.filter(isWearableTaobaoProduct);
       const items = products.map((product) => toTaobaoClothingItem(product, profile)).filter((item): item is ClothingItem => item !== null);
       const meta = Object.fromEntries(products.map((product) => [`taobao-${product.itemId}`, toTaobaoProductMeta(product)]));
-      setLiveProducts(items);
-      setTaobaoProductMeta(meta);
-      setProductSourceStatus(items.length >= 3 ? 'live' : 'empty');
-      setProductSourceMessage(items.length >= 3 ? '' : payload.message || '本场景暂未找到合适服装。');
+      const newItems = page === 1 ? items : items.filter((item) => !liveProductIdsRef.current.has(item.id));
+      if (page === 1) liveProductIdsRef.current = new Set(newItems.map((item) => item.id));
+      else newItems.forEach((item) => liveProductIdsRef.current.add(item.id));
+      setLiveProducts((current) => page === 1 ? newItems : [...current, ...newItems]);
+      setTaobaoProductMeta((current) => page === 1 ? meta : { ...current, ...meta });
+      setTaobaoPage(page);
+      setHasMoreTaobaoProducts(payload.hasMore && newItems.length > 0);
+      if (page === 1) {
+        setProductSourceStatus(items.length >= 3 ? 'live' : 'empty');
+        setProductSourceMessage(items.length >= 3 ? '' : payload.message || '本场景暂未找到合适服装。');
+      }
     } catch {
-      setLiveProducts([]);
-      setTaobaoProductMeta({});
-      setProductSourceStatus('empty');
-      setProductSourceMessage('商品服务暂时不可用，请稍后重试。');
+      if (page === 1) {
+        setLiveProducts([]);
+        setTaobaoProductMeta({});
+        setProductSourceStatus('empty');
+        setProductSourceMessage('商品服务暂时不可用，请稍后重试。');
+      } else {
+        requestedTaobaoPagesRef.current.delete(page);
+        setLoadMoreError(true);
+      }
+    } finally {
+      if (page > 1) setIsLoadingMoreProducts(false);
     }
   }, [profile]);
 
   useEffect(() => {
-    loadTaobaoProducts(productSourceAttempt > 0);
+    requestedTaobaoPagesRef.current.clear();
+    liveProductIdsRef.current.clear();
+    hasUserScrolledRef.current = false;
+    loadMoreUnlockedRef.current = false;
+    setTaobaoPage(1);
+    setHasMoreTaobaoProducts(false);
+    loadTaobaoProducts(1, productSourceAttempt > 0);
   }, [loadTaobaoProducts, productSourceAttempt]);
+
+  useEffect(() => {
+    const sentinel = productSentinelRef.current;
+    if (!sentinel || showFavorites || productSourceStatus !== 'live' || !hasMoreTaobaoProducts) return;
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) {
+        loadMoreUnlockedRef.current = true;
+        if (loadMoreError) setLoadMoreError(false);
+        return;
+      }
+      if (!hasUserScrolledRef.current || !loadMoreUnlockedRef.current || isLoadingMoreProducts || loadMoreError) return;
+      loadMoreUnlockedRef.current = false;
+      loadTaobaoProducts(taobaoPage + 1);
+    }, { rootMargin: '300px 0px' });
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMoreTaobaoProducts, isLoadingMoreProducts, loadMoreError, loadTaobaoProducts, productSourceStatus, showFavorites, taobaoPage]);
 
   const catalogItems = productSourceStatus === 'live'
     ? liveProducts
@@ -700,6 +777,7 @@ export default function Recommendations() {
                   onClick={() => {
                     setActiveCategory(cat.key);
                     setShowFavorites(false);
+                    setProductSourceAttempt((count) => count + 1);
                   }}
                   className={`inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium transition-all ${
                     activeCategory === cat.key && !showFavorites
@@ -795,8 +873,14 @@ export default function Recommendations() {
           </>
         )}
         {!showFavorites && displayItems.length > 0 && (
-          <div className="mt-6 flex min-h-10 justify-center">
-            <span className="text-sm text-[#AAA49B]">已展示全部商品</span>
+          <div ref={productSentinelRef} className="mt-6 flex min-h-10 justify-center" aria-live="polite">
+            {isLoadingMoreProducts ? (
+              <span className="inline-flex items-center gap-2 text-sm text-[#AAA49B]"><Spinner />正在加载更多商品…</span>
+            ) : loadMoreError ? (
+              <span className="text-sm text-[#AAA49B]">加载失败，向下滑动可重试</span>
+            ) : !hasMoreTaobaoProducts ? (
+              <span className="text-sm text-[#AAA49B]">已展示全部商品</span>
+            ) : null}
           </div>
         )}
       </div>

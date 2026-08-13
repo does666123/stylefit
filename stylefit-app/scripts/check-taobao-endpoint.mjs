@@ -71,6 +71,7 @@ try {
     upstreamBody = options.body;
     return new Response(JSON.stringify({
       tbk_dg_material_optional_upgrade_response: {
+        total_results: 41,
         result_list: {
           map_data: [{
             item_id: 'upgrade-item-1',
@@ -102,8 +103,19 @@ try {
       category: '男装',
       promotionUrl: 'https://uland.taobao.com/coupon/example',
     }],
+    page: 1,
+    hasMore: true,
   });
   assert.match(upstreamBody, /method=taobao.tbk.dg.material.optional.upgrade/);
+
+  const secondPage = await onRequest({
+    request: new Request('https://stylefit.example/api/taobao/products?scene=mens_work&page=2'),
+    env: configuredEnv,
+  });
+  assert.equal(secondPage.status, 200);
+  assert.equal((await secondPage.json()).page, 2);
+  assert.match(upstreamBody, /page_no=2/);
+  assert.match(upstreamBody, /page_size=20/);
 
   globalThis.fetch = async () => new Response(JSON.stringify({
     tbk_dg_material_optional_upgrade_response: { result_list: { map_data: [] } },
@@ -113,7 +125,7 @@ try {
     env: configuredEnv,
   });
   assert.equal(empty.status, 200);
-  assert.deepEqual(await empty.json(), { products: [], message: '暂无匹配的淘宝联盟商品' });
+  assert.deepEqual(await empty.json(), { products: [], page: 1, hasMore: false, message: '暂无匹配的淘宝联盟商品' });
 } finally {
   globalThis.fetch = originalFetch;
 }
