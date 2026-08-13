@@ -1,5 +1,5 @@
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
-import { useRecommendations, getBMICategory, generateOutfitSets, useFavorites, loadProfile, getNeutralProfile } from '../hooks/useRecommendation';
+import { useFavorites, getBMICategory, loadProfile, getNeutralProfile } from '../hooks/useRecommendation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -33,7 +33,7 @@ import {
 } from 'lucide-react';
 import type { UserBodyProfile, ClothingItem, OutfitSet, Occasion } from '../types';
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
-import { fetchWeatherWithCache, interpretWeather, getWeatherRemark, thicknessTierToSeason, type WeatherInterpretation, type WeatherData } from '../lib/weather';
+import { fetchWeatherWithCache, interpretWeather, type WeatherInterpretation } from '../lib/weather';
 import { useT } from '../i18n';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import {
@@ -43,6 +43,7 @@ import {
   readCachedAIRecommendation,
   requestAIRecommendation,
   type AIRecommendation,
+  type AIRecommendationResult,
 } from '../lib/aiRecommendation';
 import { Spinner } from '@/components/ui/spinner';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -224,7 +225,7 @@ export default function Recommendations() {
   // 从 URL 读取场合参数
   const urlOccasion = searchParams.get('occasion') || '';
   const isValidOccasion = ['work', 'date', 'daily', 'party', 'travel', 'formal'].includes(urlOccasion);
-  const locationState = location.state as { profile?: UserBodyProfile; aiRecommendation?: AIRecommendation } | null;
+  const locationState = location.state as { profile?: UserBodyProfile; aiRecommendation?: AIRecommendation; aiCandidates?: ClothingItem[] } | null;
 
   // 优先从 location.state 读取，如果没有则从 localStorage 读取（解决刷新后数据丢失问题）
   const [profile, setProfile] = useState<UserBodyProfile | null>(() => {
@@ -244,18 +245,19 @@ export default function Recommendations() {
   const requestedTaobaoPagesRef = useRef(new Set<string>());
   const categoryFeedsRef = useRef<Partial<Record<TaobaoCategory, TaobaoFeed>>>({});
   const aiRequestInFlight = useRef(false);
-  const [weatherData, setWeatherData] = useState<WeatherData | null>();
   const [weatherInterp, setWeatherInterp] = useState<WeatherInterpretation | null>(null);
-  const [aiRecommendation, setAIRecommendation] = useState<AIRecommendation | null>(() => {
+  const [aiResult, setAIResult] = useState<AIRecommendationResult | null>(() => {
     if (!profile) return null;
     const stateRecommendation = locationState?.profile &&
       locationState.aiRecommendation &&
+      Array.isArray(locationState.aiCandidates) &&
       getAIRecommendationProfileKey(locationState.profile) === getAIRecommendationProfileKey(profile)
-      ? locationState.aiRecommendation
+      ? { recommendation: locationState.aiRecommendation, candidates: locationState.aiCandidates }
       : null;
     if (stateRecommendation) cacheAIRecommendation(profile, stateRecommendation);
     return stateRecommendation || readCachedAIRecommendation(profile);
   });
+  const aiRecommendation = aiResult?.recommendation || null;
   const [aiLoading, setAILoading] = useState(false);
 
   const setCategoryFeed = useCallback((category: TaobaoCategory, feed: TaobaoFeed) => {
@@ -268,10 +270,9 @@ export default function Recommendations() {
   const loadWeather = useCallback(async () => {
     const result = await fetchWeatherWithCache();
     if (result?.data) {
-      setWeatherData(result.data);
       setWeatherInterp(interpretWeather(result.data, result.isDefault, result.locationName, t as any));
     } else {
-      setWeatherData(null);
+      setWeatherInterp(null);
     }
   }, []);
 
@@ -322,7 +323,7 @@ export default function Recommendations() {
       // 无画像：使用中性默认
       setProfile(getNeutralProfile(occasion));
     }
-    setAIRecommendation(null);
+    setAIResult(null);
     clearCachedAIRecommendation();
     setSearchParams({ occasion });
     requestedTaobaoPagesRef.current.clear();
@@ -333,39 +334,27 @@ export default function Recommendations() {
     loadMoreUnlockedRef.current = false;
   };
 
-  const recommendations = useRecommendations(profile, t as any);
-  const weatherForEngine = useMemo(() => {
-    if (!weatherData) return null;
-    const interpretation = interpretWeather(weatherData, false, '', t as (key: string) => string);
-    return {
-      thicknessTier: interpretation.thicknessTier,
-      season: thicknessTierToSeason(interpretation.thicknessTier),
-      remarks: [getWeatherRemark(weatherData, t as (key: string) => string) || ''],
-    };
-  }, [weatherData, t]);
-  const localOutfits = useMemo(() => generateOutfitSets(recommendations, t as any, profile, weatherForEngine), [recommendations, profile, weatherForEngine, t]);
-
   const regenerateAIRecommendation = useCallback(async () => {
-    if (!profile || !recommendations.length || aiRequestInFlight.current) return;
+    if (!profile || aiRequestInFlight.current) return;
 
     aiRequestInFlight.current = true;
     setAILoading(true);
     try {
-      const recommendation = await requestAIRecommendation(profile, recommendations);
-      if (recommendation) cacheAIRecommendation(profile, recommendation);
-      setAIRecommendation(recommendation);
+      const result = await requestAIRecommendation(profile);
+      if (result) cacheAIRecommendation(profile, result);
+      setAIResult(result);
     } catch {
-      setAIRecommendation(null);
+      setAIResult(null);
     } finally {
       aiRequestInFlight.current = false;
       setAILoading(false);
     }
-  }, [profile, recommendations]);
+  }, [profile]);
 
   const outfits = useMemo(() => {
-    if (!aiRecommendation) return localOutfits;
+    if (!aiRecommendation || !aiResult) return [];
 
-    const products = new Map(recommendations.map((item) => [item.id, item]));
+    const products = new Map(aiResult.candidates.map((item) => [item.id, item]));
     const generated = aiRecommendation.outfits.flatMap((outfit, index): OutfitSet[] => {
       const selected = outfit.items.flatMap(({ id }) => {
         const item = products.get(id);
@@ -389,8 +378,9 @@ export default function Recommendations() {
       }];
     });
 
-    return generated.length ? generated : localOutfits;
-  }, [aiRecommendation, localOutfits, profile, recommendations]);
+    return generated;
+  }, [aiRecommendation, aiResult, profile]);
+  const hasRenderableAIOutfits = outfits.length === 3;
   const bmiInfo = useMemo(() => {
     if (!profile) return null;
     return getBMICategory(profile.height, profile.weight, t as any);
@@ -627,10 +617,10 @@ export default function Recommendations() {
             <h1 className="text-2xl font-semibold tracking-[-0.035em] text-[#F7F4EE] sm:text-3xl">{t('rec.title')}</h1>
           </div>
           <span className="result-ai-state">
-            {aiLoading ? <><Spinner />AI {t('common.loading')}</> : aiRecommendation ? <>✦ AI</> : t('rec.outfitRecommendations')}
+            {aiLoading ? <><Spinner />AI {t('common.loading')}</> : hasRenderableAIOutfits ? <>✦ AI</> : t('rec.outfitRecommendations')}
           </span>
         </div>
-        {!aiRecommendation && !aiLoading && (
+        {!aiLoading && !hasRenderableAIOutfits && (
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#12141A] px-4 py-3 text-sm text-[#AAA49B]">
             <span>AI 推荐结果已过期，可重新生成</span>
             <Button className="sf-primary-button" onClick={regenerateAIRecommendation}>
@@ -806,13 +796,13 @@ export default function Recommendations() {
         </Card>
 
         {/* Outfit Recommendations */}
-        {!showFavorites && outfits.length > 0 && (
+        {!showFavorites && hasRenderableAIOutfits && (
           <div className="mb-10">
             <div className="result-outfit-title mb-4 flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-[#D7C39D]" />
               <h2 className="text-xl font-bold text-[#F7F4EE]">{t('rec.outfitRecommendations')}</h2>
               {aiLoading && <span className="inline-flex items-center gap-1 text-xs text-[#AAA49B]"><Spinner />AI {t('common.loading')}</span>}
-              {aiRecommendation && <Badge className="result-ai-badge">AI</Badge>}
+              {hasRenderableAIOutfits && aiRecommendation && <Badge className="result-ai-badge">AI</Badge>}
             </div>
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {outfits.map((outfit, idx) => (

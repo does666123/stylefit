@@ -14,7 +14,7 @@ import {
 import { Shirt, ArrowRight, ArrowLeft, Check, Loader2, Sparkles, Ruler, AlertCircle } from 'lucide-react';
 import { useT } from '@/i18n';
 import type { UserBodyProfile, Gender, BodyType, SkinTone, StylePreference, Occasion, Season } from '../types';
-import { getRecommendations, saveProfile } from '../hooks/useRecommendation';
+import { saveProfile } from '../hooks/useRecommendation';
 import {
   cacheAIRecommendation,
   clearCachedAIRecommendation,
@@ -189,13 +189,13 @@ export default function Survey() {
     let didNavigate = false;
 
     try {
-      const recommendation = await requestAIRecommendation(fullProfile, getRecommendations(fullProfile));
-      if (recommendation) {
-        cacheAIRecommendation(fullProfile, recommendation);
+      const result = await requestAIRecommendation(fullProfile);
+      if (result) {
+        cacheAIRecommendation(fullProfile, result);
         safeSessionRemove(DRAFT_KEY);
         navigate('/recommendations', {
           replace: true,
-          state: { profile: fullProfile, aiRecommendation: recommendation },
+          state: { profile: fullProfile, aiRecommendation: result.recommendation, aiCandidates: result.candidates },
         });
         didNavigate = true;
         return;
@@ -259,9 +259,9 @@ export default function Survey() {
             {canUseLocalRecommendation && (
               <>
                 <Button className="sf-secondary-button w-full" variant="outline" onClick={() => navigate('/recommendations', { state: { profile: submittedProfile } })}>
-                  进入本地推荐
+                  查看联盟商品
                 </Button>
-                <p className="text-xs leading-5 text-slate-400">AI 推荐更个性化，需要联网生成；本地推荐立即可用，但个性化程度较低。</p>
+                <p className="text-xs leading-5 text-slate-400">当前真实联盟商品不足以组成搭配，可先浏览本场景商品后稍后重试。</p>
               </>
             )}
           </CardContent>
