@@ -227,6 +227,7 @@ export default function Recommendations() {
   const [hasMoreTaobaoProducts, setHasMoreTaobaoProducts] = useState(false);
   const [isLoadingMoreProducts, setIsLoadingMoreProducts] = useState(false);
   const [loadMoreError, setLoadMoreError] = useState(false);
+  const [hasUserScrolled, setHasUserScrolled] = useState(false);
   const [showFavorites, setShowFavorites] = useState(false);
   const [showOccasionSwitcher, setShowOccasionSwitcher] = useState(false);
   const switcherRef = useRef<HTMLDivElement>(null);
@@ -275,6 +276,7 @@ export default function Recommendations() {
   useEffect(() => {
     const markUserScroll = () => {
       hasUserScrolledRef.current = true;
+      setHasUserScrolled(true);
     };
     window.addEventListener('scroll', markUserScroll, { passive: true });
     return () => window.removeEventListener('scroll', markUserScroll);
@@ -312,6 +314,7 @@ export default function Recommendations() {
     requestedTaobaoPagesRef.current.clear();
     liveProductIdsRef.current.clear();
     hasUserScrolledRef.current = false;
+    setHasUserScrolled(false);
     loadMoreUnlockedRef.current = false;
   };
 
@@ -434,6 +437,7 @@ export default function Recommendations() {
     requestedTaobaoPagesRef.current.clear();
     liveProductIdsRef.current.clear();
     hasUserScrolledRef.current = false;
+    setHasUserScrolled(false);
     loadMoreUnlockedRef.current = false;
     setTaobaoPage(1);
     setHasMoreTaobaoProducts(false);
@@ -450,14 +454,14 @@ export default function Recommendations() {
         if (loadMoreError) setLoadMoreError(false);
         return;
       }
-      if (!hasUserScrolledRef.current || !loadMoreUnlockedRef.current || isLoadingMoreProducts || loadMoreError) return;
+      if (!hasUserScrolled || !loadMoreUnlockedRef.current || isLoadingMoreProducts || loadMoreError) return;
       loadMoreUnlockedRef.current = false;
       loadTaobaoProducts(taobaoPage + 1);
     }, { rootMargin: '300px 0px' });
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [hasMoreTaobaoProducts, isLoadingMoreProducts, loadMoreError, loadTaobaoProducts, productSourceStatus, showFavorites, taobaoPage]);
+  }, [hasMoreTaobaoProducts, hasUserScrolled, isLoadingMoreProducts, loadMoreError, loadTaobaoProducts, productSourceStatus, showFavorites, taobaoPage]);
 
   const catalogItems = productSourceStatus === 'live'
     ? liveProducts
