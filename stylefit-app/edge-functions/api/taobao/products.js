@@ -19,5 +19,5 @@ export async function onRequest({ request, env }) {
     const diagnostic = scene === 'mens_work' && searchParams.get('diagnostic') === '1' ? result.diagnostic : null;
     return json(diagnostic ? { error: '商品服务暂时不可用', diagnostic } : { error: '商品服务暂时不可用' }, 502);
   }
-  return json({ products: result.products });
+  return json(result.message ? { products: result.products, message: result.message } : { products: result.products });
 }

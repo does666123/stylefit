@@ -1,5 +1,5 @@
 const API_ENDPOINT = 'https://eco.taobao.com/router/rest';
-const API_METHOD = 'taobao.tbk.dg.material.optional';
+const API_METHOD = 'taobao.tbk.dg.material.optional.upgrade';
 const PAGE_SIZE = 10;
 
 export const TAOBAO_SCENES = {
@@ -116,6 +116,7 @@ function asNumber(value) {
 
 function asPromotionUrl(value) {
   const text = asText(value, 2_000);
+  if (/^\/\//.test(text)) return `https:${text}`;
   return /^https:\/\//i.test(text) ? text : '';
 }
 
@@ -129,19 +130,24 @@ export function createTopSign(params, secret) {
 }
 
 function mapProduct(item, category) {
-  const price = asNumber(item.zk_final_price ?? item.reserve_price);
-  const couponAmount = asNumber(item.coupon_amount);
+  const publishInfo = asRecord(item.publish_info) || {};
+  const incomeInfo = asRecord(item.income_info) || {};
+  const priceInfo = asRecord(item.price_promotion_info) || {};
+  const itemInfo = asRecord(item.item_basic_info) || {};
+  const price = asNumber(priceInfo.zk_final_price ?? priceInfo.reserve_price ?? item.zk_final_price ?? item.reserve_price);
+  const couponPrice = asNumber(priceInfo.final_promotion_price ?? item.final_promotion_price) || price;
   return {
     itemId: asText(item.item_id, 80),
-    title: asText(item.title, 200),
-    image: asPromotionUrl(item.pict_url || item.white_image),
+    title: asText(itemInfo.title ?? item.title, 200),
+    image: asPromotionUrl(itemInfo.pict_url ?? itemInfo.white_image ?? item.pict_url ?? item.white_image),
     price,
-    couponAmount,
-    couponPrice: Math.max(0, Number((price - couponAmount).toFixed(2))),
-    shopTitle: asText(item.shop_title, 120),
-    volume: asNumber(item.volume),
-    category: asText(item.category_name, 80) || category,
-    promotionUrl: asPromotionUrl(item.coupon_share_url || item.url),
+    couponAmount: Math.max(0, Number((price - couponPrice).toFixed(2))),
+    couponPrice,
+    commissionRate: asNumber(incomeInfo.commission_rate),
+    shopTitle: asText(itemInfo.shop_title ?? item.shop_title, 120),
+    volume: asNumber(itemInfo.volume ?? item.volume),
+    category: asText(itemInfo.category_name ?? item.category_name, 80) || category,
+    promotionUrl: asPromotionUrl(publishInfo.coupon_share_url ?? publishInfo.click_url ?? item.coupon_share_url ?? item.url),
   };
 }
 
@@ -197,14 +203,15 @@ export async function searchTaobaoProducts(env, sceneKey) {
       };
     }
 
-    const responseBody = asRecord(payloadJson?.taobao_tbk_dg_material_optional_response);
+    const responseBody = asRecord(payloadJson?.tbk_dg_material_optional_upgrade_response);
     const apiError = asRecord(payloadJson?.error_response);
     if (!response.ok || apiError || !responseBody) {
       return { error: 'upstream_failed', diagnostic: topDiagnostic(response.status, apiError, payloadJson?.request_id) };
     }
     const resultList = asRecord(responseBody.result_list);
     const sourceItems = Array.isArray(resultList?.map_data) ? resultList.map_data : [];
-    return { products: sourceItems.slice(0, PAGE_SIZE).map(asRecord).filter(Boolean).map((item) => mapProduct(item, scene.category)) };
+    const products = sourceItems.slice(0, PAGE_SIZE).map(asRecord).filter(Boolean).map((item) => mapProduct(item, scene.category));
+    return products.length ? { products } : { products, message: '暂无匹配的淘宝联盟商品' };
   } catch (error) {
     return {
       error: 'upstream_failed',

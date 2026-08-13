@@ -20,8 +20,10 @@ assert.deepEqual(await invalidSceneResponse.json(), { error: '不支持的检索
 
 const originalFetch = globalThis.fetch;
 let upstreamCalls = 0;
-globalThis.fetch = async () => {
+let upstreamBody = '';
+globalThis.fetch = async (_url, options) => {
   upstreamCalls += 1;
+  upstreamBody = options.body;
   return new Response(JSON.stringify({
   error_response: { code: 15, sub_code: 'isv.invalid-app', msg: 'Invalid application credentials', request_id: 'safe-request-id' },
   }), { status: 200 });
@@ -63,6 +65,55 @@ try {
   });
   assert.equal(invalidDiagnostic.status, 400);
   assert.equal(upstreamCalls, 2);
+
+  globalThis.fetch = async (_url, options) => {
+    upstreamCalls += 1;
+    upstreamBody = options.body;
+    return new Response(JSON.stringify({
+      tbk_dg_material_optional_upgrade_response: {
+        result_list: {
+          map_data: [{
+            item_id: 'upgrade-item-1',
+            publish_info: { coupon_share_url: '//uland.taobao.com/coupon/example' },
+            income_info: { commission_rate: '12.5' },
+            price_promotion_info: { reserve_price: '120', zk_final_price: '100', final_promotion_price: '80' },
+            item_basic_info: { title: '升级接口测试衬衫', pict_url: '//img.alicdn.com/test.jpg', shop_title: '测试店铺', volume: 12, category_name: '男装' },
+          }],
+        },
+      },
+    }), { status: 200 });
+  };
+  const success = await onRequest({
+    request: new Request('https://stylefit.example/api/taobao/products?scene=mens_work'),
+    env: configuredEnv,
+  });
+  assert.equal(success.status, 200);
+  assert.deepEqual(await success.json(), {
+    products: [{
+      itemId: 'upgrade-item-1',
+      title: '升级接口测试衬衫',
+      image: 'https://img.alicdn.com/test.jpg',
+      price: 100,
+      couponAmount: 20,
+      couponPrice: 80,
+      commissionRate: 12.5,
+      shopTitle: '测试店铺',
+      volume: 12,
+      category: '男装',
+      promotionUrl: 'https://uland.taobao.com/coupon/example',
+    }],
+  });
+  assert.match(upstreamBody, /method=taobao.tbk.dg.material.optional.upgrade/);
+
+  globalThis.fetch = async () => new Response(JSON.stringify({
+    tbk_dg_material_optional_upgrade_response: { result_list: { map_data: [] } },
+  }), { status: 200 });
+  const empty = await onRequest({
+    request: new Request('https://stylefit.example/api/taobao/products?scene=mens_work'),
+    env: configuredEnv,
+  });
+  assert.equal(empty.status, 200);
+  assert.deepEqual(await empty.json(), { products: [], message: '暂无匹配的淘宝联盟商品' });
 } finally {
   globalThis.fetch = originalFetch;
 }
