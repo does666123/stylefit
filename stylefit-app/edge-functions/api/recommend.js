@@ -250,7 +250,7 @@ export async function onRequest({ request, env }) {
     const requestBody = {
       model,
       temperature: 0.4,
-      max_tokens: 600,
+      max_tokens: 1800,
       messages: [
         {
           role: 'system',
