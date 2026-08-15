@@ -242,12 +242,19 @@ export async function requestAIRecommendation(profile: UserBodyProfile): Promise
     if (!response.ok) return null;
 
     const result = await response.json() as { status?: string; recommendation?: Omit<AIRecommendation, 'source' | 'candidateFingerprint'> };
-    return result.status === 'ok' && (result.recommendation?.outfits.length ?? 0) > 0
-      ? {
-          recommendation: { ...result.recommendation, source: 'taobao', candidateFingerprint },
-          candidates,
-        }
-      : null;
+    const recommendation = result.recommendation;
+    if (
+      result.status !== 'ok' ||
+      !recommendation ||
+      typeof recommendation.summary !== 'string' ||
+      !Array.isArray(recommendation.outfits) ||
+      recommendation.outfits.length === 0
+    ) return null;
+
+    return {
+      recommendation: { ...recommendation, source: 'taobao', candidateFingerprint },
+      candidates,
+    };
   } catch {
     return null;
   } finally {
