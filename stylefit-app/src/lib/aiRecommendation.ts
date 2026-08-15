@@ -242,7 +242,7 @@ export async function requestAIRecommendation(profile: UserBodyProfile): Promise
     if (!response.ok) return null;
 
     const result = await response.json() as { status?: string; recommendation?: Omit<AIRecommendation, 'source' | 'candidateFingerprint'> };
-    return result.status === 'ok' && result.recommendation?.outfits.length === 3
+    return result.status === 'ok' && (result.recommendation?.outfits.length ?? 0) > 0
       ? {
           recommendation: { ...result.recommendation, source: 'taobao', candidateFingerprint },
           candidates,
