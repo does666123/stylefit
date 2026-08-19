@@ -32,7 +32,7 @@ const zh = {
 
   // Home - Hero
   'home.hero.badge': 'AI 智能推荐',
-  'home.hero.shopPromo': '基于你的身材、风格和场合，AI 为你推荐穿搭方案',
+  'home.hero.aiRecommend': '基于你的身材、风格和场合，AI 为你推荐穿搭方案',
   'home.hero.title1': '穿出你的',
   'home.hero.title2': '专属风格',
   'home.hero.desc': '基于你的身材、风格和场合，AI 为你量身推荐穿搭方案',
@@ -58,7 +58,6 @@ const zh = {
   'home.product.silkDress': '薄荷绿真丝连衣裙',
   'home.product.cottonShirt': '条纹棉质衬衫',
   'home.tag.new': '新品',
-  'home.tag.sale': '特惠',
   'home.tag.hot': '热门',
   'home.stylingNotes': '穿搭灵感',
   'home.occasions.display': '场合',

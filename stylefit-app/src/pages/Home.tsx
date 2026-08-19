@@ -55,11 +55,11 @@ const heroLooks = [
 
 const newArrivals = [
   { key: 'aliceBag', tag: 'new', image: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=520&h=650&fit=crop&q=80' },
-  { key: 'reameTop', tag: 'sale', image: 'https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=520&h=650&fit=crop&q=80' },
+  { key: 'reameTop', tag: 'hot', image: 'https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=520&h=650&fit=crop&q=80' },
   { key: 'trenchCoat', tag: 'new', image: 'https://images.unsplash.com/photo-1544022613-e87ca75a784a?w=520&h=650&fit=crop&q=80' },
   { key: 'denimPant', tag: 'hot', image: 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=520&h=650&fit=crop&q=80' },
   { key: 'knitCardigan', tag: 'new', image: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=520&h=650&fit=crop&q=80' },
-  { key: 'leatherLoafer', tag: 'sale', image: 'https://images.unsplash.com/photo-1533867617858-e7b97e060509?w=520&h=650&fit=crop&q=80' },
+  { key: 'leatherLoafer', tag: 'hot', image: 'https://images.unsplash.com/photo-1533867617858-e7b97e060509?w=520&h=650&fit=crop&q=80' },
   { key: 'silkDress', tag: 'new', image: 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=520&h=650&fit=crop&q=80' },
   { key: 'cottonShirt', tag: 'hot', image: 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=520&h=650&fit=crop&q=80' },
 ];
@@ -252,7 +252,7 @@ export function HomePage() {
                 <span className="hero-title-mask block"><span data-hero-title-line className="hero-title-line block text-[#E0782C]">{t('home.hero.title2')}</span></span>
               </h1>
               <p data-hero-copy className="max-w-lg text-base leading-7 text-[#555550] sm:text-lg">
-                {t('home.hero.shopPromo')}
+                {t('home.hero.aiRecommend')}
               </p>
 
               {existingProfile && (

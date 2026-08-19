@@ -500,18 +500,18 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
         <Card className="result-empty-card mx-4 max-w-md text-center animate-scale-in">
           <CardContent className="p-8">
             <div className="mb-4 flex justify-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-100">
-                <Shirt className="h-8 w-8 text-slate-400" />
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#EAF2F8]">
+                <Shirt className="h-8 w-8 text-[#8A8A84]" />
               </div>
             </div>
-            <h2 className="mb-2 text-xl font-bold">{t('rec.noProfile.title')}</h2>
-            <p className="mb-6 text-slate-500">
+            <h2 className="mb-2 text-xl font-semibold text-[#1A1A1A]">{t('rec.noProfile.title')}</h2>
+            <p className="mb-6 text-[#6B6B66]">
               {t('rec.noProfile.desc')}
             </p>
             <div className="flex flex-col gap-2">
               <Button
                 onClick={() => navigate('/survey')}
-                className="bg-slate-900 hover:bg-slate-800"
+                className="sf-primary-button"
               >
                 {t('rec.noProfile.goTest')}
               </Button>
@@ -534,10 +534,10 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
       <nav className="result-nav sticky top-0 z-50">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 overflow-hidden rounded-lg bg-slate-900">
-              <img src="/stylefit-logo.jpg" alt="" width="32" height="32" className="h-full w-full object-cover" />
+            <div className="flex h-9 w-9 overflow-hidden rounded-xl border-[#E0782C]/30 bg-white shadow">
+              <img src="/stylefit-logo.jpg" alt="" width="36" height="36" className="h-full w-full object-cover" />
             </div>
-            <span className="text-xl font-bold tracking-tight text-slate-900">StyleFit</span>
+            <span className="text-xl font-bold tracking-tight text-[#1A1A1A]">StyleFit</span>
           </div>
           <div className="flex min-w-0 items-center gap-1 sm:gap-2">
             <div className="flex items-center gap-1">
@@ -545,7 +545,7 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate('/recommendations')}
-                className={isDiscover ? '' : 'bg-white/[0.08] text-[#F7F4EE]'}
+                className={isDiscover ? 'text-[#4A4A45] hover:bg-[#FFF4EC] hover:text-[#C96A22]' : 'bg-[#FFF4EC] text-[#C96A22]'}
                 aria-current={isDiscover ? undefined : 'page'}
               >
                 <Sparkles className="h-4 w-4 sm:mr-1" />
@@ -555,7 +555,7 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate('/discover')}
-                className={isDiscover ? 'bg-white/[0.08] text-[#F7F4EE]' : ''}
+                className={isDiscover ? 'bg-[#FFF4EC] text-[#C96A22]' : 'text-[#4A4A45] hover:bg-[#FFF4EC] hover:text-[#C96A22]'}
                 aria-current={isDiscover ? 'page' : undefined}
               >
                 <ShoppingBag className="h-4 w-4 sm:mr-1" />
@@ -566,7 +566,7 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
               variant="ghost"
               size="sm"
               onClick={() => navigate('/favorites', { state: { fromRecommendations: true } })}
-              className="relative"
+              className="relative text-[#4A4A45] hover:bg-[#FFF4EC] hover:text-[#C96A22]"
             >
               <Heart className="mr-1 h-4 w-4" />
               <span className="hidden sm:inline">{t('common.favorites')}</span>
@@ -582,7 +582,7 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
               size="sm"
               onClick={() => navigate('/')}
               aria-label="返回首页"
-              className="hidden sm:inline-flex"
+              className="hidden text-[#4A4A45] hover:bg-[#FFF4EC] hover:text-[#C96A22] sm:inline-flex"
             >
               <House className="mr-1 h-4 w-4" />
               <span className="hidden sm:inline">返回首页</span>
@@ -594,6 +594,7 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
                 clearCachedAIRecommendation();
                 navigate('/survey', { state: { restartSurvey: true } });
               }}
+              className="text-[#4A4A45] hover:bg-[#FFF4EC] hover:text-[#C96A22]"
             >
               <ArrowLeft className="mr-1 h-4 w-4" />
               <span className="hidden sm:inline">{t('common.retakeTest')}</span>
@@ -605,15 +606,15 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
       <div className="mx-auto max-w-6xl px-4 py-7 sm:py-8">
         <div className="result-page-heading mb-5 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="mb-1 text-xs font-medium tracking-[0.16em] text-[#D7C39D]">{isDiscover ? t('rec.eyebrow.discover') : t('rec.eyebrow.styling')}</p>
-            <h1 className="text-2xl font-semibold tracking-[-0.035em] text-[#F7F4EE] sm:text-3xl">{isDiscover ? t('rec.forYou') : t('rec.title')}</h1>
+            <p className="mb-1 text-xs font-medium tracking-[0.16em] text-[#C96A22]">{isDiscover ? t('rec.eyebrow.discover') : t('rec.eyebrow.styling')}</p>
+            <h1 className="text-2xl font-semibold tracking-[-0.035em] text-[#1A1A1A] sm:text-3xl">{isDiscover ? t('rec.forYou') : t('rec.title')}</h1>
           </div>
           {!isDiscover && <span className="result-ai-state">
             {aiLoading ? <><Spinner />AI {t('common.loading')}</> : hasRenderableAIOutfits ? <>✦ AI</> : t('rec.outfitRecommendations')}
           </span>}
         </div>
         {!isDiscover && !aiLoading && !hasRenderableAIOutfits && (
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#12141A] px-4 py-3 text-sm text-[#AAA49B]">
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#E0782C]/25 bg-[#FFF7EF] px-4 py-3 text-sm text-[#6B6B66]">
             <span>AI 推荐结果已过期，可重新生成</span>
             <Button className="sf-primary-button" onClick={regenerateAIRecommendation}>
               重新生成 AI 推荐
@@ -623,30 +624,30 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
         {/* Profile Summary */}
         {!isDiscover && <Card className="result-summary mb-6 overflow-hidden animate-fade-in-up">
           <CardContent className="p-0">
-            <div className="result-summary-main px-5 py-4 text-white">
+            <div className="result-summary-main px-5 py-4 text-[#1A1A1A]">
               <div className="mb-2 flex items-center gap-3">
-                <Sparkles className="h-5 w-5 text-[#D7C39D]" />
+                <Sparkles className="h-5 w-5 text-[#E0782C]" />
                 <h2 className="text-lg font-bold">{t('rec.bodyReport.title')}</h2>
               </div>
               <div className="flex flex-wrap gap-4 text-sm">
                 <span className="flex items-center gap-1.5">
-                  <User className="h-4 w-4 text-slate-400" />
+                  <User className="h-4 w-4 text-[#8A8A84]" />
                   {profile.gender === 'male' ? t('rec.bodyReport.gender.male') : t('rec.bodyReport.gender.female')}
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <Ruler className="h-4 w-4 text-slate-400" />
+                  <Ruler className="h-4 w-4 text-[#8A8A84]" />
                   {profile.height}cm
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <Weight className="h-4 w-4 text-slate-400" />
+                  <Weight className="h-4 w-4 text-[#8A8A84]" />
                   {profile.weight}kg
                 </span>
                 {bmiInfo && (
                   <span className="flex items-center gap-1.5">
-                    <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs font-medium">
+                    <span className="rounded-full bg-[#EAF2F8] px-2 py-0.5 text-xs font-medium text-[#2F5E88]">
                       BMI {bmiInfo.bmi}
                     </span>
-                    <span className="text-slate-300">{bmiInfo.category}</span>
+                    <span className="text-[#6B6B66]">{bmiInfo.category}</span>
                   </span>
                 )}
               </div>
@@ -689,19 +690,19 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
 
             {profile.measurements && Object.values(profile.measurements).some((v) => v) && (
               <div className="border-t px-6 py-3">
-                <div className="text-xs text-slate-400 mb-2">{t('survey.body.measurements')}</div>
+                <div className="text-xs text-[#8A8A84] mb-2">{t('survey.body.measurements')}</div>
                 <div className="flex flex-wrap gap-3 text-sm">
                   {profile.measurements.shoulderWidth && (
-                    <span className="rounded-md bg-slate-100 px-2 py-1">{t('shoulderWidth')} {profile.measurements.shoulderWidth}cm</span>
+                    <span className="rounded-md bg-[#F0EDE6] px-2 py-1 text-[#4A4A45]">{t('shoulderWidth')} {profile.measurements.shoulderWidth}cm</span>
                   )}
                   {profile.measurements.waist && (
-                    <span className="rounded-md bg-slate-100 px-2 py-1">{t('waist')} {profile.measurements.waist}cm</span>
+                    <span className="rounded-md bg-[#F0EDE6] px-2 py-1 text-[#4A4A45]">{t('waist')} {profile.measurements.waist}cm</span>
                   )}
                   {profile.measurements.hip && (
-                    <span className="rounded-md bg-slate-100 px-2 py-1">{t('hip')} {profile.measurements.hip}cm</span>
+                    <span className="rounded-md bg-[#F0EDE6] px-2 py-1 text-[#4A4A45]">{t('hip')} {profile.measurements.hip}cm</span>
                   )}
                   {profile.measurements.legLength && (
-                    <span className="rounded-md bg-slate-100 px-2 py-1">{t('legLength')} {profile.measurements.legLength}cm</span>
+                    <span className="rounded-md bg-[#F0EDE6] px-2 py-1 text-[#4A4A45]">{t('legLength')} {profile.measurements.legLength}cm</span>
                   )}
                 </div>
               </div>
@@ -713,11 +714,11 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
         {!isDiscover && !showFavorites && hasRenderableAIOutfits && (
           <div className="mb-10">
             <div className="result-outfit-title mb-4 flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-[#D7C39D]" />
-              <h2 className="text-xl font-bold text-[#F7F4EE]">{t('rec.outfitRecommendations')}</h2>
-              {aiLoading && <span className="inline-flex items-center gap-1 text-xs text-[#AAA49B]"><Spinner />AI {t('common.loading')}</span>}
+              <Sparkles className="h-5 w-5 text-[#E0782C]" />
+              <h2 className="text-xl font-bold text-[#1A1A1A]">{t('rec.outfitRecommendations')}</h2>
+              {aiLoading && <span className="inline-flex items-center gap-1 text-xs text-[#8A8A84]"><Spinner />AI {t('common.loading')}</span>}
               {hasRenderableAIOutfits && aiRecommendation && <Badge className="result-ai-badge">AI</Badge>}
-              {hasRenderableAIOutfits && outfits.length < 3 && <span className="text-xs text-[#AAA49B]">已生成 {outfits.length} 套搭配，可稍后重新生成更多方案</span>}
+              {hasRenderableAIOutfits && outfits.length < 3 && <span className="text-xs text-[#8A8A84]">已生成 {outfits.length} 套搭配，可稍后重新生成更多方案</span>}
             </div>
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {outfits.map((outfit, idx) => (
@@ -743,10 +744,10 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
                 <button
                   key={cat.key}
                   onClick={() => selectProductCategory(cat.key)}
-                  className={`inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium transition-all ${
+                  className={`inline-flex min-h-11 items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium transition-all ${
                     activeCategory === cat.key && !showFavorites
-                      ? 'border-slate-900 bg-slate-900 text-white'
-                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                      ? 'border-[#E0782C] bg-[#E0782C] text-white shadow'
+                      : 'border-[#E5E2DA] bg-white text-[#4A4A45] hover:border-[#E0782C]/50 hover:bg-[#FFF7EF]'
                   }`}
                 >
                   {cat.icon}
@@ -755,13 +756,13 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
               ))}
             </div>
             <label className="relative block w-full sm:w-56">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#AAA49B]" aria-hidden="true" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8A8A84]" aria-hidden="true" />
               <input
                 type="search"
                 value={productSearch}
                 onChange={(event) => setProductSearch(event.target.value)}
                 placeholder="搜索衣服、品牌或标签"
-                className="focus-ring h-10 w-full rounded-xl border border-white/[0.1] bg-[#12141A] py-2 pl-9 pr-3 text-sm text-[#F7F4EE] placeholder:text-[#77756F]"
+                className="focus-ring h-11 w-full rounded-xl border border-[#E5E2DA] bg-white py-2 pl-9 pr-3 text-sm text-[#1A1A1A] placeholder:text-[#9A9A94]"
               />
             </label>
           </div>
@@ -770,17 +771,17 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
         {/* Section Title */}
         {isDiscover && <div className="mb-4">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-2xl font-bold text-slate-900">
+            <h2 className="text-2xl font-bold text-[#1A1A1A]">
               {showFavorites ? t('rec.favoriteItems') : t('rec.forYou')}
             </h2>
             {!showFavorites && productSourceStatus === 'live' && (
-              <Badge className="border border-[#C9A46A]/30 bg-[#C9A46A]/10 text-[#D7C39D]">淘宝联盟精选</Badge>
+              <Badge className="border border-[#E0782C]/30 bg-[#FFF4EC] text-[#C96A22]">淘宝联盟精选</Badge>
             )}
             {!showFavorites && productSourceStatus === 'demo' && (
-              <Badge className="border border-white/[0.1] bg-white/[0.05] text-[#AAA49B]">演示搭配</Badge>
+              <Badge className="border border-[#E5E2DA] bg-white text-[#8A8A84]">演示搭配</Badge>
             )}
           </div>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-[#6B6B66]">
             {showFavorites
               ? t('rec.itemCount', { count: favoriteItems.length })
               : productSourceStatus === 'live'
@@ -795,21 +796,21 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
         {isDiscover && (!showFavorites && productSourceStatus === 'loading' ? (
           <div className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-3 lg:gap-5" aria-label="商品加载中">
             {Array.from({ length: 6 }, (_, index) => (
-              <div key={index} className="overflow-hidden rounded-xl border border-white/[0.08] bg-[#12141A] p-2.5 sm:p-4">
-                <Skeleton className="aspect-square w-full bg-white/[0.08] sm:aspect-[4/5]" />
-                <Skeleton className="mt-3 h-3 w-1/3 bg-white/[0.08]" />
-                <Skeleton className="mt-2 h-4 w-4/5 bg-white/[0.08]" />
-                <Skeleton className="mt-4 h-5 w-1/4 bg-white/[0.08]" />
+              <div key={index} className="overflow-hidden rounded-xl border border-[#EEEBE3] bg-white p-2.5 sm:p-4">
+                <Skeleton className="aspect-square w-full bg-[#F0EDE6] sm:aspect-[4/5]" />
+                <Skeleton className="mt-3 h-3 w-1/3 bg-[#F0EDE6]" />
+                <Skeleton className="mt-2 h-4 w-4/5 bg-[#F0EDE6]" />
+                <Skeleton className="mt-4 h-5 w-1/4 bg-[#F0EDE6]" />
               </div>
             ))}
           </div>
         ) : displayItems.length === 0 ? (
-          <div className="rounded-2xl border border-white/[0.08] bg-[#12141A] px-6 py-16 text-center">
-            <ShoppingBag className="mx-auto mb-3 h-12 w-12 text-[#D7C39D]" />
-            <p className="text-base font-medium text-[#F7F4EE]">
+          <div className="rounded-2xl border border-[#EEEBE3] bg-white px-6 py-16 text-center">
+            <ShoppingBag className="mx-auto mb-3 h-12 w-12 text-[#E0782C]" />
+            <p className="text-base font-medium text-[#1A1A1A]">
               {showFavorites ? t('rec.noFavorites') : showProductSourceEmptyState ? '暂时没有可展示的商品' : t('rec.noCategoryResults')}
             </p>
-            {!showFavorites && showProductSourceEmptyState && <p className="mx-auto mt-2 max-w-sm text-sm text-[#AAA49B]">{productSourceMessage || '淘宝联盟商品暂时未返回结果，请稍后再试。'}</p>}
+            {!showFavorites && showProductSourceEmptyState && <p className="mx-auto mt-2 max-w-sm text-sm text-[#8A8A84]">{productSourceMessage || '淘宝联盟商品暂时未返回结果，请稍后再试。'}</p>}
             {!showFavorites && showProductSourceEmptyState && (
               <Button className="sf-secondary-button mt-5" variant="outline" onClick={() => loadTaobaoProducts(activeCategory, 1, true)}>重试</Button>
             )}
@@ -817,7 +818,7 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
         ) : (
           <>
             {!showFavorites && productSourceStatus === 'demo' && (
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#C9A46A]/20 bg-[#C9A46A]/[0.06] px-4 py-3 text-sm text-[#AAA49B]">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#E0782C]/25 bg-[#FFF7EF] px-4 py-3 text-sm text-[#8A8A84]">
                 <span>{productSourceMessage}</span>
                 <Button className="sf-secondary-button h-8" variant="outline" onClick={() => loadTaobaoProducts(activeCategory, 1, true)}>稍后重试</Button>
               </div>
@@ -839,11 +840,11 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
         {isDiscover && !showFavorites && displayItems.length > 0 && (
           <div ref={productSentinelRef} className="mt-6 flex min-h-10 justify-center" aria-live="polite">
             {isLoadingMoreProducts ? (
-              <span className="inline-flex items-center gap-2 text-sm text-[#AAA49B]"><Spinner />正在加载更多商品…</span>
+              <span className="inline-flex items-center gap-2 text-sm text-[#8A8A84]"><Spinner />正在加载更多商品…</span>
             ) : loadMoreError ? (
-              <span className="text-sm text-[#AAA49B]">加载失败，向下滑动可重试</span>
+              <span className="text-sm text-[#8A8A84]">加载失败，向下滑动可重试</span>
             ) : !hasMoreTaobaoProducts ? (
-              <span className="text-sm text-[#AAA49B]">已展示全部商品</span>
+              <span className="text-sm text-[#8A8A84]">已展示全部商品</span>
             ) : null}
           </div>
         )}
@@ -907,18 +908,18 @@ function OutfitCard({
         {/* Header with theme name and match score */}
         <div className="result-outfit-card-header px-4 py-3">
           <div className="flex items-center justify-between mb-1">
-            <h3 className="font-semibold text-slate-800">{outfit.themeName || outfit.name}</h3>
+            <h3 className="font-semibold text-[#1A1A1A]">{outfit.themeName || outfit.name}</h3>
             <div className="flex items-center gap-2">
               {outfit.matchScore !== undefined && (
                 <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                  outfit.matchScore >= 80 ? 'bg-green-100 text-green-700' :
-                  outfit.matchScore >= 60 ? 'bg-amber-100 text-amber-700' :
-                  'bg-slate-100 text-slate-600'
+                  outfit.matchScore >= 80 ? 'bg-[#E8F5E9] text-[#2E7D40]' :
+                  outfit.matchScore >= 60 ? 'bg-[#FFF7ED] text-[#B45309]' :
+                  'bg-[#F0EDE6] text-[#6B6B66]'
                 }`}>
                   {t('rec.match')} {outfit.matchScore}%
                 </span>
               )}
-              <span className="text-sm font-bold text-amber-600">¥{formatAmount(outfit.totalPrice)}</span>
+              <span className="text-sm font-bold text-[#C96A22]">¥{formatAmount(outfit.totalPrice)}</span>
             </div>
           </div>
           {budget && budget > 0 && (
@@ -927,7 +928,7 @@ function OutfitCard({
             </span>
           )}
           {outfit.suitableBodyDesc && (
-            <div className="flex items-center gap-1 text-xs text-slate-500 mb-1">
+            <div className="flex items-center gap-1 text-xs text-[#8A8A84] mb-1">
               <User className="h-3 w-3" />
               {outfit.suitableBodyDesc}
             </div>
@@ -935,7 +936,7 @@ function OutfitCard({
           {visibleMatchReasons.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-1">
               {visibleMatchReasons.map((reason) => (
-                <span key={reason} className="text-xs text-green-600 bg-green-50 px-1.5 py-0.5 rounded">
+                <span key={reason} className="text-xs text-[#2E7D40] bg-[#E8F5E9] px-1.5 py-0.5 rounded">
                   {reason}
                 </span>
               ))}
@@ -946,7 +947,7 @@ function OutfitCard({
         {/* Item thumbnails */}
         <div className="result-outfit-images grid grid-cols-3 gap-1 p-2 sm:grid-cols-5">
           {outfit.items.slice(0, 5).map((item: ClothingItem) => (
-            <div key={item.id} className="relative aspect-square overflow-hidden rounded-lg bg-slate-100">
+            <div key={item.id} className="relative aspect-square overflow-hidden rounded-lg bg-[#F4F1EA]">
               <ProductImage item={item} className="h-full w-full object-cover" />
               <button
                 onClick={() => toggleFavorite(item.id)}
@@ -954,12 +955,12 @@ function OutfitCard({
               >
                 <Heart
                   className={`h-3 w-3 ${
-                    isFavorite(item.id) ? 'fill-red-500 text-red-500' : 'text-slate-400'
+                    isFavorite(item.id) ? 'fill-red-500 text-red-500' : 'text-[#9A9A94]'
                   }`}
                 />
               </button>
               {itemMatchMap[item.id] && (
-                <span className="absolute bottom-0.5 left-0.5 text-[9px] font-bold bg-black/60 text-white px-1 rounded">
+                <span className="absolute bottom-0.5 left-0.5 text-[9px] font-bold bg-[#1A1A1A]/70 text-white px-1 rounded">
                   {itemMatchMap[item.id].score}%
                 </span>
               )}
@@ -971,7 +972,7 @@ function OutfitCard({
         <div className="result-outfit-details px-3 pb-2">
           <div className="space-y-2 pb-2">
               {outfit.items.map((item: ClothingItem) => (
-                <div key={item.id} className="flex gap-2.5 rounded-lg bg-slate-50 p-2">
+                <div key={item.id} className="flex gap-2.5 rounded-lg bg-[#FAF9F5] p-2">
                   <ProductImage item={item} className="h-12 w-12 rounded-md object-cover shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1">
@@ -981,7 +982,7 @@ function OutfitCard({
                           {categoryLabel[item.category] || item.category} · {item.name}
                         </span>
                       </div>
-                      <span className="text-xs font-bold text-slate-900 shrink-0">¥{item.price}</span>
+                      <span className="text-xs font-bold text-[#1A1A1A] shrink-0">¥{item.price}</span>
                     </div>
                     {itemReasonMap[item.id] && (
                       <p className="result-item-description mt-0.5 text-xs line-clamp-2">
@@ -989,7 +990,7 @@ function OutfitCard({
                       </p>
                     )}
                     {item.stylingTips && (
-                      <p className="mt-0.5 text-xs text-amber-600 line-clamp-1">
+                      <p className="mt-0.5 text-xs text-[#C96A22] line-clamp-1">
                         💡 {item.stylingTips}
                       </p>
                     )}
@@ -1012,8 +1013,8 @@ function OutfitCard({
         {/* Styling advice */}
         {outfit.stylingAdvice && (
           <div className="result-outfit-advice border-t px-3 py-2">
-            <p className="text-xs text-slate-500">
-              <span className="font-medium text-slate-600">{t('rec.stylingTips')}</span>
+            <p className="text-xs text-[#8A8A84]">
+              <span className="font-medium text-[#6B6B66]">{t('rec.stylingTips')}</span>
               {outfit.stylingAdvice}
             </p>
           </div>
@@ -1024,7 +1025,7 @@ function OutfitCard({
           {outfit.tags.map((tag: string) => (
             <span
               key={tag}
-              className="rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
+              className="rounded-md bg-[#F0EDE6] px-2 py-0.5 text-xs text-[#6B6B66]"
             >
               {styleTagLabels[tag] ?? tag}
             </span>
@@ -1051,10 +1052,10 @@ function ClothingCard({
 
   return (
     <Card className="result-product-card group overflow-hidden rounded-xl">
-      <div className="relative aspect-square overflow-hidden bg-slate-100 sm:aspect-[4/5]">
+      <div className="relative aspect-square overflow-hidden bg-[#F4F1EA] sm:aspect-[4/5]">
         <ProductImage item={item} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
         <div className="absolute left-2 top-2 sm:left-3 sm:top-3">
-          <Badge variant="secondary" className="bg-white/90 text-[10px] font-medium sm:text-xs">
+          <Badge variant="secondary" className="border border-[#EEEBE3] bg-white/90 text-[#4A4A45] text-[10px] font-medium sm:text-xs">
             {(t as any)(`rec.category.${item.category}`) || item.category}
           </Badge>
         </div>
@@ -1068,34 +1069,34 @@ function ClothingCard({
           onClick={() => toggleFavorite(item.id)}
           className="absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 shadow-md transition-transform hover:scale-110 sm:bottom-3 sm:right-3 sm:h-9 sm:w-9"
         >
-          <Heart className={`h-5 w-5 ${fav ? 'fill-red-500 text-red-500' : 'text-slate-400'}`} />
+          <Heart className={`h-5 w-5 ${fav ? 'fill-red-500 text-red-500' : 'text-[#9A9A94]'}`} />
         </button>
       </div>
 
       <CardContent className="p-2.5 sm:p-4">
-        <div className="mb-1 truncate text-[10px] text-[#AAA49B] sm:text-xs">{item.brand}</div>
-        <h3 className="mb-2 line-clamp-2 text-sm font-semibold text-[#F7F4EE] sm:text-base sm:line-clamp-1">{item.name}</h3>
+        <div className="mb-1 truncate text-[10px] text-[#8A8A84] sm:text-xs">{item.brand}</div>
+        <h3 className="mb-2 line-clamp-2 text-sm font-semibold text-[#1A1A1A] sm:text-base sm:line-clamp-1">{item.name}</h3>
 
         {/* Recommend reason */}
         {item.recommendReason && (
-          <div className="mb-2 hidden items-start gap-1.5 rounded-lg bg-amber-50 px-2.5 py-1.5 sm:flex">
-            <Lightbulb className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
-            <p className="text-xs text-amber-800 leading-relaxed">{item.recommendReason}</p>
+          <div className="mb-2 hidden items-start gap-1.5 rounded-lg bg-[#FFF7ED] px-2.5 py-1.5 sm:flex">
+            <Lightbulb className="h-3.5 w-3.5 text-[#D97706] shrink-0 mt-0.5" />
+            <p className="text-xs text-[#B45309] leading-relaxed">{item.recommendReason}</p>
           </div>
         )}
 
-        <p className="mb-3 hidden text-sm text-slate-500 line-clamp-2 leading-relaxed sm:block">{item.description}</p>
+        <p className="mb-3 hidden text-sm text-[#6B6B66] line-clamp-2 leading-relaxed sm:block">{item.description}</p>
 
         {/* Suitable info */}
         <div className="mb-2 hidden flex-wrap gap-1.5 sm:flex">
           {item.suitableBodyTypes.slice(0, 3).map(bt => (
-            <span key={bt} className="inline-flex items-center gap-0.5 rounded-md bg-slate-100 px-1.5 py-0.5 text-xs text-slate-500">
+            <span key={bt} className="inline-flex items-center gap-0.5 rounded-md bg-[#F0EDE6] px-1.5 py-0.5 text-xs text-[#6B6B66]">
               <User className="h-2.5 w-2.5" />
               {mapBodyType(bt, t as any)}
             </span>
           ))}
           {item.occasions.slice(0, 2).map(occ => (
-            <span key={occ} className="inline-flex items-center gap-0.5 rounded-md bg-blue-50 px-1.5 py-0.5 text-xs text-blue-600">
+            <span key={occ} className="inline-flex items-center gap-0.5 rounded-md bg-[#EAF2F8] px-1.5 py-0.5 text-xs text-[#3E6E9E]">
               <MapPin className="h-2.5 w-2.5" />
               {mapOccasion(occ, t as any)}
             </span>
@@ -1104,43 +1105,43 @@ function ClothingCard({
 
         <div className="mb-3 hidden flex-wrap gap-1 sm:flex">
           {item.tags.slice(0, 3).map((tag) => (
-            <span key={tag} className="rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-600">{tag}</span>
+            <span key={tag} className="rounded-md bg-[#F0EDE6] px-2 py-0.5 text-xs text-[#6B6B66]">{tag}</span>
           ))}
         </div>
 
         {/* Material */}
         {item.material && (
-          <div className="mb-3 hidden text-xs text-slate-400 sm:block">
+          <div className="mb-3 hidden text-xs text-[#8A8A84] sm:block">
             <span className="font-medium">{t('rec.material')}</span>{item.material}
           </div>
         )}
 
-        <div className="mb-3 hidden text-xs text-slate-400 sm:block">{t('rec.availableColors')}: {item.colors.join(' / ')}</div>
+        <div className="mb-3 hidden text-xs text-[#8A8A84] sm:block">{t('rec.availableColors')}: {item.colors.join(' / ')}</div>
 
         {/* Styling tips */}
         {item.stylingTips && (
-          <div className="mb-3 hidden rounded-lg border border-dashed border-slate-200 px-2.5 py-1.5 sm:block">
-            <p className="text-xs text-slate-500">
-              <span className="font-medium text-slate-600">{t('rec.stylingTips')}</span>{item.stylingTips}
+          <div className="mb-3 hidden rounded-lg border border-dashed border-[#E5E2DA] px-2.5 py-1.5 sm:block">
+            <p className="text-xs text-[#8A8A84]">
+              <span className="font-medium text-[#6B6B66]">{t('rec.stylingTips')}</span>{item.stylingTips}
             </p>
           </div>
         )}
 
         <div className="flex items-center justify-between gap-2">
           <div>
-            <span className="text-lg font-bold text-[#D7C39D] sm:text-xl">
+            <span className="text-lg font-bold text-[#C96A22] sm:text-xl">
               {item.currency}{item.price}
             </span>
             {item.priceRange && (
-              <span className="ml-1.5 text-xs text-slate-400">{item.priceRange}</span>
+              <span className="ml-1.5 text-xs text-[#8A8A84]">{item.priceRange}</span>
             )}
           </div>
-          <Button size="sm" className="h-8 w-8 bg-slate-900 p-0 hover:bg-slate-800 sm:h-9 sm:w-auto sm:px-3" onClick={() => window.open(item.buyLink, '_blank')} aria-label={t('rec.goToBuy')}>
+          <Button size="sm" className="h-8 w-8 bg-[#E0782C] p-0 text-white hover:bg-[#C96A22] sm:h-9 sm:w-auto sm:px-3" onClick={() => window.open(item.buyLink, '_blank')} aria-label={t('rec.goToBuy')}>
             <span className="hidden sm:inline">{t('rec.goToBuy')}</span><ExternalLink className="h-3 w-3 sm:ml-1" />
           </Button>
         </div>
         {taobaoMeta && (
-          <p className="mt-2 text-[10px] text-[#AAA49B] sm:text-xs">
+          <p className="mt-2 text-[10px] text-[#8A8A84] sm:text-xs">
             {taobaoMeta.couponAmount > 0 ? `优惠 ¥${taobaoMeta.couponAmount}` : `售价 ¥${taobaoMeta.price}`}
             {taobaoMeta.commissionRate > 0 ? ` · 佣金 ${taobaoMeta.commissionRate}%` : ''}
           </p>
@@ -1161,10 +1162,10 @@ function ProfileTag({
 }) {
   return (
     <div className="flex items-center gap-2">
-      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-500">{icon}</div>
+      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#F0EDE6] text-[#8A8A84]">{icon}</div>
       <div>
-        <div className="text-xs text-slate-400">{label}</div>
-        <div className="text-sm font-medium text-slate-700">{value}</div>
+        <div className="text-xs text-[#8A8A84]">{label}</div>
+        <div className="text-sm font-medium text-[#1A1A1A]">{value}</div>
       </div>
     </div>
   );

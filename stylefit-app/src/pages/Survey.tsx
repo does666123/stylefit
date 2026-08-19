@@ -250,8 +250,8 @@ export default function Survey() {
           <CardContent className="space-y-5 p-8 text-center">
             <AlertCircle className="mx-auto h-10 w-10 text-amber-500" />
             <div>
-              <h1 className="text-xl font-bold text-slate-900">AI 推荐暂时没有生成成功</h1>
-              <p className="mt-2 text-sm text-slate-500">请稍后重试，已填写的问卷信息会保留。</p>
+              <h1 className="text-xl font-semibold text-[#1A1A1A]">AI 推荐暂时没有生成成功</h1>
+              <p className="mt-2 text-sm text-[#6B6B66]">请稍后重试，已填写的问卷信息会保留。</p>
             </div>
             <Button className="sf-primary-button w-full" onClick={handleRetry}>
               重试生成
@@ -261,7 +261,7 @@ export default function Survey() {
                 <Button className="sf-secondary-button w-full" variant="outline" onClick={() => navigate('/recommendations', { state: { profile: submittedProfile } })}>
                   查看联盟商品
                 </Button>
-                <p className="text-xs leading-5 text-slate-400">当前真实联盟商品不足以组成搭配，可先浏览本场景商品后稍后重试。</p>
+                <p className="text-xs leading-5 text-[#8A8A84]">当前真实联盟商品不足以组成搭配，可先浏览本场景商品后稍后重试。</p>
               </>
             )}
           </CardContent>
@@ -274,15 +274,15 @@ export default function Survey() {
     <div className="phase-two-survey min-h-screen">
       <nav className="survey-nav sticky top-0 z-50">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3">
-          <button className="focus-ring flex items-center gap-2 rounded-lg" onClick={() => navigate('/')}>
-            <div className="flex h-8 w-8 overflow-hidden rounded-lg bg-[#1B1E26]">
-              <img src="/stylefit-logo.jpg" alt="" width="32" height="32" className="h-full w-full object-cover" />
+          <button className="focus-ring flex min-h-11 items-center gap-2 rounded-xl" onClick={() => navigate('/')}>
+            <div className="flex h-9 w-9 overflow-hidden rounded-xl border border-[#E0782C]/30 bg-white shadow-[0_8px_24px_rgba(224,120,44,0.16)]">
+              <img src="/stylefit-logo.jpg" alt="" width="36" height="36" className="h-full w-full object-cover" />
             </div>
-            <span className="text-xl font-bold text-[#F7F4EE]">StyleFit</span>
+            <span className="text-xl font-semibold tracking-[-0.02em] text-[#1A1A1A]">StyleFit</span>
           </button>
           <div className="text-right">
-            <div className="text-sm text-[#D7C39D]">{t('survey.stepIndicator', { step: step + 1, total: allSteps.length })}</div>
-            <div className="mt-0.5 text-xs text-[#AAA49B]">{t(allSteps[step] as any)}</div>
+            <div className="text-sm font-medium text-[#C96A22]">{t('survey.stepIndicator', { step: step + 1, total: allSteps.length })}</div>
+            <div className="mt-0.5 text-xs text-[#5F5F5A]">{t(allSteps[step] as any)}</div>
           </div>
         </div>
       </nav>
@@ -315,8 +315,8 @@ export default function Survey() {
             {step === 0 && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="mb-1 text-2xl font-bold text-slate-900">{t('survey.basic.title')}</h2>
-                  <p className="text-sm text-slate-500">{t('survey.basic.desc')}</p>
+                  <h2 className="mb-1 text-2xl font-semibold tracking-[-0.02em] text-[#1A1A1A]">{t('survey.basic.title')}</h2>
+                  <p className="text-sm text-[#6B6B66]">{t('survey.basic.desc')}</p>
                 </div>
                 <div className="space-y-4">
                   <div>
@@ -329,10 +329,10 @@ export default function Survey() {
                         <button
                           key={opt.value}
                           onClick={() => update('gender', opt.value as Gender)}
-                          className={`survey-option rounded-xl border-2 px-4 py-3 text-center font-medium transition-all ${
+                          className={`survey-option min-h-11 rounded-xl border-2 px-4 py-3 text-center font-medium transition-all ${
                             profile.gender === opt.value
-                              ? 'border-slate-900 bg-slate-900 text-white'
-                              : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                              ? 'border-[#E0782C] bg-[#E0782C] text-white shadow-[0_6px_16px_rgba(224,120,44,0.25)]'
+                              : 'border-[#E5E2DA] bg-white text-[#4A4A45] hover:border-[#E0782C]/50 hover:bg-[#FFF7EF]'
                           }`}
                         >
                           {t(opt.labelKey as any)}
@@ -383,7 +383,7 @@ export default function Survey() {
                   <div>
                     <Label htmlFor="age" className="mb-2 block">
                       {t('survey.basic.age')}
-                      <span className="ml-1 text-xs font-normal text-slate-400">{t('survey.basic.age.optional')}</span>
+                      <span className="ml-1 text-xs font-normal text-[#8A8A84]">{t('survey.basic.age.optional')}</span>
                     </Label>
                     <Input
                       id="age"
@@ -393,7 +393,7 @@ export default function Survey() {
                       placeholder="25"
                       className="h-12"
                     />
-                    <p className="mt-1 text-xs text-slate-400">{t('survey.basic.age.hint')}</p>
+                    <p className="mt-1 text-xs text-[#8A8A84]">{t('survey.basic.age.hint')}</p>
                   </div>
                 </div>
               </div>
@@ -403,8 +403,8 @@ export default function Survey() {
             {step === 1 && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="mb-1 text-2xl font-bold text-slate-900">{t('survey.body.title')}</h2>
-                  <p className="text-sm text-slate-500">{t('survey.body.desc')}</p>
+                  <h2 className="mb-1 text-2xl font-semibold tracking-[-0.02em] text-[#1A1A1A]">{t('survey.body.title')}</h2>
+                  <p className="text-sm text-[#6B6B66]">{t('survey.body.desc')}</p>
                 </div>
 
                 <div className="space-y-5">
@@ -416,15 +416,15 @@ export default function Survey() {
                         <button
                           key={opt.value}
                           onClick={() => update('bodyType', opt.value)}
-                          className={`survey-option flex w-full items-center gap-4 rounded-xl border-2 px-4 py-3 text-left transition-all ${
+                          className={`survey-option flex min-h-11 w-full items-center gap-4 rounded-xl border-2 px-4 py-3 text-left transition-all ${
                             profile.bodyType === opt.value
-                              ? 'border-slate-900 bg-slate-900 text-white'
-                              : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                              ? 'border-[#E0782C] bg-[#E0782C] text-white shadow-[0_6px_16px_rgba(224,120,44,0.25)]'
+                              : 'border-[#E5E2DA] bg-white text-[#4A4A45] hover:border-[#E0782C]/50 hover:bg-[#FFF7EF]'
                           }`}
                         >
                           <div className="flex-1">
                             <div className="font-semibold">{t(opt.labelKey as any)}</div>
-                            <div className={`text-xs ${profile.bodyType === opt.value ? 'text-slate-300' : 'text-slate-400'}`}>{t(opt.descKey as any)}</div>
+                            <div className={`text-xs ${profile.bodyType === opt.value ? 'text-[#FFF4EC]' : 'text-[#8A8A84]'}`}>{t(opt.descKey as any)}</div>
                           </div>
                           {profile.bodyType === opt.value && <Check className="h-5 w-5 shrink-0" />}
                         </button>
@@ -435,7 +435,7 @@ export default function Survey() {
                   {/* Skin Tone */}
                   <div>
                     <Label className="mb-3 block">{t('survey.body.skinTone')}</Label>
-                    <p className="mb-2 text-xs text-slate-400">{t('survey.body.skinTone.hint')}</p>
+                    <p className="mb-2 text-xs text-[#8A8A84]">{t('survey.body.skinTone.hint')}</p>
                     <div className="grid grid-cols-5 gap-2">
                       {skinToneOptions.map((opt) => (
                         <button
@@ -443,12 +443,12 @@ export default function Survey() {
                           onClick={() => update('skinTone', opt.value)}
                           aria-pressed={profile.skinTone === opt.value}
                           className={`survey-option relative flex flex-col items-center gap-2 rounded-xl border-2 p-3 transition-all ${
-                            profile.skinTone === opt.value ? 'survey-option-selected' : 'border-slate-200 hover:border-slate-300'
+                            profile.skinTone === opt.value ? 'survey-option-selected' : 'border-[#E5E2DA] hover:border-[#E0782C]/50 hover:bg-[#FFF7EF]'
                           }`}
                         >
-                          <div className="h-10 w-10 rounded-full border border-slate-200" style={{ backgroundColor: opt.color }} />
+                          <div className="h-10 w-10 rounded-full border border-[#E5E2DA]" style={{ backgroundColor: opt.color }} />
                           <span className="skin-tone-label text-xs font-medium">{t(opt.labelKey as any)}</span>
-                          {profile.skinTone === opt.value && <Check className="absolute right-2 top-2 h-4 w-4 text-[#d7c39d]" />}
+                          {profile.skinTone === opt.value && <Check className="absolute right-2 top-2 h-4 w-4 text-[#E0782C]" />}
                         </button>
                       ))}
                     </div>
@@ -457,49 +457,49 @@ export default function Survey() {
                   {/* Measurements - optional */}
                   <div>
                     <Label className="mb-3 flex items-center gap-2">
-                      <Ruler className="h-4 w-4 text-slate-400" />
+                      <Ruler className="h-4 w-4 text-[#8A8A84]" />
                       {t('survey.body.measurements')}
-                      <span className="text-xs font-normal text-slate-400">{t('survey.body.measurements.optional')}</span>
+                      <span className="text-xs font-normal text-[#8A8A84]">{t('survey.body.measurements.optional')}</span>
                     </Label>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <Label className="mb-1 block text-xs text-slate-500">{t('survey.body.shoulder')}</Label>
+                        <Label className="mb-1 block text-xs text-[#6B6B66]">{t('survey.body.shoulder')}</Label>
                         <Input
                           type="number"
                           value={profile.measurements?.shoulderWidth || ''}
                           onChange={(e) => updateMeasurement('shoulderWidth', e.target.value ? Number(e.target.value) : undefined)}
-                          className="h-10"
+                          className="h-11"
                         />
                       </div>
                       <div>
-                        <Label className="mb-1 block text-xs text-slate-500">{t('survey.body.waist')}</Label>
+                        <Label className="mb-1 block text-xs text-[#6B6B66]">{t('survey.body.waist')}</Label>
                         <Input
                           type="number"
                           value={profile.measurements?.waist || ''}
                           onChange={(e) => updateMeasurement('waist', e.target.value ? Number(e.target.value) : undefined)}
-                          className="h-10"
+                          className="h-11"
                         />
                       </div>
                       <div>
-                        <Label className="mb-1 block text-xs text-slate-500">{t('survey.body.hip')}</Label>
+                        <Label className="mb-1 block text-xs text-[#6B6B66]">{t('survey.body.hip')}</Label>
                         <Input
                           type="number"
                           value={profile.measurements?.hip || ''}
                           onChange={(e) => updateMeasurement('hip', e.target.value ? Number(e.target.value) : undefined)}
-                          className="h-10"
+                          className="h-11"
                         />
                       </div>
                       <div>
-                        <Label className="mb-1 block text-xs text-slate-500">{t('survey.body.leg')}</Label>
+                        <Label className="mb-1 block text-xs text-[#6B6B66]">{t('survey.body.leg')}</Label>
                         <Input
                           type="number"
                           value={profile.measurements?.legLength || ''}
                           onChange={(e) => updateMeasurement('legLength', e.target.value ? Number(e.target.value) : undefined)}
-                          className="h-10"
+                          className="h-11"
                         />
                       </div>
                     </div>
-                    <p className="mt-2 text-xs text-slate-400">{t('survey.body.leg.hint')}</p>
+                    <p className="mt-2 text-xs text-[#8A8A84]">{t('survey.body.leg.hint')}</p>
                   </div>
                 </div>
               </div>
@@ -509,8 +509,8 @@ export default function Survey() {
             {step === 2 && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="mb-1 text-2xl font-bold text-slate-900">{t('survey.style.title')}</h2>
-                  <p className="text-sm text-slate-500">{t('survey.style.desc')}</p>
+                  <h2 className="mb-1 text-2xl font-bold text-[#1A1A1A]">{t('survey.style.title')}</h2>
+                  <p className="text-sm text-[#6B6B66]">{t('survey.style.desc')}</p>
                 </div>
                 <div className="space-y-5">
                   <div>
@@ -520,14 +520,14 @@ export default function Survey() {
                         <button
                           key={opt.value}
                           onClick={() => update('stylePreference', opt.value)}
-                          className={`survey-option rounded-xl border-2 px-3 py-3 text-center transition-all ${
+                          className={`survey-option min-h-11 rounded-xl border-2 px-3 py-3 text-center transition-all ${
                             profile.stylePreference === opt.value
-                              ? 'border-slate-900 bg-slate-900 text-white'
-                              : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                              ? 'border-[#E0782C] bg-[#E0782C] text-white shadow'
+                              : 'border-[#E5E2DA] bg-white text-[#4A4A45] hover:border-[#E0782C]/50 hover:bg-[#FFF7EF]'
                           }`}
                         >
                           <div className="text-sm font-semibold">{t(opt.labelKey as any)}</div>
-                          <div className={`mt-0.5 text-xs ${profile.stylePreference === opt.value ? 'text-slate-300' : 'text-slate-400'}`}>{t(opt.descKey as any)}</div>
+                          <div className={`mt-0.5 text-xs ${profile.stylePreference === opt.value ? 'text-white' : 'text-[#8A8A84]'}`}>{t(opt.descKey as any)}</div>
                         </button>
                       ))}
                     </div>
@@ -542,7 +542,7 @@ export default function Survey() {
                         ))}
                       </SelectContent>
                     </Select>
-                    <p className="mt-1 text-xs text-slate-400">{t('survey.occasion.hint')}</p>
+                    <p className="mt-1 text-xs text-[#8A8A84]">{t('survey.occasion.hint')}</p>
                   </div>
                   <div>
                     <Label className="mb-2 block">{t('survey.season.label')}</Label>
@@ -554,12 +554,12 @@ export default function Survey() {
                         ))}
                       </SelectContent>
                     </Select>
-                    <p className="mt-1 text-xs text-slate-400">{t('survey.season.hint')}</p>
+                    <p className="mt-1 text-xs text-[#8A8A84]">{t('survey.season.hint')}</p>
                   </div>
                   <div>
                     <Label htmlFor="budget" className="mb-2 block">
                       {t('survey.budget.label')}
-                      <span className="ml-1 text-xs font-normal text-slate-400">{t('survey.budget.optional')}</span>
+                      <span className="ml-1 text-xs font-normal text-[#8A8A84]">{t('survey.budget.optional')}</span>
                     </Label>
                     <Input
                       id="budget"
@@ -571,7 +571,7 @@ export default function Survey() {
                       min={50}
                       max={10000}
                     />
-                    <p className="mt-1 text-xs text-slate-400">{t('survey.budget.hint')}</p>
+                    <p className="mt-1 text-xs text-[#8A8A84]">{t('survey.budget.hint')}</p>
                   </div>
                 </div>
               </div>
@@ -601,11 +601,11 @@ export default function Survey() {
               )}
             </div>
             {step === 0 && (
-              <p className="mt-4 text-center text-xs leading-5 text-[#AAA49B]">
+              <p className="mt-4 text-center text-xs leading-5 text-[#8A8A84]">
                 提交即表示你已阅读并同意
-                <Link to="/terms" className="focus-ring mx-1 rounded text-[#D7C39D] underline-offset-2 hover:underline">《用户协议》</Link>
+                <Link to="/terms" className="focus-ring mx-1 rounded text-[#C96A22] underline-offset-2 hover:underline">《用户协议》</Link>
                 和
-                <Link to="/privacy" className="focus-ring ml-1 rounded text-[#D7C39D] underline-offset-2 hover:underline">《隐私政策》</Link>。
+                <Link to="/privacy" className="focus-ring ml-1 rounded text-[#C96A22] underline-offset-2 hover:underline">《隐私政策》</Link>。
               </p>
             )}
           </CardContent>

@@ -34,7 +34,7 @@ const en: Record<TranslationKey, string> = {
 
   // Home - Hero
   'home.hero.badge': 'AI Smart Recommendations',
-  'home.hero.shopPromo': 'AI-curated outfit recommendations based on your body, style, and occasion',
+  'home.hero.aiRecommend': 'AI-curated outfit recommendations based on your body, style, and occasion',
   'home.hero.title1': 'Wear Your',
   'home.hero.title2': 'Unique Style',
   'home.hero.desc': 'AI-curated outfit recommendations based on your body, style, and occasion',
@@ -60,7 +60,6 @@ const en: Record<TranslationKey, string> = {
   'home.product.silkDress': 'SILK DRESS - MINT',
   'home.product.cottonShirt': 'COTTON SHIRT - STRIPE',
   'home.tag.new': 'NEW',
-  'home.tag.sale': 'SALE',
   'home.tag.hot': 'HOT',
   'home.stylingNotes': 'STYLE NOTES',
   'home.occasions.display': 'OCCASIONS',
