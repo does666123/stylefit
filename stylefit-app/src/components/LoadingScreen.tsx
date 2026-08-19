@@ -38,16 +38,16 @@ export default function LoadingScreen({ message }: LoadingScreenProps) {
       {showBallpit && <Suspense fallback={null}><LoadingBallpit /></Suspense>}
       <div className="phase-two-loading-card relative z-10 text-center" aria-live="polite">
         <div className="relative mx-auto mb-6 flex h-16 w-16 items-center justify-center">
-          <div className="absolute inset-0 rounded-full border border-[#C9A46A]/30" />
-          <div className="absolute inset-2 rounded-full border border-[#F7F4EE]/10" />
-          <Shirt className="h-7 w-7 text-[#F7F4EE]" />
+          <div className="absolute inset-0 rounded-full border border-[#E0782C]/30" />
+          <div className="absolute inset-2 rounded-full border border-[#1A1A1A]/10" />
+          <Shirt className="h-7 w-7 text-[#E0782C]" />
         </div>
-        <p className="mb-3 inline-flex items-center gap-2 text-xs font-medium tracking-[0.16em] text-[#D7C39D]">
+        <p className="mb-3 inline-flex items-center gap-2 text-xs font-medium tracking-[0.16em] text-[#E0782C]">
           <Sparkles className="h-3.5 w-3.5" /> {t('loading.brand')}
         </p>
-        <h2 className="mb-2 text-lg font-semibold text-[#F7F4EE]">{displayMessage}</h2>
-        <p key={stage} className="phase-two-loading-stage text-sm text-[#BDB8B0]">{stages[stage]}</p>
-        <p className="mt-3 text-xs text-[#AAA49B]">通常约需 15–30 秒，网络较慢时可能更久</p>
+        <h2 className="mb-2 text-lg font-semibold text-[#1A1A1A]">{displayMessage}</h2>
+        <p key={stage} className="phase-two-loading-stage text-sm text-[#6B6B66]">{stages[stage]}</p>
+        <p className="mt-3 text-xs text-[#6B6B66]">通常约需 15–30 秒，网络较慢时可能更久</p>
       </div>
     </div>
   );
