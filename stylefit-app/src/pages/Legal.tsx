@@ -1,4 +1,4 @@
-import { ArrowLeft, ShieldCheck } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { Link, useNavigate } from 'react-router';
 import type { ReactNode } from 'react';
 
@@ -12,8 +12,8 @@ function LegalPage({ title, updatedAt, children }: LegalPageProps) {
       <div className="mx-auto max-w-3xl">
         <div className="mb-10 flex items-center justify-between gap-4 border-b border-white/[0.08] pb-5">
           <Link to="/" className="focus-ring flex items-center gap-2 rounded-lg text-lg font-semibold">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#C9A46A]/30 bg-[#1B1E26]">
-              <ShieldCheck className="h-4 w-4 text-[#D7C39D]" />
+            <span className="flex h-9 w-9 overflow-hidden rounded-xl border border-[#C9A46A]/30 bg-[#1B1E26]">
+              <img src="/stylefit-logo.jpg" alt="" width="36" height="36" className="h-full w-full object-cover" />
             </span>
             StyleFit
           </Link>

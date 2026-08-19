@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Shirt, ArrowRight, ArrowLeft, Check, Loader2, Sparkles, Ruler, AlertCircle } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Check, Loader2, Sparkles, Ruler, AlertCircle } from 'lucide-react';
 import { useT } from '@/i18n';
 import type { UserBodyProfile, Gender, BodyType, SkinTone, StylePreference, Occasion, Season } from '../types';
 import { saveProfile } from '../hooks/useRecommendation';
@@ -275,8 +275,8 @@ export default function Survey() {
       <nav className="survey-nav sticky top-0 z-50">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3">
           <button className="focus-ring flex items-center gap-2 rounded-lg" onClick={() => navigate('/')}>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1B1E26]">
-              <Shirt className="h-4 w-4 text-[#F7F4EE]" />
+            <div className="flex h-8 w-8 overflow-hidden rounded-lg bg-[#1B1E26]">
+              <img src="/stylefit-logo.jpg" alt="" width="32" height="32" className="h-full w-full object-cover" />
             </div>
             <span className="text-xl font-bold text-[#F7F4EE]">StyleFit</span>
           </button>

@@ -11,9 +11,8 @@ function getInitialLang(): Lang {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved === 'zh' || saved === 'en') return saved;
   } catch {}
-  // Default based on browser language
-  const browserLang = navigator.language || '';
-  return browserLang.toLowerCase().startsWith('zh') ? 'zh' : 'en';
+  // Default to Chinese
+  return 'zh';
 }
 
 interface LanguageContextValue {

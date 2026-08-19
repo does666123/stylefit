@@ -7,8 +7,7 @@ import {
   Building2,
   CloudSun,
   Dumbbell,
-  Heart,
-  Heart as HeartIcon,
+  HeartIcon,
   Loader2,
   Map,
   Palette,
@@ -22,8 +21,7 @@ import {
   UserCheck,
   Wind,
 } from 'lucide-react';
-import { LanguageSwitcher } from '@/components/LanguageSwitcher';
-import { useT } from '@/i18n';
+import { useT, type TranslationKey } from '@/i18n';
 import { fetchWeatherWithCache, interpretWeather, type WeatherData } from '@/lib/weather';
 import { loadProfile } from '@/hooks/useRecommendation';
 import { STYLEFIT_DATA_CLEARED_EVENT } from '@/lib/localData';
@@ -55,6 +53,17 @@ const heroLooks = [
   },
 ];
 
+const newArrivals = [
+  { key: 'aliceBag', tag: 'new', image: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=520&h=650&fit=crop&q=80' },
+  { key: 'reameTop', tag: 'sale', image: 'https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=520&h=650&fit=crop&q=80' },
+  { key: 'trenchCoat', tag: 'new', image: 'https://images.unsplash.com/photo-1544022613-e87ca75a784a?w=520&h=650&fit=crop&q=80' },
+  { key: 'denimPant', tag: 'hot', image: 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=520&h=650&fit=crop&q=80' },
+  { key: 'knitCardigan', tag: 'new', image: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=520&h=650&fit=crop&q=80' },
+  { key: 'leatherLoafer', tag: 'sale', image: 'https://images.unsplash.com/photo-1533867617858-e7b97e060509?w=520&h=650&fit=crop&q=80' },
+  { key: 'silkDress', tag: 'new', image: 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=520&h=650&fit=crop&q=80' },
+  { key: 'cottonShirt', tag: 'hot', image: 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=520&h=650&fit=crop&q=80' },
+];
+
 export function HomePage() {
   const homeRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -65,30 +74,14 @@ export function HomePage() {
   const [weatherRefreshing, setWeatherRefreshing] = useState(false);
   const [weatherIsDefault, setWeatherIsDefault] = useState(false);
   const [weatherLocationName, setWeatherLocationName] = useState('');
-  const [favCount, setFavCount] = useState(0);
   const [silkReady, setSilkReady] = useState(false);
 
   useEffect(() => {
     const clearProfileState = () => {
       setExistingProfile(null);
-      setFavCount(0);
     };
     window.addEventListener(STYLEFIT_DATA_CLEARED_EVENT, clearProfileState);
     return () => window.removeEventListener(STYLEFIT_DATA_CLEARED_EVENT, clearProfileState);
-  }, []);
-
-  useEffect(() => {
-    const updateFavCount = () => {
-      try {
-        const saved = localStorage.getItem('stylefit_favorites');
-        if (saved) setFavCount((JSON.parse(saved) as string[]).length);
-      } catch {
-        // 收藏数据损坏时保持当前计数。
-      }
-    };
-    updateFavCount();
-    const interval = setInterval(updateFavCount, 1000);
-    return () => clearInterval(interval);
   }, []);
 
   useLayoutEffect(() => {
@@ -230,71 +223,8 @@ export function HomePage() {
 
   return (
     <div ref={homeRef} className="stylefit-home min-h-screen">
-      <nav data-hero-nav className="stylefit-nav sticky top-0 z-50 border-b border-white/[0.08]">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <button
-            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            className="focus-ring flex items-center gap-2 rounded-xl text-[#F7F4EE]"
-            aria-label="StyleFit"
-          >
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#C9A46A]/35 bg-[#1B1E26] shadow-[0_10px_30px_rgba(0,0,0,0.24)]">
-              <Shirt className="h-4 w-4" />
-            </span>
-            <span className="text-lg font-semibold tracking-[-0.02em]">StyleFit</span>
-          </button>
-
-          <div className="hidden items-center gap-7 text-sm text-[#C6C1B8] md:flex">
-            <button onClick={scrollToOccasions} className="nav-text-link focus-ring rounded-md">
-              {t('home.occasions.title')}
-            </button>
-            <button
-              onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
-              className="nav-text-link focus-ring rounded-md"
-            >
-              {t('home.steps.title')}
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <LanguageSwitcher className="border-white/10 bg-white/[0.04] text-[#AAA49B] shadow-none hover:border-[#C9A46A]/35 hover:bg-white/[0.07] hover:text-[#F7F4EE]" />
-            {favCount > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate('/favorites')}
-                className="focus-ring relative h-9 rounded-xl px-2 text-[#AAA49B] hover:bg-white/[0.06] hover:text-[#F7F4EE] sm:px-3"
-              >
-                <Heart className="h-4 w-4 sm:mr-1" />
-                <span className="hidden sm:inline">{t('common.favorites')}</span>
-                <span className="ml-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#6B4B63] px-1 text-[10px] font-bold text-white">
-                  {favCount}
-                </span>
-              </Button>
-            )}
-            {existingProfile && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleViewRecommendations}
-                className="focus-ring hidden rounded-xl text-[#AAA49B] hover:bg-white/[0.06] hover:text-[#F7F4EE] lg:inline-flex"
-              >
-                {t('home.nav.viewRecommendations')}
-              </Button>
-            )}
-            <Button
-              onClick={startSurvey}
-              onTouchStart={prefetchSurvey}
-              onMouseEnter={prefetchSurvey}
-              className="sf-primary-button focus-ring h-9 px-3 text-xs sm:px-4 sm:text-sm"
-            >
-              {existingProfile ? t('home.nav.retakeTest') : t('home.nav.startTest')}
-            </Button>
-          </div>
-        </div>
-      </nav>
-
       <main>
-        <section data-hero className="stylefit-hero relative isolate overflow-hidden border-b border-white/[0.08]">
+        <section data-hero className="stylefit-hero relative isolate overflow-hidden border-b border-[#1A1A1A]/[0.08]">
           {silkReady && (
             <div className="pointer-events-none absolute inset-0 hidden md:block" aria-hidden="true">
               <Suspense fallback={null}>
@@ -302,25 +232,31 @@ export function HomePage() {
               </Suspense>
             </div>
           )}
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(8,9,12,0.96)_0%,rgba(8,9,12,0.84)_37%,rgba(8,9,12,0.26)_74%,rgba(8,9,12,0.48)_100%)]" />
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#08090C] to-transparent" />
+          <img
+            src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1920&h=1200&fit=crop&q=80"
+            alt=""
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-55"
+          />
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.96)_0%,rgba(255,255,255,0.9)_38%,rgba(234,242,248,0.6)_72%,rgba(234,242,248,0.18)_100%)]" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-[#F7F7F5] to-transparent" />
 
           <div className="relative mx-auto grid min-h-[690px] max-w-7xl items-center gap-7 px-4 py-16 sm:px-6 md:grid-cols-[0.9fr_1.1fr] md:gap-12 md:py-20 lg:gap-16 lg:px-8">
             <div className="relative z-10 max-w-xl">
-              <div data-hero-meta className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#C9A46A]/25 bg-[#12141A]/75 px-4 py-2 text-xs font-medium tracking-[0.12em] text-[#D7C39D] shadow-[0_12px_36px_rgba(0,0,0,0.24)] backdrop-blur-md">
+              <div data-hero-meta className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#E0782C]/25 bg-white/90 px-4 py-2 text-xs font-medium tracking-[0.12em] text-[#C96A22] shadow-[0_10px_30px_rgba(224,120,44,0.12)] backdrop-blur-md">
                 <Sparkles className="h-3.5 w-3.5" />
                 {t('home.hero.badge')}
               </div>
-              <h1 className="hero-title mb-6 text-[clamp(2.75rem,7vw,5.8rem)] font-semibold leading-[0.98] tracking-[-0.055em] text-[#F7F4EE]">
+              <h1 className="hero-title mb-6 text-[clamp(2.75rem,7vw,5.8rem)] font-semibold leading-[0.98] tracking-[-0.055em] text-[#1A1A1A]">
                 <span className="hero-title-mask block"><span data-hero-title-line className="hero-title-line block">{t('home.hero.title1')}</span></span>
-                <span className="hero-title-mask block"><span data-hero-title-line className="hero-title-line block text-[#D8C5CF]">{t('home.hero.title2')}</span></span>
+                <span className="hero-title-mask block"><span data-hero-title-line className="hero-title-line block text-[#E0782C]">{t('home.hero.title2')}</span></span>
               </h1>
-              <p data-hero-copy className="max-w-lg text-base leading-7 text-[#BDB8B0] sm:text-lg">
-                {t('home.hero.desc')}
+              <p data-hero-copy className="max-w-lg text-base leading-7 text-[#555550] sm:text-lg">
+                {t('home.hero.shopPromo')}
               </p>
 
               {existingProfile && (
-                <div className="mt-7 inline-flex items-center gap-2 rounded-xl border border-[#C9A46A]/20 bg-[#12141A]/80 px-4 py-2.5 text-sm text-[#D7C39D] backdrop-blur">
+                <div className="mt-7 inline-flex items-center gap-2 rounded-xl border border-[#E0782C]/20 bg-white/90 px-4 py-2.5 text-sm text-[#C96A22] shadow-[0_8px_24px_rgba(26,26,26,0.05)] backdrop-blur">
                   <UserCheck className="h-4 w-4" />
                   {t('home.hero.welcomeBack')}
                 </div>
@@ -334,9 +270,21 @@ export function HomePage() {
                   onMouseEnter={prefetchSurvey}
                   className="sf-primary-button focus-ring h-12 px-6 text-sm sm:text-base"
                 >
-                  {existingProfile ? t('home.hero.viewMyRecommendations') : t('home.hero.startTestNow')}
+                  {t('home.hero.viewMyRecommendations')}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
+                {existingProfile && (
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    onClick={startSurvey}
+                    onTouchStart={prefetchSurvey}
+                    onMouseEnter={prefetchSurvey}
+                    className="sf-secondary-button focus-ring h-12 px-6 text-sm sm:text-base"
+                  >
+                    {t('home.nav.retakeTest')}
+                  </Button>
+                )}
                 <Button
                   size="lg"
                   variant="outline"
@@ -361,14 +309,14 @@ export function HomePage() {
                       loading={index === 1 ? 'eager' : 'lazy'}
                       fetchPriority={index === 1 ? 'high' : 'auto'}
                     />
-                    <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent p-4 pt-12 text-sm font-medium text-[#F7F4EE]">
+                    <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#1A1A1A]/75 via-[#1A1A1A]/25 to-transparent p-4 pt-12 text-sm font-medium text-[#F7F4EE]">
                       {entry?.title}
                     </figcaption>
                   </figure>
                 );
               })}
               <div data-hero-note className="lookbook-note" aria-hidden="true">
-                <span>STYLE NOTES</span>
+                <span>{t('home.stylingNotes')}</span>
                 <span>01 — 03</span>
               </div>
             </div>
@@ -376,10 +324,10 @@ export function HomePage() {
         </section>
 
         {(weatherLoading || weather) && (
-          <section className="bg-[#08090C] px-4 pt-10 sm:px-6">
+          <section className="bg-[#F7F7F5] px-4 pt-10 sm:px-6">
             <div className="mx-auto max-w-3xl">
               {weatherLoading && !weather ? (
-                <div className="flex items-center justify-center gap-2 rounded-2xl border border-white/[0.08] bg-[#12141A] px-5 py-4 text-[#77756F]">
+                <div className="flex items-center justify-center gap-2 rounded-2xl border border-[#1A1A1A]/[0.08] bg-white px-5 py-4 text-[#77756F]">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   <span className="text-sm">{t('home.weather.loading')}</span>
                 </div>
@@ -389,25 +337,25 @@ export function HomePage() {
                   <button
                     onClick={() => !weatherRefreshing && handleRefreshWeather()}
                     disabled={weatherRefreshing}
-                    className="focus-ring group flex w-full items-center gap-4 rounded-2xl border border-white/[0.08] bg-[#12141A] px-5 py-4 text-left shadow-[0_18px_50px_rgba(0,0,0,0.22)] transition-all hover:border-[#C9A46A]/25 hover:bg-[#171A21] disabled:cursor-not-allowed"
+                    className="focus-ring group flex w-full items-center gap-4 rounded-2xl border border-[#1A1A1A]/[0.08] bg-white px-5 py-4 text-left shadow-[0_14px_40px_rgba(26,26,26,0.06)] transition-all hover:border-[#E0782C]/30 hover:bg-[#FFFDFB] disabled:cursor-not-allowed"
                   >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/[0.08] bg-[#1B1E26] text-[#C9A46A]">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#1A1A1A]/[0.08] bg-[#EAF2F8] text-[#C96A22]">
                       {weatherInfo.rainNote ? <Umbrella className="h-5 w-5" /> : weatherInfo.windNote ? <Wind className="h-5 w-5" /> : <CloudSun className="h-5 w-5" />}
                     </div>
                     <div className={`min-w-0 flex-1 transition-opacity ${weatherRefreshing ? 'opacity-55' : ''}`}>
                       <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                        <span className="text-lg font-semibold text-[#F7F4EE]">{Math.round(weather.temperature)}°C</span>
-                        <span className="text-sm text-[#AAA49B]">· {t('home.weather.feelsLike', { temp: Math.round(weather.apparentTemperature) })}</span>
-                        <span className="text-sm text-[#AAA49B]">{weatherInfo.weatherLabel}</span>
-                        <span className="hidden text-xs text-[#77756F] sm:inline">· {weatherInfo.locationName}</span>
+                        <span className="text-lg font-semibold text-[#1A1A1A]">{Math.round(weather.temperature)}°C</span>
+                        <span className="text-sm text-[#666660]">· {t('home.weather.feelsLike', { temp: Math.round(weather.apparentTemperature) })}</span>
+                        <span className="text-sm text-[#666660]">{weatherInfo.weatherLabel}</span>
+                        <span className="hidden text-xs text-[#8A8A85] sm:inline">· {weatherInfo.locationName}</span>
                       </div>
-                      <p className="mt-0.5 truncate text-xs text-[#77756F]">
+                      <p className="mt-0.5 truncate text-xs text-[#8A8A85]">
                         {weatherInfo.clothingAdvice}
-                        {weatherInfo.rainNote && <span className="ml-1 text-[#AAA49B]">· {weatherInfo.rainNote}</span>}
-                        {weatherInfo.windNote && <span className="ml-1 text-[#AAA49B]">· {weatherInfo.windNote}</span>}
+                        {weatherInfo.rainNote && <span className="ml-1 text-[#666660]">· {weatherInfo.rainNote}</span>}
+                        {weatherInfo.windNote && <span className="ml-1 text-[#666660]">· {weatherInfo.windNote}</span>}
                       </p>
                     </div>
-                    <RefreshCw className={`h-4 w-4 shrink-0 text-[#77756F] transition-colors group-hover:text-[#C9A46A] ${weatherRefreshing ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`h-4 w-4 shrink-0 text-[#8A8A85] transition-colors group-hover:text-[#C96A22] ${weatherRefreshing ? 'animate-spin' : ''}`} />
                   </button>
                 );
               })() : null}
@@ -415,9 +363,58 @@ export function HomePage() {
           </section>
         )}
 
-        <section data-motion-section id="occasions" className="scroll-mt-20 bg-[#08090C] px-4 py-20 sm:px-6 lg:pb-12 lg:pt-24">
+        <section data-motion-section className="bg-[#F7F7F5] px-4 py-16 sm:px-6 lg:py-20">
           <div className="mx-auto max-w-7xl">
-            <SectionHeading display="OCCASIONS" title={t('home.occasions.title')} subtitle={t('home.occasions.subtitle')} />
+            <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
+              <div className="relative overflow-hidden py-4">
+                <span data-motion-display aria-hidden="true" className="motion-display-title">{t('home.newArrivals.title')}</span>
+                <div data-motion-heading-main className="relative">
+                  <div className="mb-4 h-px w-10 bg-[#E0782C]" />
+                  <h2 className="text-3xl font-semibold tracking-[-0.035em] text-[#1A1A1A] sm:text-4xl">{t('home.newArrivals.title')}</h2>
+                  <p className="mt-3 text-sm leading-6 text-[#666660] sm:text-base">{t('home.hero.desc')}</p>
+                </div>
+              </div>
+              <button onClick={startSurvey} className="nav-text-link focus-ring hidden shrink-0 items-center gap-1.5 text-sm font-medium sm:inline-flex">
+                {t('home.cta.button')}
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+              {newArrivals.map((item) => {
+                const itemKey = `home.product.${item.key}` as TranslationKey;
+                const tagKey = `home.tag.${item.tag}` as TranslationKey;
+                return (
+                  <button
+                    key={item.key}
+                    onClick={startSurvey}
+                    data-motion-card
+                    className="focus-ring group overflow-hidden rounded-2xl border border-[#1A1A1A]/[0.08] bg-white text-left shadow-[0_10px_30px_rgba(26,26,26,0.05)] transition-all hover:-translate-y-1 hover:border-[#E0782C]/35 hover:shadow-[0_18px_44px_rgba(26,26,26,0.1)]"
+                  >
+                    <div className="relative aspect-[4/5] overflow-hidden">
+                      <img
+                        src={item.image}
+                        alt={t(itemKey)}
+                        loading="lazy"
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                      <span className="absolute left-2.5 top-2.5 rounded-full bg-[#E0782C] px-2.5 py-1 text-[10px] font-bold tracking-[0.08em] text-white">
+                        {t(tagKey)}
+                      </span>
+                    </div>
+                    <div className="p-3 sm:p-4">
+                      <p className="truncate text-xs font-medium text-[#555550] sm:text-sm">{t(itemKey)}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        <section data-motion-section id="occasions" className="scroll-mt-20 bg-[#F7F7F5] px-4 py-20 sm:px-6 lg:pb-12 lg:pt-24">
+          <div className="mx-auto max-w-7xl">
+            <SectionHeading display={t('home.occasions.display')} title={t('home.occasions.title')} subtitle={t('home.occasions.subtitle')} />
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
               {occasionEntries.map((entry) => {
                 const original = occasionQuickEntries.find((item) => item.key === entry.key)!;
@@ -428,11 +425,11 @@ export function HomePage() {
                     data-motion-card
                     className="spotlight-card focus-ring group min-h-[150px] rounded-2xl p-5 text-left sm:min-h-44"
                   >
-                    <span className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl border border-white/[0.08] bg-[#1B1E26] text-[#AAA49B] transition-colors group-hover:border-[#C9A46A]/25 group-hover:text-[#D7C39D] sm:mb-8">
+                    <span className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl border border-[#1A1A1A]/[0.08] bg-[#EAF2F8] text-[#555550] transition-colors group-hover:border-[#E0782C]/30 group-hover:text-[#C96A22] sm:mb-8">
                       {original.icon}
                     </span>
-                    <span className="block text-sm font-semibold text-[#F7F4EE]">{entry.title}</span>
-                    <span className="occasion-card-desc mt-1.5 block text-xs leading-5 text-[#77756F] transition-colors group-hover:text-[#AAA49B]">
+                    <span className="block text-sm font-semibold text-[#1A1A1A]">{entry.title}</span>
+                    <span className="occasion-card-desc mt-1.5 block text-xs leading-5 text-[#77756F] transition-colors group-hover:text-[#666660]">
                       {entry.desc}
                     </span>
                   </button>
@@ -442,9 +439,9 @@ export function HomePage() {
           </div>
         </section>
 
-        <section data-motion-section id="how-it-works" className="scroll-mt-20 border-y border-white/[0.08] bg-[#0D0F14] px-4 py-20 sm:px-6 lg:pb-24 lg:pt-12">
+        <section data-motion-section id="how-it-works" className="scroll-mt-20 border-y border-[#1A1A1A]/[0.08] bg-white px-4 py-20 sm:px-6 lg:pb-24 lg:pt-12">
           <div className="mx-auto max-w-7xl">
-            <SectionHeading display="PROCESS" title={t('home.steps.title')} subtitle={t('home.steps.subtitle')} />
+            <SectionHeading display={t('home.process.display')} title={t('home.steps.title')} subtitle={t('home.steps.subtitle')} />
             <div className="grid gap-4 lg:grid-cols-12">
               <StepCard
                 className="lg:col-span-5"
@@ -473,7 +470,7 @@ export function HomePage() {
           </div>
         </section>
 
-        <section data-motion-section className="bg-[#08090C] px-4 py-20 sm:px-6">
+        <section data-motion-section className="bg-[#F7F7F5] px-4 py-20 sm:px-6">
           <div className="mx-auto grid max-w-7xl gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <FeatureCard icon={<Ruler className="h-5 w-5" />} title={t('home.features.feature1.title')} desc={t('home.features.feature1.desc')} />
             <FeatureCard icon={<Palette className="h-5 w-5" />} title={t('home.features.feature2.title')} desc={t('home.features.feature2.desc')} />
@@ -482,15 +479,25 @@ export function HomePage() {
           </div>
         </section>
 
-        <section data-motion-section className="border-y border-white/[0.08] bg-[#0D0F14] px-4 py-20 text-[#F7F4EE] sm:px-6">
+        <section data-motion-section className="border-y border-[#1A1A1A]/[0.08] bg-white px-4 py-20 text-[#1A1A1A] sm:px-6">
           <div data-motion-card className="mx-auto max-w-3xl text-center">
-            <p className="mb-3 text-xs font-medium tracking-[0.18em] text-[#C9A46A]">PERSONAL STYLING</p>
+            <p className="mb-3 text-xs font-medium tracking-[0.18em] text-[#C96A22]">{t('home.personalStyling')}</p>
             <h2 className="mb-4 text-3xl font-semibold tracking-[-0.035em] sm:text-4xl">{t('home.cta.title')}</h2>
-            <p className="mb-8 text-[#AAA49B]">{t('home.cta.desc')}</p>
+            <p className="mb-8 text-[#666660]">{t('home.cta.desc')}</p>
             <Button size="lg" onClick={startSurvey} className="sf-primary-button focus-ring h-12 px-8 text-base">
               {t('home.cta.button')}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
+          </div>
+        </section>
+
+        <section data-motion-section className="bg-[#EAF2F8] px-4 py-24 text-center sm:px-6 lg:py-28">
+          <div data-motion-card className="mx-auto max-w-4xl">
+            <p className="mb-5 text-xs font-semibold tracking-[0.3em] text-[#C96A22]">{t('home.studioTitle')}</p>
+            <p className="text-[clamp(2.4rem,7vw,5.2rem)] font-semibold leading-[1.02] tracking-[-0.04em] text-[#1A1A1A]">
+              {t('home.brandMotto1')} <span className="text-[#E0782C]">*</span> {t('home.brandMotto2')}
+            </p>
+            <p className="mx-auto mt-6 max-w-xl text-base leading-7 text-[#555550]">{t('home.cta.desc')}</p>
           </div>
         </section>
       </main>
@@ -504,9 +511,9 @@ function SectionHeading({ display, title, subtitle }: { display: string; title: 
     <div className="relative mb-10 max-w-2xl overflow-hidden py-4">
       <span data-motion-display aria-hidden="true" className="motion-display-title">{display}</span>
       <div data-motion-heading-main className="relative">
-        <div className="mb-4 h-px w-10 bg-[#C9A46A]" />
-        <h2 className="text-3xl font-semibold tracking-[-0.035em] text-[#F7F4EE] sm:text-4xl">{title}</h2>
-        <p className="mt-3 text-sm leading-6 text-[#AAA49B] sm:text-base">{subtitle}</p>
+        <div className="mb-4 h-px w-10 bg-[#E0782C]" />
+        <h2 className="text-3xl font-semibold tracking-[-0.035em] text-[#1A1A1A] sm:text-4xl">{title}</h2>
+        <p className="mt-3 text-sm leading-6 text-[#666660] sm:text-base">{subtitle}</p>
       </div>
     </div>
   );
@@ -529,22 +536,23 @@ function StepCard({
   accent?: boolean;
   wide?: boolean;
 }) {
+  const { t } = useT();
   return (
     <article data-motion-card className={`step-card ${accent ? 'step-card-accent' : ''} ${className ?? ''}`}>
       <div className={wide ? 'grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end' : ''}>
         <div>
           <div className="mb-7 flex items-start justify-between sm:mb-12">
-            <span className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/[0.08] bg-[#1B1E26] text-[#D7C39D]">
+            <span className="flex h-12 w-12 items-center justify-center rounded-xl border border-[#1A1A1A]/[0.08] bg-[#EAF2F8] text-[#C96A22]">
               {icon}
             </span>
-            <span className="text-xs font-medium tracking-[0.2em] text-[#77756F]">{step}</span>
+            <span className="text-xs font-medium tracking-[0.2em] text-[#8A8A85]">{step}</span>
           </div>
-          <h3 className="text-2xl font-semibold tracking-[-0.025em] text-[#F7F4EE]">{title}</h3>
-          <p className="mt-3 max-w-xl text-sm leading-6 text-[#AAA49B]">{desc}</p>
+          <h3 className="text-2xl font-semibold tracking-[-0.025em] text-[#1A1A1A]">{title}</h3>
+          <p className="mt-3 max-w-xl text-sm leading-6 text-[#666660]">{desc}</p>
         </div>
         {wide && (
           <div className="hidden items-center gap-2 text-xs tracking-[0.18em] text-[#77756F] lg:flex" aria-hidden="true">
-            <span>PROFILE</span><ArrowRight className="h-3.5 w-3.5" /><span>CONTEXT</span><ArrowRight className="h-3.5 w-3.5" /><span>LOOKS</span>
+            <span>{t('home.flow.profile')}</span><ArrowRight className="h-3.5 w-3.5" /><span>{t('home.flow.context')}</span><ArrowRight className="h-3.5 w-3.5" /><span>{t('home.flow.looks')}</span>
           </div>
         )}
       </div>
@@ -554,10 +562,10 @@ function StepCard({
 
 function FeatureCard({ icon, title, desc }: { icon: ReactNode; title: string; desc: string }) {
   return (
-    <article data-motion-card className="rounded-2xl border border-white/[0.08] bg-[#12141A] p-5">
-      <div className="mb-8 flex h-10 w-10 items-center justify-center rounded-xl bg-[#1B1E26] text-[#AAA49B]">{icon}</div>
-      <h3 className="font-semibold text-[#F7F4EE]">{title}</h3>
-      <p className="mt-2 text-sm leading-6 text-[#77756F]">{desc}</p>
+    <article data-motion-card className="rounded-2xl border border-[#1A1A1A]/[0.08] bg-white p-5 shadow-[0_10px_30px_rgba(26,26,26,0.05)]">
+      <div className="mb-8 flex h-10 w-10 items-center justify-center rounded-xl bg-[#EAF2F8] text-[#555550]">{icon}</div>
+      <h3 className="font-semibold text-[#1A1A1A]">{title}</h3>
+      <p className="mt-2 text-sm leading-6 text-[#666660]">{desc}</p>
     </article>
   );
 }

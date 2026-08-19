@@ -43,7 +43,7 @@ export default function LoadingScreen({ message }: LoadingScreenProps) {
           <Shirt className="h-7 w-7 text-[#F7F4EE]" />
         </div>
         <p className="mb-3 inline-flex items-center gap-2 text-xs font-medium tracking-[0.16em] text-[#D7C39D]">
-          <Sparkles className="h-3.5 w-3.5" /> STYLEFIT AI
+          <Sparkles className="h-3.5 w-3.5" /> {t('loading.brand')}
         </p>
         <h2 className="mb-2 text-lg font-semibold text-[#F7F4EE]">{displayMessage}</h2>
         <p key={stage} className="phase-two-loading-stage text-sm text-[#BDB8B0]">{stages[stage]}</p>

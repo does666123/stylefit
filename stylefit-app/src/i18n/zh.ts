@@ -23,9 +23,16 @@ const zh = {
   'common.female': '女',
   'common.favorites': '我的收藏',
   'common.retakeTest': '重新测试',
+  'common.aiStyling': 'AI穿搭',
+  'loading.brand': 'STYLEFIT AI 穿搭',
+
+  // Language
+  'lang.switchToEn': '切换到英文',
+  'lang.switchToZh': '切换到中文',
 
   // Home - Hero
   'home.hero.badge': 'AI 智能推荐',
+  'home.hero.shopPromo': '基于你的身材、风格和场合，AI 为你推荐穿搭方案',
   'home.hero.title1': '穿出你的',
   'home.hero.title2': '专属风格',
   'home.hero.desc': '基于你的身材、风格和场合，AI 为你量身推荐穿搭方案',
@@ -38,6 +45,31 @@ const zh = {
   'home.nav.viewRecommendations': '继续推荐',
   'home.nav.retakeTest': '重新测试',
   'home.nav.startTest': '开始测试',
+
+  // Home - New Arrivals
+  'home.newArrivals.title': '新品上架',
+  'home.newArrivals.display': '新品上架',
+  'home.product.aliceBag': '爱丽丝手袋 · 暖驼套装',
+  'home.product.reameTop': '巧克力色高领打底衫',
+  'home.product.trenchCoat': '沙色经典风衣',
+  'home.product.denimPant': '蓝色牛仔阔腿裤',
+  'home.product.knitCardigan': '象牙白针织开衫',
+  'home.product.leatherLoafer': '黑色乐福鞋',
+  'home.product.silkDress': '薄荷绿真丝连衣裙',
+  'home.product.cottonShirt': '条纹棉质衬衫',
+  'home.tag.new': '新品',
+  'home.tag.sale': '特惠',
+  'home.tag.hot': '热门',
+  'home.stylingNotes': '穿搭灵感',
+  'home.occasions.display': '场合',
+  'home.process.display': '流程',
+  'home.personalStyling': '私人造型',
+  'home.studioTitle': 'STYLEFIT · AI 造型工作室',
+  'home.brandMotto1': '时尚',
+  'home.brandMotto2': '真实自我',
+  'home.flow.profile': '个人档案',
+  'home.flow.context': '穿搭场景',
+  'home.flow.looks': '专属造型',
 
   // Home - Occasions
   'home.occasions.title': '今天去哪',
@@ -82,6 +114,9 @@ const zh = {
 
   // Home - Footer
   'home.footer.tagline': 'StyleFit - 让每一天都穿得恰到好处',
+  'footer.settings': '设置',
+  'footer.aiStylingStudio': 'AI 造型工作室',
+  'footer.tagline': '基于身材、风格与场合的 AI 智能穿搭推荐',
 
   // Home - Weather
   'home.weather.feelsLike': '体感 {{temp}}°C',
@@ -178,6 +213,8 @@ const zh = {
   'survey.btn.generating': 'AI 分析中...',
 
   // Recommendations
+  'rec.eyebrow.discover': '个人发现',
+  'rec.eyebrow.styling': '私人造型',
   'rec.title': '推荐结果',
   'rec.subtitle': '根据你的个人风格，为你精选以下穿搭方案',
   'rec.matchScore': '匹配度',

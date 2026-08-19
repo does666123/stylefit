@@ -8,19 +8,19 @@ export function NotFoundPage() {
   const { t } = useT();
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-white px-4 page-enter">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-white via-[#F1F7FB] to-white px-4 page-enter">
       <div className="text-center">
-        <div className="mb-6 text-8xl font-bold text-slate-200">404</div>
-        <h1 className="mb-4 text-2xl font-bold text-slate-900">
+        <div className="mb-6 text-8xl font-bold tracking-tight text-[#E0782C]/30">404</div>
+        <h1 className="mb-4 text-2xl font-bold text-[#1A1A1A]">
           {t('notFound.title')}
         </h1>
-        <p className="mb-8 text-slate-500">
+        <p className="mb-8 text-[#5F5F5A]">
           {t('notFound.desc')}
         </p>
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
           <Button
             onClick={() => navigate('/')}
-            className="bg-slate-900 hover:bg-slate-800"
+            className="bg-[#E0782C] hover:bg-[#C96A22]"
           >
             <Home className="mr-2 h-4 w-4" />
             {t('notFound.backHome')}

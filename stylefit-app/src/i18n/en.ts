@@ -25,9 +25,16 @@ const en: Record<TranslationKey, string> = {
   'common.female': 'Female',
   'common.favorites': 'My Favorites',
   'common.retakeTest': 'Retake Test',
+  'common.aiStyling': 'AI Styling',
+  'loading.brand': 'STYLEFIT AI',
+
+  // Language
+  'lang.switchToEn': 'Switch to English',
+  'lang.switchToZh': 'Switch to Chinese',
 
   // Home - Hero
   'home.hero.badge': 'AI Smart Recommendations',
+  'home.hero.shopPromo': 'AI-curated outfit recommendations based on your body, style, and occasion',
   'home.hero.title1': 'Wear Your',
   'home.hero.title2': 'Unique Style',
   'home.hero.desc': 'AI-curated outfit recommendations based on your body, style, and occasion',
@@ -40,6 +47,31 @@ const en: Record<TranslationKey, string> = {
   'home.nav.viewRecommendations': 'Continue Recommendations',
   'home.nav.retakeTest': 'Retake Test',
   'home.nav.startTest': 'Start Test',
+
+  // Home - New Arrivals
+  'home.newArrivals.title': 'NEW ARRIVALS',
+  'home.newArrivals.display': 'NEW ARRIVALS',
+  'home.product.aliceBag': 'ALICE BAG - WARMET RUGO SET',
+  'home.product.reameTop': 'REAME LS TOP - CHOCOLATE',
+  'home.product.trenchCoat': 'TRENCH COAT - SAND',
+  'home.product.denimPant': 'DENIM WIDE PANT - BLUE',
+  'home.product.knitCardigan': 'KNIT CARDIGAN - IVORY',
+  'home.product.leatherLoafer': 'LEATHER LOAFER - BLACK',
+  'home.product.silkDress': 'SILK DRESS - MINT',
+  'home.product.cottonShirt': 'COTTON SHIRT - STRIPE',
+  'home.tag.new': 'NEW',
+  'home.tag.sale': 'SALE',
+  'home.tag.hot': 'HOT',
+  'home.stylingNotes': 'STYLE NOTES',
+  'home.occasions.display': 'OCCASIONS',
+  'home.process.display': 'PROCESS',
+  'home.personalStyling': 'PERSONAL STYLING',
+  'home.studioTitle': 'STYLEFIT · AI STYLING STUDIO',
+  'home.brandMotto1': 'TRENDY',
+  'home.brandMotto2': 'FEEL AUTHENTIC',
+  'home.flow.profile': 'PROFILE',
+  'home.flow.context': 'CONTEXT',
+  'home.flow.looks': 'LOOKS',
 
   // Home - Occasions
   'home.occasions.title': 'Where Today',
@@ -84,6 +116,9 @@ const en: Record<TranslationKey, string> = {
 
   // Home - Footer
   'home.footer.tagline': 'StyleFit - Dress perfectly every day',
+  'footer.settings': 'Settings',
+  'footer.aiStylingStudio': 'AI STYLING STUDIO',
+  'footer.tagline': 'AI outfit recommendations based on your body, style, and occasion',
 
   // Home - Weather
   'home.weather.feelsLike': 'Feels like {{temp}}°C',
@@ -180,6 +215,8 @@ const en: Record<TranslationKey, string> = {
   'survey.btn.generating': 'AI Analyzing...',
 
   // Recommendations
+  'rec.eyebrow.discover': 'PERSONAL DISCOVERY',
+  'rec.eyebrow.styling': 'PERSONAL STYLING',
   'rec.title': 'Recommendations',
   'rec.subtitle': 'Curated outfit picks based on your personal style',
   'rec.matchScore': 'Match Score',

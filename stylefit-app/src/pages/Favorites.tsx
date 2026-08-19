@@ -39,8 +39,8 @@ export function FavoritesPage() {
       <nav className="favorites-nav sticky top-0 z-50">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1B1E26]">
-              <Shirt className="h-4 w-4 text-[#F7F4EE]" />
+            <div className="flex h-8 w-8 overflow-hidden rounded-lg bg-[#1B1E26]">
+              <img src="/stylefit-logo.jpg" alt="" width="32" height="32" className="h-full w-full object-cover" />
             </div>
             <span className="text-xl font-bold tracking-tight text-[#F7F4EE]">
               StyleFit

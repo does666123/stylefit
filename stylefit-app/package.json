@@ -3,12 +3,14 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "packageManager": "pnpm@9.15.5",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "check:products": "node scripts/check-products.mjs",
     "check:budget": "node scripts/check-budget.mjs",
     "check:taobao": "node scripts/check-taobao-endpoint.mjs",
+    "check:ai-candidates": "node scripts/check-ai-candidate-pool.mjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },

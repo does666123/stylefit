@@ -96,21 +96,21 @@ try {
             publish_info: { coupon_share_url: '//uland.taobao.com/coupon/example' },
             income_info: { commission_rate: '12.5' },
             price_promotion_info: { reserve_price: '120', zk_final_price: '100', final_promotion_price: '80' },
-            item_basic_info: { title: '升级接口测试皮鞋', pict_url: '//img.alicdn.com/test.jpg', shop_title: '测试店铺', volume: 12, category_name: '鞋履' },
+            item_basic_info: { title: '升级接口测试衬衫', pict_url: '//img.alicdn.com/test.jpg', shop_title: '测试店铺', volume: 12, category_name: '男装' },
           }],
         },
       },
     }), { status: 200 });
   };
   const success = await onRequest({
-    request: new Request('https://stylefit.example/api/taobao/products?scene=mens_work&category=shoes'),
+    request: new Request('https://stylefit.example/api/taobao/products?scene=mens_work&category=bottom'),
     env: configuredEnv,
   });
   assert.equal(success.status, 200);
   assert.deepEqual(await success.json(), {
     products: [{
       itemId: 'upgrade-item-1',
-      title: '升级接口测试皮鞋',
+      title: '升级接口测试衬衫',
       image: 'https://img.alicdn.com/test.jpg',
       price: 100,
       couponAmount: 20,
@@ -118,14 +118,14 @@ try {
       commissionRate: 12.5,
       shopTitle: '测试店铺',
       volume: 12,
-      category: 'shoes',
+      category: 'bottom',
       promotionUrl: 'https://uland.taobao.com/coupon/example',
     }],
     page: 1,
     hasMore: true,
   });
   assert.match(upstreamBody, /method=taobao.tbk.dg.material.optional.upgrade/);
-  assert.equal(new URLSearchParams(upstreamBody).get('q'), '男士 通勤 皮鞋');
+  assert.equal(new URLSearchParams(upstreamBody).get('q'), '男士 通勤 西裤');
 
   const secondPage = await onRequest({
     request: new Request('https://stylefit.example/api/taobao/products?scene=mens_work&page=2'),

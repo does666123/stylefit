@@ -5,6 +5,24 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        brand: {
+          orange: {
+            DEFAULT: "#E0782C",
+            hover: "#C96A22",
+            soft: "#FFF4EC",
+          },
+          sky: {
+            DEFAULT: "#EAF3FA",
+            deep: "#94BEE2",
+            soft: "#F1F7FB",
+          },
+          ink: {
+            DEFAULT: "#1A1A1A",
+            body: "#5F5F5A",
+            muted: "#9A9A94",
+          },
+          mist: "#F7F7F5",
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -58,6 +76,28 @@ module.exports = {
       },
       boxShadow: {
         xs: "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+        card: "0 1px 2px rgba(26,26,26,0.04), 0 14px 36px rgba(26,26,26,0.07)",
+      },
+      fontFamily: {
+        sans: [
+          "Inter",
+          "-apple-system",
+          "BlinkMacSystemFont",
+          "Segoe UI",
+          "PingFang SC",
+          "Hiragino Sans GB",
+          "Microsoft YaHei",
+          "sans-serif",
+        ],
+        display: [
+          "Inter",
+          "-apple-system",
+          "BlinkMacSystemFont",
+          "Segoe UI",
+          "PingFang SC",
+          "Microsoft YaHei",
+          "sans-serif",
+        ],
       },
       keyframes: {
         "accordion-down": {

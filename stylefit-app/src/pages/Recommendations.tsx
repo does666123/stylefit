@@ -1,4 +1,4 @@
-import { useLocation, useNavigate, useSearchParams } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 import { useFavorites, getBMICategory, loadProfile, getNeutralProfile } from '../hooks/useRecommendation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,31 +14,23 @@ import {
   Palette,
   Sparkles,
   ShoppingBag,
+  House,
   Heart,
   Crown,
   Footprints,
   Lightbulb,
   MapPin,
   Check,
-  ChevronDown,
-  Briefcase,
-  HeartHandshake,
-  Dumbbell,
-  PartyPopper,
-  Plane,
-  CloudSun,
-  Umbrella,
-  Wind,
   Search,
 } from 'lucide-react';
-import type { UserBodyProfile, ClothingItem, OutfitSet, Occasion } from '../types';
+import type { UserBodyProfile, ClothingItem, OutfitSet } from '../types';
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
-import { fetchWeatherWithCache, interpretWeather, type WeatherInterpretation } from '../lib/weather';
 import { useT } from '../i18n';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import {
   cacheAIRecommendation,
   clearCachedAIRecommendation,
+  AI_CANDIDATE_STRATEGY,
   getAIRecommendationProfileKey,
   readCachedAIRecommendation,
   requestAIRecommendation,
@@ -82,22 +74,23 @@ type TaobaoFeed = {
   isLoadingMore: boolean;
   loadMoreError: boolean;
 };
+type RecommendationView = 'outfits' | 'discover';
+type DiscoverSnapshot = {
+  profileKey: string;
+  activeCategory: TaobaoCategory;
+  productSearch: string;
+  categoryFeeds: Partial<Record<TaobaoCategory, TaobaoFeed>>;
+  requestedPages: string[];
+};
+
+const formatAmount = (amount: number) => Number.isFinite(amount) ? amount.toFixed(2) : '0.00';
 
 const taobaoSourceCache = new Map<string, TaobaoSourceResult>();
 const taobaoSourceRequests = new Map<string, Promise<TaobaoSourceResult>>();
+let discoverSnapshot: DiscoverSnapshot | null = null;
 
 const wearableTaobaoTerms = /上衣|T恤|t恤|衬衫|针织|毛衣|卫衣|Polo|polo|外套|夹克|大衣|风衣|羽绒|西装|裤|牛仔|半身裙|连衣裙|鞋|靴|凉鞋|拖鞋|包|腰带|领带|袜/;
 const excludedTaobaoTerms = /手机|电脑|数码|耳机|充电|数据线|壳|家居|家具|床|枕|餐具|食品|零食|美妆|口红|护肤|洗发|香水/;
-
-// 场合快捷切换数据
-const occasionSwitcherItems: { key: Occasion; labelKey: string; icon: React.ReactNode }[] = [
-  { key: 'work', labelKey: 'rec.occasion.work', icon: <Briefcase className="h-4 w-4" /> },
-  { key: 'date', labelKey: 'rec.occasion.date', icon: <HeartHandshake className="h-4 w-4" /> },
-  { key: 'daily', labelKey: 'rec.occasion.daily', icon: <Dumbbell className="h-4 w-4" /> },
-  { key: 'party', labelKey: 'rec.occasion.party', icon: <PartyPopper className="h-4 w-4" /> },
-  { key: 'travel', labelKey: 'rec.occasion.travel', icon: <Plane className="h-4 w-4" /> },
-  { key: 'formal', labelKey: 'rec.occasion.formal', icon: <Crown className="h-4 w-4" /> },
-];
 
 const styleTagLabels: Record<string, string> = {
   business: '商务',
@@ -216,41 +209,42 @@ function requestTaobaoProducts(scene: string, category: TaobaoCategory, page: nu
   return request;
 }
 
-export default function Recommendations() {
+export default function Recommendations({ view = 'outfits' }: { view?: RecommendationView }) {
   const { t } = useT();
   const location = useLocation();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const isDiscover = view === 'discover';
 
   // 从 URL 读取场合参数
-  const urlOccasion = searchParams.get('occasion') || '';
+  const urlOccasion = new URLSearchParams(location.search).get('occasion') || '';
   const isValidOccasion = ['work', 'date', 'daily', 'party', 'travel', 'formal'].includes(urlOccasion);
   const locationState = location.state as { profile?: UserBodyProfile; aiRecommendation?: AIRecommendation; aiCandidates?: ClothingItem[] } | null;
 
   // 优先从 location.state 读取，如果没有则从 localStorage 读取（解决刷新后数据丢失问题）
-  const [profile, setProfile] = useState<UserBodyProfile | null>(() => {
+  const [profile] = useState<UserBodyProfile | null>(() => {
     if (locationState?.profile) return locationState.profile;
     return loadProfile() || (isValidOccasion ? getNeutralProfile(urlOccasion) : null);
   });
-  const [activeCategory, setActiveCategory] = useState<TaobaoCategory>('all');
-  const [productSearch, setProductSearch] = useState('');
-  const [categoryFeeds, setCategoryFeeds] = useState<Partial<Record<TaobaoCategory, TaobaoFeed>>>({});
+  const savedDiscover = isDiscover && profile && discoverSnapshot?.profileKey === getAIRecommendationProfileKey(profile)
+    ? discoverSnapshot
+    : null;
+  const [activeCategory, setActiveCategory] = useState<TaobaoCategory>(() => savedDiscover?.activeCategory || 'all');
+  const [productSearch, setProductSearch] = useState(() => savedDiscover?.productSearch || '');
+  const [categoryFeeds, setCategoryFeeds] = useState<Partial<Record<TaobaoCategory, TaobaoFeed>>>(() => savedDiscover?.categoryFeeds || {});
   const [hasUserScrolled, setHasUserScrolled] = useState(false);
   const [showFavorites, setShowFavorites] = useState(false);
-  const [showOccasionSwitcher, setShowOccasionSwitcher] = useState(false);
-  const switcherRef = useRef<HTMLDivElement>(null);
   const productSentinelRef = useRef<HTMLDivElement>(null);
   const hasUserScrolledRef = useRef(false);
   const loadMoreUnlockedRef = useRef(false);
-  const requestedTaobaoPagesRef = useRef(new Set<string>());
-  const categoryFeedsRef = useRef<Partial<Record<TaobaoCategory, TaobaoFeed>>>({});
+  const requestedTaobaoPagesRef = useRef(new Set<string>(savedDiscover?.requestedPages || []));
+  const categoryFeedsRef = useRef<Partial<Record<TaobaoCategory, TaobaoFeed>>>(savedDiscover?.categoryFeeds || {});
   const aiRequestInFlight = useRef(false);
-  const [weatherInterp, setWeatherInterp] = useState<WeatherInterpretation | null>(null);
   const [aiResult, setAIResult] = useState<AIRecommendationResult | null>(() => {
     if (!profile) return null;
     const stateRecommendation = locationState?.profile &&
       locationState.aiRecommendation &&
       Array.isArray(locationState.aiCandidates) &&
+      locationState.aiRecommendation.candidateStrategy === AI_CANDIDATE_STRATEGY &&
       getAIRecommendationProfileKey(locationState.profile) === getAIRecommendationProfileKey(profile)
       ? { recommendation: locationState.aiRecommendation, candidates: locationState.aiCandidates }
       : null;
@@ -266,20 +260,6 @@ export default function Recommendations() {
     setCategoryFeeds(next);
   }, []);
 
-  // 获取天气（不阻塞渲染）
-  const loadWeather = useCallback(async () => {
-    const result = await fetchWeatherWithCache();
-    if (result?.data) {
-      setWeatherInterp(interpretWeather(result.data, result.isDefault, result.locationName, t as any));
-    } else {
-      setWeatherInterp(null);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadWeather();
-  }, [loadWeather]);
-
   useEffect(() => {
     const previousScrollRestoration = window.history.scrollRestoration;
     window.history.scrollRestoration = 'manual';
@@ -288,6 +268,7 @@ export default function Recommendations() {
   }, []);
 
   useEffect(() => {
+    if (!isDiscover) return;
     const markUserScroll = () => {
       if (!hasUserScrolledRef.current) {
         hasUserScrolledRef.current = true;
@@ -297,42 +278,7 @@ export default function Recommendations() {
     };
     window.addEventListener('scroll', markUserScroll, { passive: true });
     return () => window.removeEventListener('scroll', markUserScroll);
-  }, []);
-
-  // 点击外部关闭场合切换器
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (switcherRef.current && !switcherRef.current.contains(event.target as Node)) {
-        setShowOccasionSwitcher(false);
-      }
-    }
-    if (showOccasionSwitcher) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [showOccasionSwitcher]);
-
-  // 切换场合
-  const handleSwitchOccasion = (occasion: Occasion) => {
-    setShowOccasionSwitcher(false);
-    const stored = loadProfile();
-    if (stored) {
-      // 有画像：只更新场合
-      setProfile({ ...stored, occasion });
-    } else {
-      // 无画像：使用中性默认
-      setProfile(getNeutralProfile(occasion));
-    }
-    setAIResult(null);
-    clearCachedAIRecommendation();
-    setSearchParams({ occasion });
-    requestedTaobaoPagesRef.current.clear();
-    categoryFeedsRef.current = {};
-    setCategoryFeeds({});
-    hasUserScrolledRef.current = false;
-    setHasUserScrolled(false);
-    loadMoreUnlockedRef.current = false;
-  };
+  }, [isDiscover]);
 
   const regenerateAIRecommendation = useCallback(async () => {
     if (!profile || aiRequestInFlight.current) return;
@@ -380,7 +326,7 @@ export default function Recommendations() {
 
     return generated;
   }, [aiRecommendation, aiResult, profile]);
-  const hasRenderableAIOutfits = outfits.length === 3;
+  const hasRenderableAIOutfits = outfits.length > 0;
   const bmiInfo = useMemo(() => {
     if (!profile) return null;
     return getBMICategory(profile.height, profile.weight, t as any);
@@ -462,6 +408,19 @@ export default function Recommendations() {
   }, [profile, setCategoryFeed]);
 
   useEffect(() => {
+    if (!isDiscover || !profile) return;
+    discoverSnapshot = {
+      profileKey: getAIRecommendationProfileKey(profile),
+      activeCategory,
+      productSearch,
+      categoryFeeds,
+      requestedPages: [...requestedTaobaoPagesRef.current],
+    };
+  }, [activeCategory, categoryFeeds, isDiscover, productSearch, profile]);
+
+  useEffect(() => {
+    if (!isDiscover) return;
+    if (savedDiscover) return;
     requestedTaobaoPagesRef.current.clear();
     categoryFeedsRef.current = {};
     setCategoryFeeds({});
@@ -469,7 +428,7 @@ export default function Recommendations() {
     setHasUserScrolled(false);
     loadMoreUnlockedRef.current = false;
     loadTaobaoProducts('all', 1);
-  }, [loadTaobaoProducts]);
+  }, [isDiscover, loadTaobaoProducts, savedDiscover]);
 
   const activeFeed = categoryFeeds[activeCategory];
   const taobaoProductMeta = useMemo(() => Object.values(categoryFeeds).reduce<Record<string, TaobaoProductMeta>>(
@@ -494,6 +453,7 @@ export default function Recommendations() {
   const loadMoreError = activeFeed?.loadMoreError || false;
 
   useEffect(() => {
+    if (!isDiscover) return;
     const sentinel = productSentinelRef.current;
     if (!sentinel || showFavorites || productSourceStatus !== 'live' || !hasMoreTaobaoProducts) return;
 
@@ -510,7 +470,7 @@ export default function Recommendations() {
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [activeCategory, activeFeed, hasMoreTaobaoProducts, hasUserScrolled, isLoadingMoreProducts, loadMoreError, loadTaobaoProducts, productSourceStatus, setCategoryFeed, showFavorites]);
+  }, [activeCategory, activeFeed, hasMoreTaobaoProducts, hasUserScrolled, isDiscover, isLoadingMoreProducts, loadMoreError, loadTaobaoProducts, productSourceStatus, setCategoryFeed, showFavorites]);
 
   const showProductSourceEmptyState = !showFavorites
     && productSourceStatus === 'empty'
@@ -574,13 +534,34 @@ export default function Recommendations() {
       <nav className="result-nav sticky top-0 z-50">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900">
-              <Shirt className="h-4 w-4 text-white" />
+            <div className="flex h-8 w-8 overflow-hidden rounded-lg bg-slate-900">
+              <img src="/stylefit-logo.jpg" alt="" width="32" height="32" className="h-full w-full object-cover" />
             </div>
             <span className="text-xl font-bold tracking-tight text-slate-900">StyleFit</span>
           </div>
-          <div className="flex items-center gap-1 sm:gap-2">
-            <LanguageSwitcher />
+          <div className="flex min-w-0 items-center gap-1 sm:gap-2">
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/recommendations')}
+                className={isDiscover ? '' : 'bg-white/[0.08] text-[#F7F4EE]'}
+                aria-current={isDiscover ? undefined : 'page'}
+              >
+                <Sparkles className="h-4 w-4 sm:mr-1" />
+                <span className="text-xs sm:text-sm">AI<span className="hidden sm:inline">穿搭</span></span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/discover')}
+                className={isDiscover ? 'bg-white/[0.08] text-[#F7F4EE]' : ''}
+                aria-current={isDiscover ? 'page' : undefined}
+              >
+                <ShoppingBag className="h-4 w-4 sm:mr-1" />
+                <span className="text-xs sm:text-sm"><span className="hidden sm:inline">为你推荐</span><span className="sm:hidden">商品</span></span>
+              </Button>
+            </div>
             <Button
               variant="ghost"
               size="sm"
@@ -594,6 +575,17 @@ export default function Recommendations() {
                   {favoriteItems.length}
                 </span>
               )}
+            </Button>
+            <div className="hidden sm:block"><LanguageSwitcher /></div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate('/')}
+              aria-label="返回首页"
+              className="hidden sm:inline-flex"
+            >
+              <House className="mr-1 h-4 w-4" />
+              <span className="hidden sm:inline">返回首页</span>
             </Button>
             <Button
               variant="ghost"
@@ -613,14 +605,14 @@ export default function Recommendations() {
       <div className="mx-auto max-w-6xl px-4 py-7 sm:py-8">
         <div className="result-page-heading mb-5 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="mb-1 text-xs font-medium tracking-[0.16em] text-[#D7C39D]">PERSONAL STYLING</p>
-            <h1 className="text-2xl font-semibold tracking-[-0.035em] text-[#F7F4EE] sm:text-3xl">{t('rec.title')}</h1>
+            <p className="mb-1 text-xs font-medium tracking-[0.16em] text-[#D7C39D]">{isDiscover ? t('rec.eyebrow.discover') : t('rec.eyebrow.styling')}</p>
+            <h1 className="text-2xl font-semibold tracking-[-0.035em] text-[#F7F4EE] sm:text-3xl">{isDiscover ? t('rec.forYou') : t('rec.title')}</h1>
           </div>
-          <span className="result-ai-state">
+          {!isDiscover && <span className="result-ai-state">
             {aiLoading ? <><Spinner />AI {t('common.loading')}</> : hasRenderableAIOutfits ? <>✦ AI</> : t('rec.outfitRecommendations')}
-          </span>
+          </span>}
         </div>
-        {!aiLoading && !hasRenderableAIOutfits && (
+        {!isDiscover && !aiLoading && !hasRenderableAIOutfits && (
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#12141A] px-4 py-3 text-sm text-[#AAA49B]">
             <span>AI 推荐结果已过期，可重新生成</span>
             <Button className="sf-primary-button" onClick={regenerateAIRecommendation}>
@@ -628,86 +620,8 @@ export default function Recommendations() {
             </Button>
           </div>
         )}
-        {/* 场合标签 + 未填问卷提示 */}
-        {isValidOccasion && (
-          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-slate-500">{t('rec.todayGoing')}</span>
-              <div className="relative" ref={switcherRef}>
-                <button
-                  onClick={() => setShowOccasionSwitcher(!showOccasionSwitcher)}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-slate-800"
-                >
-                  {(t as any)(`rec.occasion.${urlOccasion}`) || urlOccasion}
-                  <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showOccasionSwitcher ? 'rotate-180' : ''}`} />
-                </button>
-                {/* 场合切换下拉 */}
-                {showOccasionSwitcher && (
-                  <div className="absolute left-0 top-full z-50 mt-2 w-44 rounded-xl border bg-white p-1.5 shadow-lg animate-scale-in">
-                    {occasionSwitcherItems.map((item) => (
-                      <button
-                        key={item.key}
-                        onClick={() => handleSwitchOccasion(item.key)}
-                        className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
-                          item.key === urlOccasion
-                            ? 'bg-slate-100 font-medium text-slate-900'
-                            : 'text-slate-600 hover:bg-slate-50'
-                        }`}
-                      >
-                        {item.icon}
-                        {(t as any)(item.labelKey)}
-                        {item.key === urlOccasion && <Check className="ml-auto h-3.5 w-3.5 text-slate-900" />}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-            {/* 未填问卷提示 */}
-            {!loadProfile() && (
-              <div className="flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
-                <Lightbulb className="h-3.5 w-3.5 flex-shrink-0" />
-                <span>{t('rec.fillSurvey')}</span>
-                <Button
-                  variant="link"
-                  size="sm"
-                  onClick={() => navigate('/survey')}
-                  className="h-auto px-1 py-0 text-xs font-medium text-amber-700 underline"
-                >
-                  {t('rec.goFill')}
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* 天气条 */}
-        {weatherInterp && (
-          <div className="result-weather mb-4 flex items-center gap-2 rounded-xl px-4 py-2.5">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sky-50 text-sky-600">
-              {weatherInterp.rainNote ? (
-                <Umbrella className="h-4 w-4" />
-              ) : weatherInterp.windNote ? (
-                <Wind className="h-4 w-4" />
-              ) : (
-                <CloudSun className="h-4 w-4" />
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <span className="text-sm font-medium text-slate-900">
-                {t('rec.weather.today')} {Math.round(weatherInterp.temperature)}°C · {t('rec.weather.feelsLike')} {Math.round(weatherInterp.apparentTemperature)}°C {weatherInterp.weatherLabel}
-              </span>
-              <span className="mx-1.5 text-slate-300">·</span>
-              <span className="text-sm text-slate-500">{weatherInterp.thicknessLabel}</span>
-            </div>
-            {weatherInterp.isDefault && (
-              <span className="hidden text-[10px] text-slate-400 sm:inline">{t('rec.weather.defaultLocation')}</span>
-            )}
-          </div>
-        )}
-
         {/* Profile Summary */}
-        <Card className="result-summary mb-6 overflow-hidden animate-fade-in-up">
+        {!isDiscover && <Card className="result-summary mb-6 overflow-hidden animate-fade-in-up">
           <CardContent className="p-0">
             <div className="result-summary-main px-5 py-4 text-white">
               <div className="mb-2 flex items-center gap-3">
@@ -793,16 +707,17 @@ export default function Recommendations() {
               </div>
             )}
           </CardContent>
-        </Card>
+        </Card>}
 
         {/* Outfit Recommendations */}
-        {!showFavorites && hasRenderableAIOutfits && (
+        {!isDiscover && !showFavorites && hasRenderableAIOutfits && (
           <div className="mb-10">
             <div className="result-outfit-title mb-4 flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-[#D7C39D]" />
               <h2 className="text-xl font-bold text-[#F7F4EE]">{t('rec.outfitRecommendations')}</h2>
               {aiLoading && <span className="inline-flex items-center gap-1 text-xs text-[#AAA49B]"><Spinner />AI {t('common.loading')}</span>}
               {hasRenderableAIOutfits && aiRecommendation && <Badge className="result-ai-badge">AI</Badge>}
+              {hasRenderableAIOutfits && outfits.length < 3 && <span className="text-xs text-[#AAA49B]">已生成 {outfits.length} 套搭配，可稍后重新生成更多方案</span>}
             </div>
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {outfits.map((outfit, idx) => (
@@ -821,7 +736,7 @@ export default function Recommendations() {
         )}
 
         {/* Category Filter */}
-        {!showFavorites && (
+        {isDiscover && !showFavorites && (
           <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-wrap gap-2">
               {visibleCatList.map((cat) => (
@@ -853,7 +768,7 @@ export default function Recommendations() {
         )}
 
         {/* Section Title */}
-        <div className="mb-4">
+        {isDiscover && <div className="mb-4">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-2xl font-bold text-slate-900">
               {showFavorites ? t('rec.favoriteItems') : t('rec.forYou')}
@@ -874,10 +789,10 @@ export default function Recommendations() {
                   ? '演示搭配，真实商品正在接入'
                   : '正在查找适合本场景的服装'}
           </p>
-        </div>
+        </div>}
 
         {/* Items Grid */}
-        {!showFavorites && productSourceStatus === 'loading' ? (
+        {isDiscover && (!showFavorites && productSourceStatus === 'loading' ? (
           <div className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-3 lg:gap-5" aria-label="商品加载中">
             {Array.from({ length: 6 }, (_, index) => (
               <div key={index} className="overflow-hidden rounded-xl border border-white/[0.08] bg-[#12141A] p-2.5 sm:p-4">
@@ -920,8 +835,8 @@ export default function Recommendations() {
               ))}
             </div>
           </>
-        )}
-        {!showFavorites && displayItems.length > 0 && (
+        ))}
+        {isDiscover && !showFavorites && displayItems.length > 0 && (
           <div ref={productSentinelRef} className="mt-6 flex min-h-10 justify-center" aria-live="polite">
             {isLoadingMoreProducts ? (
               <span className="inline-flex items-center gap-2 text-sm text-[#AAA49B]"><Spinner />正在加载更多商品…</span>
@@ -1003,12 +918,12 @@ function OutfitCard({
                   {t('rec.match')} {outfit.matchScore}%
                 </span>
               )}
-              <span className="text-sm font-bold text-amber-600">¥{outfit.totalPrice}</span>
+              <span className="text-sm font-bold text-amber-600">¥{formatAmount(outfit.totalPrice)}</span>
             </div>
           </div>
           {budget && budget > 0 && (
             <span className={`outfit-budget-status ${outfit.totalPrice <= budget ? 'outfit-budget-in' : 'outfit-budget-over'}`}>
-              {outfit.totalPrice <= budget ? '预算内' : '预算参考'} · ¥{outfit.totalPrice} / ¥{budget}
+              {outfit.totalPrice <= budget ? '预算内' : '预算参考'} · ¥{formatAmount(outfit.totalPrice)} / ¥{formatAmount(budget)} · {outfit.totalPrice <= budget ? `剩余 ¥${formatAmount(budget - outfit.totalPrice)}` : `超出 ¥${formatAmount(outfit.totalPrice - budget)}`}
             </span>
           )}
           {outfit.suitableBodyDesc && (
