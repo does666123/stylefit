@@ -2,6 +2,7 @@ import type { ClothingItem, UserBodyProfile } from '../types';
 
 export type AIRecommendation = {
   source: 'taobao';
+  candidateStrategy?: string;
   candidateFingerprint: string;
   summary: string;
   outfits: {
@@ -15,6 +16,8 @@ export type AIRecommendationResult = {
   recommendation: AIRecommendation;
   candidates: ClothingItem[];
 };
+
+export const AI_CANDIDATE_STRATEGY = 'ai_candidate';
 
 const AI_CACHE_KEY = 'stylefit_ai_recommendation';
 const AI_CACHE_TTL = 24 * 60 * 60 * 1000;
