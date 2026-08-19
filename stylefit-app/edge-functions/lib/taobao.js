@@ -22,8 +22,6 @@ export const TAOBAO_SCENES = {
 };
 
 const TAOBAO_CATEGORIES = new Set(['all', 'top', 'bottom', 'outerwear', 'shoes', 'accessory', 'dress']);
-const AI_CANDIDATE_CATEGORIES = ['top', 'bottom', 'shoes', 'accessory'];
-const AI_KEYWORDS_PER_CATEGORY = 3;
 const WEARABLE_TERMS = /上衣|T恤|t恤|衬衫|衬衣|针织|毛衣|卫衣|Polo|polo|外套|夹克|大衣|风衣|羽绒|西装|裤|牛仔|半身裙|连衣裙|鞋|靴|凉鞋|拖鞋|包|腰带|皮带|领带|袜|丝巾|帽/;
 const EXCLUDED_TERMS = /手机|电脑|数码|耳机|充电|数据线|壳|家居|家具|床|枕|餐具|食品|零食|美妆|口红|护肤|洗发|香水/;
 
@@ -177,12 +175,12 @@ function mapProduct(item, category) {
     commissionRate: asNumber(incomeInfo.commission_rate),
     shopTitle: asText(itemInfo.shop_title ?? item.shop_title, 120),
     volume: asNumber(itemInfo.volume ?? item.volume),
-    category: category === 'all' ? getProductCategory(categoryText) : category,
+    category: getProductCategory(categoryText) || category,
     promotionUrl: asPromotionUrl(publishInfo.coupon_share_url ?? publishInfo.click_url ?? item.coupon_share_url ?? item.url),
   };
 }
 
-export async function searchTaobaoProducts(env, sceneKey, category = 'all', page = 1, queryOverride = '') {
+export async function searchTaobaoProducts(env, sceneKey, category = 'all', page = 1) {
   const scene = TAOBAO_SCENES[sceneKey];
   if (!scene) return { error: 'invalid_scene' };
   if (!TAOBAO_CATEGORIES.has(category) || !scene.queries[category]) return { error: 'invalid_category' };
@@ -202,7 +200,7 @@ export async function searchTaobaoProducts(env, sceneKey, category = 'all', page
     adzone_id: adzoneId,
     page_no: String(page),
     page_size: String(PAGE_SIZE),
-    q: queryOverride || scene.queries[category],
+    q: scene.queries[category],
   };
   const payload = new URLSearchParams({ ...params, sign: createTopSign(params, appSecret) });
   const controller = new AbortController();
@@ -245,7 +243,7 @@ export async function searchTaobaoProducts(env, sceneKey, category = 'all', page
     const products = sourceItems.slice(0, PAGE_SIZE)
       .map(asRecord)
       .filter(Boolean)
-      .map((item) => mapProduct(item, queryOverride ? 'all' : category))
+      .map((item) => mapProduct(item, scene.category))
       .filter((item) => item && (category === 'all' || item.category === category));
     const totalResults = asNumber(responseBody.total_results);
     const hasMore = totalResults > 0 ? page * PAGE_SIZE < totalResults : sourceItems.length === PAGE_SIZE;
@@ -266,47 +264,4 @@ export async function searchTaobaoProducts(env, sceneKey, category = 'all', page
   } finally {
     clearTimeout(timeout);
   }
-}
-
-function safeKeyword(value) {
-  const keyword = asText(value, 32);
-  return keyword && /^[\u4e00-\u9fffA-Za-z0-9\s-]+$/.test(keyword) ? keyword : '';
-}
-
-export async function searchTaobaoCandidatePool(env, sceneKey, keywordGroups) {
-  const scene = TAOBAO_SCENES[sceneKey];
-  if (!scene) return { error: 'invalid_scene' };
-
-  const searches = AI_CANDIDATE_CATEGORIES.flatMap((category) => {
-    const supplied = Array.isArray(keywordGroups?.[category])
-      ? keywordGroups[category].map(safeKeyword).filter(Boolean).slice(0, AI_KEYWORDS_PER_CATEGORY)
-      : [];
-    const keywords = supplied.length ? supplied : [scene.queries[category]];
-    return keywords.map((keyword) => ({ category, keyword }));
-  });
-  const results = await Promise.all(searches.map(({ category, keyword }) =>
-    searchTaobaoProducts(env, sceneKey, category, 1, keyword)));
-  const successful = results.filter((result) => !result.error);
-
-  if (!successful.length) {
-    return results.find((result) => result.error === 'not_configured')
-      || results.find((result) => result.error)
-      || { error: 'upstream_failed' };
-  }
-
-  const products = [];
-  const ids = new Set();
-  for (const result of successful) {
-    for (const product of result.products || []) {
-      if (!product.itemId || ids.has(product.itemId)) continue;
-      ids.add(product.itemId);
-      products.push(product);
-      if (products.length >= 200) break;
-    }
-    if (products.length >= 200) break;
-  }
-
-  return products.length
-    ? { products, page: 1, hasMore: false }
-    : { products: [], page: 1, hasMore: false, message: '暂无匹配的淘宝联盟商品' };
 }
