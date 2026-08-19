@@ -30,7 +30,6 @@ import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import {
   cacheAIRecommendation,
   clearCachedAIRecommendation,
-  AI_CANDIDATE_STRATEGY,
   getAIRecommendationProfileKey,
   readCachedAIRecommendation,
   requestAIRecommendation,
@@ -244,7 +243,6 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
     const stateRecommendation = locationState?.profile &&
       locationState.aiRecommendation &&
       Array.isArray(locationState.aiCandidates) &&
-      locationState.aiRecommendation.candidateStrategy === AI_CANDIDATE_STRATEGY &&
       getAIRecommendationProfileKey(locationState.profile) === getAIRecommendationProfileKey(profile)
       ? { recommendation: locationState.aiRecommendation, candidates: locationState.aiCandidates }
       : null;
@@ -326,7 +324,7 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
 
     return generated;
   }, [aiRecommendation, aiResult, profile]);
-  const hasRenderableAIOutfits = outfits.length > 0;
+  const hasRenderableAIOutfits = outfits.length === 3;
   const bmiInfo = useMemo(() => {
     if (!profile) return null;
     return getBMICategory(profile.height, profile.weight, t as any);
