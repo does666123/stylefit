@@ -567,7 +567,7 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
               className="relative text-[#4A4A45] hover:bg-[#FFF4EC] hover:text-[#C96A22]"
             >
               <Heart className="mr-1 h-4 w-4" />
-              <span className="hidden sm:inline">{t('common.favorites')}</span>
+              <span className="text-xs sm:text-sm"><span className="sm:hidden">收藏</span><span className="hidden sm:inline">{t('common.favorites')}</span></span>
               {favoriteItems.length > 0 && (
                 <span className="ml-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
                   {favoriteItems.length}
@@ -595,7 +595,7 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
               className="text-[#4A4A45] hover:bg-[#FFF4EC] hover:text-[#C96A22]"
             >
               <ArrowLeft className="mr-1 h-4 w-4" />
-              <span className="hidden sm:inline">{t('common.retakeTest')}</span>
+              <span className="text-xs sm:text-sm"><span className="sm:hidden">重测</span><span className="hidden sm:inline">{t('common.retakeTest')}</span></span>
             </Button>
           </div>
         </div>
@@ -718,7 +718,7 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
               {hasRenderableAIOutfits && aiRecommendation && <Badge className="result-ai-badge">AI</Badge>}
               {hasRenderableAIOutfits && outfits.length < 3 && <span className="text-xs text-[#8A8A84]">已生成 {outfits.length} 套搭配，可稍后重新生成更多方案</span>}
             </div>
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {outfits.map((outfit, idx) => (
                 <div key={outfit.id} className="stagger-item animate-fade-in-up">
                   <OutfitCard
@@ -792,7 +792,7 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
 
         {/* Items Grid */}
         {isDiscover && (!showFavorites && productSourceStatus === 'loading' ? (
-          <div className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-3 lg:gap-5" aria-label="商品加载中">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4 lg:grid-cols-3 lg:gap-5" aria-label="商品加载中">
             {Array.from({ length: 6 }, (_, index) => (
               <div key={index} className="overflow-hidden rounded-xl border border-[#EEEBE3] bg-white p-2.5 sm:p-4">
                 <Skeleton className="aspect-square w-full bg-[#F0EDE6] sm:aspect-[4/5]" />
@@ -821,7 +821,7 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
                 <Button className="sf-secondary-button h-8" variant="outline" onClick={() => loadTaobaoProducts(activeCategory, 1, true)}>稍后重试</Button>
               </div>
             )}
-            <div className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-3 lg:gap-5">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4 lg:grid-cols-3 lg:gap-5">
               {displayItems.map((item) => (
                 <div key={item.id} className="stagger-item animate-fade-in-up">
                   <ClothingCard
@@ -970,8 +970,8 @@ function OutfitCard({
         <div className="result-outfit-details px-3 pb-2">
           <div className="space-y-2 pb-2">
               {outfit.items.map((item: ClothingItem) => (
-                <div key={item.id} className="flex gap-2.5 rounded-lg bg-[#FAF9F5] p-2">
-                  <ProductImage item={item} className="h-12 w-12 rounded-md object-cover shrink-0" />
+                <div key={item.id} className="result-outfit-item flex gap-2.5 rounded-lg bg-[#FAF9F5] p-2">
+                  <ProductImage item={item} className="result-outfit-item-image h-12 w-12 rounded-md object-cover shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1">
                       <div className="flex items-center gap-1 min-w-0">
@@ -980,7 +980,16 @@ function OutfitCard({
                           {categoryLabel[item.category] || item.category} · {item.name}
                         </span>
                       </div>
-                      <span className="text-xs font-bold text-[#1A1A1A] shrink-0">¥{item.price}</span>
+                      <div className="flex shrink-0 items-center gap-1">
+                        <span className="text-xs font-bold text-[#1A1A1A]">¥{item.price}</span>
+                        <button
+                          onClick={() => toggleFavorite(item.id)}
+                          className="result-item-favorite flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-sm"
+                          aria-label={isFavorite(item.id) ? '取消收藏' : '收藏商品'}
+                        >
+                          <Heart className={`h-3.5 w-3.5 ${isFavorite(item.id) ? 'fill-red-500 text-red-500' : 'text-[#9A9A94]'}`} />
+                        </button>
+                      </div>
                     </div>
                     {itemReasonMap[item.id] && (
                       <p className="result-item-description mt-0.5 text-xs line-clamp-2">

@@ -1004,7 +1004,53 @@
   }
 }
 
-@media (max-width: 639px) {
+@media (max-width: 767px) {
+  .phase-two-results {
+    overflow-x: hidden;
+  }
+
+  .result-nav > div {
+    gap: 0.35rem;
+    padding-block: 0.25rem;
+  }
+
+  .result-nav > div > :first-child {
+    flex-shrink: 0;
+  }
+
+  .result-nav > div > :first-child > div {
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .result-nav > div > :first-child > span {
+    font-size: 1rem;
+  }
+
+  .result-nav button {
+    min-height: 2.75rem;
+    min-width: 0;
+    padding-inline: 0.4rem;
+  }
+
+  .result-nav .h-4 {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .phase-two-results > .mx-auto {
+    padding-inline: 1rem;
+    padding-top: 1.25rem;
+  }
+
+  .result-page-heading {
+    margin-bottom: 1rem;
+  }
+
+  .result-page-heading h1 {
+    font-size: 1.5rem;
+  }
+
   .survey-stepper {
     margin-inline: -0.25rem;
   }
@@ -1030,31 +1076,103 @@
     padding: 1rem;
   }
 
+  .result-summary-main > .flex.flex-wrap.gap-4 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+  }
+
+  .result-summary-tags {
+    gap: 0.65rem;
+    padding: 0.85rem 1rem;
+  }
+
   .result-summary-advice {
     display: none;
   }
 
   .result-outfit-card {
-    margin-bottom: 0.25rem;
+    width: 95%;
+    max-width: 34rem;
+    margin: 0 auto 0.5rem;
   }
 
-  .result-outfit-card .grid-cols-3 {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  .result-outfit-card-header {
+    padding: 0.85rem 1rem;
   }
 
-  .result-outfit-details .bg-slate-50 {
-    background: #f3f6fa !important;
+  .result-outfit-card-header > div:first-child {
+    flex-wrap: wrap;
+    gap: 0.5rem;
   }
 
-  .result-outfit-details .text-slate-700,
-  .result-outfit-details .text-slate-900 {
-    color: #1a1a1a !important;
+  .result-outfit-card-header h3 {
+    min-width: 0;
+    font-size: 1rem;
   }
 
-  .result-outfit-details .text-slate-400,
-  .result-outfit-details .text-slate-500,
-  .result-outfit-details .text-blue-600 {
-    color: #6b6b66 !important;
+  .result-outfit-images {
+    display: none;
+  }
+
+  .result-outfit-details {
+    padding: 0.75rem 0.85rem 0.25rem;
+  }
+
+  .result-outfit-item {
+    align-items: flex-start;
+    min-width: 0;
+    padding: 0.65rem;
+  }
+
+  .result-outfit-item-image {
+    width: 6.5rem;
+    height: 7.5rem;
+  }
+
+  .result-outfit-item .result-item-name {
+    white-space: normal;
+    line-height: 1.35;
+  }
+
+  .result-item-buy {
+    min-height: 2.75rem;
+    padding-block: 0.35rem;
+  }
+
+  .result-item-favorite {
+    flex-shrink: 0;
+  }
+
+  .result-outfit-advice,
+  .result-outfit-tags {
+    padding-inline: 0.85rem;
+  }
+
+  .result-product-card > div:first-child {
+    height: min(10rem, 42vw);
+    aspect-ratio: auto;
+  }
+
+  .result-product-card > div:first-child img,
+  .result-product-card > div:first-child .product-image-fallback {
+    height: 100%;
+  }
+
+  .result-product-card .h-8.w-8 {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+
+  .result-product-card .h-8.w-8 > svg {
+    width: 1.15rem;
+    height: 1.15rem;
+  }
+}
+
+@media (max-width: 380px) {
+  .result-nav > div > :first-child > span {
+    display: none;
   }
 }
 
