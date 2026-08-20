@@ -21,7 +21,7 @@ import {
   UserCheck,
   Wind,
 } from 'lucide-react';
-import { useT, type TranslationKey } from '@/i18n';
+import { useT } from '@/i18n';
 import { fetchWeatherWithCache, interpretWeather, type WeatherData } from '@/lib/weather';
 import { loadProfile } from '@/hooks/useRecommendation';
 import { STYLEFIT_DATA_CLEARED_EVENT } from '@/lib/localData';
@@ -51,17 +51,6 @@ const heroLooks = [
     key: 'travel',
     image: 'https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=640&h=900&fit=crop&q=86',
   },
-];
-
-const newArrivals = [
-  { key: 'aliceBag', tag: 'new', image: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=520&h=650&fit=crop&q=80' },
-  { key: 'reameTop', tag: 'hot', image: 'https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=520&h=650&fit=crop&q=80' },
-  { key: 'trenchCoat', tag: 'new', image: 'https://images.unsplash.com/photo-1544022613-e87ca75a784a?w=520&h=650&fit=crop&q=80' },
-  { key: 'denimPant', tag: 'hot', image: 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=520&h=650&fit=crop&q=80' },
-  { key: 'knitCardigan', tag: 'new', image: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=520&h=650&fit=crop&q=80' },
-  { key: 'leatherLoafer', tag: 'hot', image: 'https://images.unsplash.com/photo-1533867617858-e7b97e060509?w=520&h=650&fit=crop&q=80' },
-  { key: 'silkDress', tag: 'new', image: 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=520&h=650&fit=crop&q=80' },
-  { key: 'cottonShirt', tag: 'hot', image: 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=520&h=650&fit=crop&q=80' },
 ];
 
 export function HomePage() {
@@ -362,55 +351,6 @@ export function HomePage() {
             </div>
           </section>
         )}
-
-        <section data-motion-section className="bg-[#F7F7F5] px-4 py-16 sm:px-6 lg:py-20">
-          <div className="mx-auto max-w-7xl">
-            <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
-              <div className="relative overflow-hidden py-4">
-                <span data-motion-display aria-hidden="true" className="motion-display-title">{t('home.newArrivals.title')}</span>
-                <div data-motion-heading-main className="relative">
-                  <div className="mb-4 h-px w-10 bg-[#E0782C]" />
-                  <h2 className="text-3xl font-semibold tracking-[-0.035em] text-[#1A1A1A] sm:text-4xl">{t('home.newArrivals.title')}</h2>
-                  <p className="mt-3 text-sm leading-6 text-[#666660] sm:text-base">{t('home.hero.desc')}</p>
-                </div>
-              </div>
-              <button onClick={startSurvey} className="nav-text-link focus-ring hidden shrink-0 items-center gap-1.5 text-sm font-medium sm:inline-flex">
-                {t('home.cta.button')}
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-              {newArrivals.map((item) => {
-                const itemKey = `home.product.${item.key}` as TranslationKey;
-                const tagKey = `home.tag.${item.tag}` as TranslationKey;
-                return (
-                  <button
-                    key={item.key}
-                    onClick={startSurvey}
-                    data-motion-card
-                    className="focus-ring group overflow-hidden rounded-2xl border border-[#1A1A1A]/[0.08] bg-white text-left shadow-[0_10px_30px_rgba(26,26,26,0.05)] transition-all hover:-translate-y-1 hover:border-[#E0782C]/35 hover:shadow-[0_18px_44px_rgba(26,26,26,0.1)]"
-                  >
-                    <div className="relative aspect-[4/5] overflow-hidden">
-                      <img
-                        src={item.image}
-                        alt={t(itemKey)}
-                        loading="lazy"
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-                      <span className="absolute left-2.5 top-2.5 rounded-full bg-[#E0782C] px-2.5 py-1 text-[10px] font-bold tracking-[0.08em] text-white">
-                        {t(tagKey)}
-                      </span>
-                    </div>
-                    <div className="p-3 sm:p-4">
-                      <p className="truncate text-xs font-medium text-[#555550] sm:text-sm">{t(itemKey)}</p>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </section>
 
         <section data-motion-section id="occasions" className="scroll-mt-20 bg-[#F7F7F5] px-4 py-20 sm:px-6 lg:pb-12 lg:pt-24">
           <div className="mx-auto max-w-7xl">

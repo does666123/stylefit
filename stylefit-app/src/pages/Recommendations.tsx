@@ -295,6 +295,11 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
     }
   }, [profile]);
 
+  const restartSurvey = useCallback(() => {
+    clearCachedAIRecommendation();
+    navigate('/survey', { state: { restartSurvey: true } });
+  }, [navigate]);
+
   const outfits = useMemo(() => {
     if (!aiRecommendation || !aiResult) return [];
 
@@ -538,28 +543,6 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
             <span className="text-xl font-bold tracking-tight text-[#1A1A1A]">StyleFit</span>
           </div>
           <div className="flex min-w-0 items-center gap-1 sm:gap-2">
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate('/recommendations')}
-                className={isDiscover ? 'text-[#4A4A45] hover:bg-[#FFF4EC] hover:text-[#C96A22]' : 'bg-[#FFF4EC] text-[#C96A22]'}
-                aria-current={isDiscover ? undefined : 'page'}
-              >
-                <Sparkles className="h-4 w-4 sm:mr-1" />
-                <span className="text-xs sm:text-sm">AI<span className="hidden sm:inline">穿搭</span></span>
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate('/discover')}
-                className={isDiscover ? 'bg-[#FFF4EC] text-[#C96A22]' : 'text-[#4A4A45] hover:bg-[#FFF4EC] hover:text-[#C96A22]'}
-                aria-current={isDiscover ? 'page' : undefined}
-              >
-                <ShoppingBag className="h-4 w-4 sm:mr-1" />
-                <span className="text-xs sm:text-sm"><span className="hidden sm:inline">为你推荐</span><span className="sm:hidden">商品</span></span>
-              </Button>
-            </div>
             <Button
               variant="ghost"
               size="sm"
@@ -588,10 +571,7 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => {
-                clearCachedAIRecommendation();
-                navigate('/survey', { state: { restartSurvey: true } });
-              }}
+              onClick={restartSurvey}
               className="text-[#4A4A45] hover:bg-[#FFF4EC] hover:text-[#C96A22]"
             >
               <ArrowLeft className="mr-1 h-4 w-4" />
@@ -610,6 +590,26 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
           {!isDiscover && <span className="result-ai-state">
             {aiLoading ? <><Spinner />AI {t('common.loading')}</> : hasRenderableAIOutfits ? <>✦ AI</> : t('rec.outfitRecommendations')}
           </span>}
+        </div>
+        <div className="mb-6 grid grid-cols-2 gap-3 sm:flex sm:w-fit">
+          <Button
+            variant="ghost"
+            onClick={() => navigate('/recommendations')}
+            className={`h-12 justify-center gap-2 rounded-xl border px-4 text-sm font-semibold ${isDiscover ? 'border-[#1A1A1A]/[0.1] bg-white text-[#4A4A45] hover:border-[#E0782C]/30 hover:bg-[#FFF4EC] hover:text-[#C96A22]' : 'border-[#E0782C]/35 bg-[#FFF4EC] text-[#C96A22]'}`}
+            aria-current={isDiscover ? undefined : 'page'}
+          >
+            <Sparkles className="h-4 w-4" />
+            AI穿搭
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => navigate('/discover')}
+            className={`h-12 justify-center gap-2 rounded-xl border px-4 text-sm font-semibold ${isDiscover ? 'border-[#E0782C]/35 bg-[#FFF4EC] text-[#C96A22]' : 'border-[#1A1A1A]/[0.1] bg-white text-[#4A4A45] hover:border-[#E0782C]/30 hover:bg-[#FFF4EC] hover:text-[#C96A22]'}`}
+            aria-current={isDiscover ? 'page' : undefined}
+          >
+            <ShoppingBag className="h-4 w-4" />
+            为你推荐
+          </Button>
         </div>
         {!isDiscover && !aiLoading && !hasRenderableAIOutfits && (
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#E0782C]/25 bg-[#FFF7EF] px-4 py-3 text-sm text-[#6B6B66]">
@@ -711,12 +711,17 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
         {/* Outfit Recommendations */}
         {!isDiscover && !showFavorites && hasRenderableAIOutfits && (
           <div className="mb-10">
-            <div className="result-outfit-title mb-4 flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-[#E0782C]" />
-              <h2 className="text-xl font-bold text-[#1A1A1A]">{t('rec.outfitRecommendations')}</h2>
-              {aiLoading && <span className="inline-flex items-center gap-1 text-xs text-[#8A8A84]"><Spinner />AI {t('common.loading')}</span>}
-              {hasRenderableAIOutfits && aiRecommendation && <Badge className="result-ai-badge">AI</Badge>}
-              {hasRenderableAIOutfits && outfits.length < 3 && <span className="text-xs text-[#8A8A84]">已生成 {outfits.length} 套搭配，可稍后重新生成更多方案</span>}
+            <div className="result-outfit-title mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <Sparkles className="h-5 w-5 text-[#E0782C]" />
+                <h2 className="text-xl font-bold text-[#1A1A1A]">{t('rec.outfitRecommendations')}</h2>
+                {aiLoading && <span className="inline-flex items-center gap-1 text-xs text-[#8A8A84]"><Spinner />AI {t('common.loading')}</span>}
+                {hasRenderableAIOutfits && aiRecommendation && <Badge className="result-ai-badge">AI</Badge>}
+                {hasRenderableAIOutfits && outfits.length < 3 && <span className="text-xs text-[#8A8A84]">已生成 {outfits.length} 套搭配，可稍后重新生成更多方案</span>}
+              </div>
+              <Button variant="ghost" size="sm" onClick={restartSurvey} className="shrink-0 border border-[#E0782C]/30 bg-white text-[#C96A22] hover:bg-[#FFF4EC] hover:text-[#B75616]">
+                不满意？重新测试
+              </Button>
             </div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {outfits.map((outfit, idx) => (
