@@ -200,7 +200,7 @@ export async function searchTaobaoProducts(env, sceneKey, category = 'all', page
     adzone_id: adzoneId,
     page_no: String(page),
     page_size: String(PAGE_SIZE),
-    q: scene.queries[category],
+    q: keyword ? asText(keyword, 200) : scene.queries[category],
   };
   const payload = new URLSearchParams({ ...params, sign: createTopSign(params, appSecret) });
   const controller = new AbortController();

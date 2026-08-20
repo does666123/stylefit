@@ -15,7 +15,8 @@ export async function onRequest({ request, env }) {
   const category = searchParams.get('category') || 'all';
   const requestedPage = Number.parseInt(searchParams.get('page') || '1', 10);
   const page = Number.isFinite(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, 100) : 1;
-  const result = await searchTaobaoProducts(env, scene, category, page);
+  const keyword = searchParams.get('keyword') || undefined;
+  const result = await searchTaobaoProducts(env, scene, category, page, keyword);
   if (result.error === 'invalid_scene') return json({ error: '不支持的检索场景' }, 400);
   if (result.error === 'invalid_category') return json({ error: '不支持的商品分类' }, 400);
   if (result.error === 'not_configured') return json({ error: '服务未配置' }, 503);
