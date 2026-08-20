@@ -9,10 +9,10 @@ let activeGender = 'male';
 
 function titleFor(query) {
   const prefix = activeGender === 'female' ? '女士' : '男士';
-  if (/鞋|靴/.test(query)) return `${prefix}通勤皮鞋`;
-  if (/裤|裙/.test(query)) return `${prefix}通勤西裤`;
-  if (/包|帽|围巾|腰带|领带|袜/.test(query)) return `${prefix}通勤腰带`;
-  return `${prefix}商务衬衫`;
+  if (/鞋|靴/.test(query)) return `${query} 真皮休闲鞋`;
+  if (/裤|裙/.test(query)) return `${query} 垂感直筒长裤`;
+  if (/包|帽|围巾|腰带|领带|袜/.test(query)) return `${query} 质感真皮腰带`;
+  return `${query || `${prefix}商务衬衫`} 棉质合体上衣`;
 }
 
 function planFor(gender) {
@@ -49,13 +49,14 @@ globalThis.fetch = async (url, options = {}) => {
   const title = titleFor(params.get('q') || '');
   const variants = ['黑色直筒', '卡其宽松', '深蓝修身'];
   const isShoeQuery = /鞋|靴/.test(title);
+  const isAccessoryQuery = /包|帽|围巾|腰带|领带|袜/.test(title);
   const items = omitShoes && isShoeQuery
     ? []
     : Array.from({ length: 20 }, (_, index) => ({
       item_id: `${taobaoCalls}-${index}`,
       publish_info: { coupon_share_url: 'https://uland.taobao.com/coupon/example' },
       price_promotion_info: { zk_final_price: '109', final_promotion_price: '89' },
-      item_basic_info: { title: isShoeQuery && index < 2 ? `${activeGender === 'female' ? '女士' : '男士'}${index ? '皮鞋鞋垫' : '运动袜子'}` : `${title} ${variants[index % variants.length]}`, pict_url: 'https://img.alicdn.com/example.jpg', shop_title: `测试店铺${index % variants.length}`, volume: 12, category_name: '服装' },
+      item_basic_info: { title: isShoeQuery && index < 2 ? `${activeGender === 'female' ? '女士' : '男士'}${index ? '皮鞋鞋垫' : '运动袜子'}` : isAccessoryQuery && index === 0 ? `${activeGender === 'female' ? '女士' : '男士'}草帽 沙滩遮阳帽` : `${title} ${variants[index % variants.length]}`, pict_url: 'https://img.alicdn.com/example.jpg', shop_title: `测试店铺${taobaoCalls}-${index % variants.length}`, volume: 12, category_name: '服装' },
     }));
   return new Response(JSON.stringify({
     tbk_dg_material_optional_upgrade_response: { result_list: { map_data: items }, total_results: items.length },
@@ -100,6 +101,7 @@ try {
       assert.ok(selected.some((item) => item.category === 'bottom'));
       assert.ok(selected.some((item) => item.category === 'shoes'));
       assert.equal(selected.some((item) => item.category === 'shoes' && /袜子?|鞋垫|鞋带|鞋套|鞋刷|鞋油|鞋盒|鞋撑|鞋饰/.test(item.title)), false);
+      assert.equal(selected.some((item) => /草帽|沙滩|功能|露营/.test(item.title)), false);
       assert.ok(selected.every((item) => item.title.startsWith(profile.gender === 'female' ? '女士' : '男士')));
       assert.ok(selected.reduce((sum, item) => sum + item.couponPrice, 0) <= profile.budget);
     }
