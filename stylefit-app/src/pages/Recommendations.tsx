@@ -591,25 +591,27 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
             {aiLoading ? <><Spinner />AI {t('common.loading')}</> : hasRenderableAIOutfits ? <>✦ AI</> : t('rec.outfitRecommendations')}
           </span>}
         </div>
-        <div className="mb-6 grid grid-cols-2 gap-3 sm:flex sm:w-fit">
-          <Button
-            variant="ghost"
-            onClick={() => navigate('/recommendations')}
-            className={`h-12 justify-center gap-2 rounded-xl border px-4 text-sm font-semibold ${isDiscover ? 'border-[#1A1A1A]/[0.1] bg-white text-[#4A4A45] hover:border-[#E0782C]/30 hover:bg-[#FFF4EC] hover:text-[#C96A22]' : 'border-[#E0782C]/35 bg-[#FFF4EC] text-[#C96A22]'}`}
-            aria-current={isDiscover ? undefined : 'page'}
-          >
-            <Sparkles className="h-4 w-4" />
-            AI穿搭
-          </Button>
-          <Button
-            variant="ghost"
-            onClick={() => navigate('/discover')}
-            className={`h-12 justify-center gap-2 rounded-xl border px-4 text-sm font-semibold ${isDiscover ? 'border-[#E0782C]/35 bg-[#FFF4EC] text-[#C96A22]' : 'border-[#1A1A1A]/[0.1] bg-white text-[#4A4A45] hover:border-[#E0782C]/30 hover:bg-[#FFF4EC] hover:text-[#C96A22]'}`}
-            aria-current={isDiscover ? 'page' : undefined}
-          >
-            <ShoppingBag className="h-4 w-4" />
-            为你推荐
-          </Button>
+        <div className="mb-6 flex justify-center">
+          <div className="inline-flex rounded-full border border-[#1A1A1A]/[0.1] bg-white p-1 shadow-sm">
+            <Button
+              variant="ghost"
+              onClick={() => navigate('/recommendations')}
+              className={`h-10 gap-2 rounded-full px-4 text-sm font-semibold ${isDiscover ? 'text-[#4A4A45] hover:bg-[#FFF4EC] hover:text-[#C96A22]' : 'bg-[#FFF4EC] text-[#C96A22]'}`}
+              aria-current={isDiscover ? undefined : 'page'}
+            >
+              <Sparkles className="h-4 w-4" />
+              AI穿搭
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => navigate('/discover')}
+              className={`h-10 gap-2 rounded-full px-4 text-sm font-semibold ${isDiscover ? 'bg-[#FFF4EC] text-[#C96A22]' : 'text-[#4A4A45] hover:bg-[#FFF4EC] hover:text-[#C96A22]'}`}
+              aria-current={isDiscover ? 'page' : undefined}
+            >
+              <ShoppingBag className="h-4 w-4" />
+              为你推荐
+            </Button>
+          </div>
         </div>
         {!isDiscover && !aiLoading && !hasRenderableAIOutfits && (
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#E0782C]/25 bg-[#FFF7EF] px-4 py-3 text-sm text-[#6B6B66]">
@@ -719,8 +721,8 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
                 {hasRenderableAIOutfits && aiRecommendation && <Badge className="result-ai-badge">AI</Badge>}
                 {hasRenderableAIOutfits && outfits.length < 3 && <span className="text-xs text-[#8A8A84]">已生成 {outfits.length} 套搭配，可稍后重新生成更多方案</span>}
               </div>
-              <Button variant="ghost" size="sm" onClick={restartSurvey} className="shrink-0 border border-[#E0782C]/30 bg-white text-[#C96A22] hover:bg-[#FFF4EC] hover:text-[#B75616]">
-                不满意？重新测试
+              <Button variant="ghost" size="sm" onClick={regenerateAIRecommendation} disabled={aiLoading} className="shrink-0 border border-[#E0782C]/30 bg-white text-[#C96A22] hover:bg-[#FFF4EC] hover:text-[#B75616]">
+                不满意？重新生成 AI
               </Button>
             </div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -735,6 +737,12 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
                   />
                 </div>
               ))}
+            </div>
+            <div className="mt-8 flex justify-center">
+              <Button onClick={() => navigate('/discover')} className="sf-primary-button gap-2">
+                <ShoppingBag className="h-4 w-4" />
+                查看为你推荐
+              </Button>
             </div>
           </div>
         )}
