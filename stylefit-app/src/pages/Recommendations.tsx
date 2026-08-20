@@ -38,6 +38,7 @@ import {
 } from '../lib/aiRecommendation';
 import { Spinner } from '@/components/ui/spinner';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 
 type ProductSourceStatus = 'loading' | 'demo' | 'live' | 'empty';
 
@@ -892,6 +893,7 @@ function OutfitCard({
   budget?: number;
 }) {
   const { t } = useT();
+  const [previewItem, setPreviewItem] = useState<ClothingItem | null>(null);
   const itemReasonMap = useMemo(() => {
     const map: Record<string, string> = {};
     outfit.itemReasons?.forEach(r => { map[r.itemId] = r.reason; });
@@ -959,7 +961,14 @@ function OutfitCard({
         <div className="result-outfit-images grid grid-cols-3 gap-1 p-2 sm:grid-cols-5">
           {outfit.items.slice(0, 5).map((item: ClothingItem) => (
             <div key={item.id} className="relative aspect-square overflow-hidden rounded-lg bg-[#F4F1EA]">
-              <ProductImage item={item} className="h-full w-full object-cover" />
+              <button
+                type="button"
+                onClick={() => setPreviewItem(item)}
+                className="focus-ring block h-full w-full cursor-zoom-in"
+                aria-label={`查看 ${item.name} 大图`}
+              >
+                <ProductImage item={item} className="h-full w-full object-cover" />
+              </button>
               <button
                 onClick={() => toggleFavorite(item.id)}
                 className="absolute top-0.5 right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-white/90 shadow-sm"
@@ -1051,6 +1060,12 @@ function OutfitCard({
             </span>
           ))}
         </div>
+        <Dialog open={Boolean(previewItem)} onOpenChange={(open) => !open && setPreviewItem(null)}>
+          <DialogContent className="max-w-[min(92vw,680px)] border-[#E5E2DA] bg-white p-3">
+            <DialogTitle className="sr-only">{previewItem?.name || '商品大图'}</DialogTitle>
+            {previewItem && <ProductImage item={previewItem} className="max-h-[78vh] w-full rounded-lg object-contain" />}
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );
