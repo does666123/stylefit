@@ -27,6 +27,15 @@ type CachedAIRecommendation = {
   generatedAt: number;
 };
 
+function hasCompleteOutfits(result: AIRecommendationResult) {
+  if (result.recommendation.outfits.length !== 3) return false;
+  const candidatesById = new Map(result.candidates.map((item) => [item.id, item]));
+  return result.recommendation.outfits.every((outfit) => {
+    const categories = new Set(outfit.items.map((item) => candidatesById.get(item.id)?.category));
+    return categories.has('top') && categories.has('bottom') && categories.has('shoes');
+  });
+}
+
 export function safeSessionGet(key: string) {
   try {
     return sessionStorage.getItem(key);
@@ -87,11 +96,6 @@ export function getAIRecommendationProfileKey(profile: UserBodyProfile) {
   ]);
 }
 
-function getTaobaoScene(profile: UserBodyProfile) {
-  if (profile.gender === 'female') return profile.occasion === 'work' ? 'womens_work' : 'womens_minimal_top';
-  return profile.occasion === 'work' ? 'mens_work' : 'mens_casual_outerwear';
-}
-
 function getCandidateFingerprint(candidates: ClothingItem[]) {
   return candidates.map((item) => item.id).join('|');
 }
@@ -123,23 +127,6 @@ type TaobaoProduct = {
   promotionUrl?: unknown;
 };
 
-type AIBlueprint = {
-  name?: string;
-  style?: string;
-  occasion?: string;
-  colors?: string[];
-  fit?: string;
-  formality?: string;
-  keywords?: {
-    top?: string;
-    bottom?: string;
-    shoes?: string;
-    accessory?: string;
-  };
-};
-
-const NON_SHOE_PATTERN = /袜|鞋垫|鞋带|鞋套|鞋刷|鞋油|鞋饰|鞋盒|鞋撑/;
-
 function toClothingItem(product: TaobaoProduct, profile: UserBodyProfile): ClothingItem | null {
   const itemId = typeof product.itemId === 'string' ? product.itemId.trim() : '';
   const name = typeof product.title === 'string' ? product.title.trim() : '';
@@ -148,7 +135,10 @@ function toClothingItem(product: TaobaoProduct, profile: UserBodyProfile): Cloth
   const price = Number(product.couponPrice || product.price);
   if (!itemId || !name || !image || !buyLink || !Number.isFinite(price) || price <= 0) return null;
 
-  const category = getTaobaoCategory(`${typeof product.category === 'string' ? product.category : ''} ${name}`);
+  const suppliedCategory = typeof product.category === 'string' ? product.category : '';
+  const category = ['top', 'bottom', 'outerwear', 'shoes', 'accessory', 'dress'].includes(suppliedCategory)
+    ? suppliedCategory as ClothingItem['category']
+    : getTaobaoCategory(`${suppliedCategory} ${name}`);
   return {
     id: `taobao-${itemId}`,
     name,
@@ -174,162 +164,6 @@ function toClothingItem(product: TaobaoProduct, profile: UserBodyProfile): Cloth
   } satisfies ClothingItem;
 }
 
-async function fetchCategoryProducts(
-  profile: UserBodyProfile,
-  category: ClothingItem['category'],
-  keyword: string,
-  signal: AbortSignal,
-): Promise<ClothingItem[]> {
-  const scene = getTaobaoScene(profile);
-  const params = new URLSearchParams({ scene, category, page: '1' });
-  if (keyword) params.set('keyword', keyword);
-  const response = await fetch(`/api/taobao/products?${params.toString()}`, { signal });
-  if (!response.ok) return [];
-  const payload = await response.json() as { products?: TaobaoProduct[] };
-  if (!Array.isArray(payload.products)) return [];
-
-  return payload.products.slice(0, 20).flatMap((product) => {
-    const item = toClothingItem(product, profile);
-    if (!item) return [];
-    item.category = category;
-    return [item];
-  });
-}
-
-function isGenderMismatch(item: ClothingItem, profile: UserBodyProfile) {
-  return (
-    (item.gender === 'male' && profile.gender !== 'male') ||
-    (item.gender === 'female' && profile.gender !== 'female')
-  );
-}
-
-function splitKeywords(keyword: string) {
-  return keyword
-    .split(/[\s,，、]+/)
-    .filter((token) => token && !/^(男|女|男士|女士|男款|女款)$/.test(token));
-}
-
-function scoreProduct(item: ClothingItem, blueprint: AIBlueprint, keyword: string) {
-  let score = 0;
-  const title = item.name || '';
-  const tokens = splitKeywords(keyword);
-  let matched = 0;
-  for (const token of tokens) {
-    if (token && title.includes(token)) matched += 1;
-  }
-  if (matched > 0) score += Math.min(matched, 3) * 10;
-  const colors = blueprint.colors || [];
-  if (colors.some((color) => color && title.includes(color))) score += 8;
-  const volumeMatch = /已售\s*([\d.]+)\s*(万)?/.exec(item.description || '');
-  if (volumeMatch) {
-    const volume = parseFloat(volumeMatch[1]) * (volumeMatch[2] ? 10000 : 1);
-    if (volume >= 10000) score += 20;
-    else if (volume >= 1000) score += 12;
-    else if (volume >= 100) score += 6;
-  }
-  score += Math.min(item.rating || 0, 5);
-  return score;
-}
-
-function composeOutfit(
-  blueprint: AIBlueprint,
-  pools: Partial<Record<ClothingItem['category'], ClothingItem[]>>,
-  budget: number,
-  usedIds: Set<string>,
-  profile: UserBodyProfile,
-): { items: { id: string; reason: string }[]; spent: number } | null {
-  const budgetLimit = Number.isFinite(budget) && budget > 0 ? budget : Infinity;
-  const keywords = blueprint.keywords || {};
-  const keywordOf = (cat: keyof NonNullable<AIBlueprint['keywords']>) => (keywords[cat] || '').trim();
-
-  // 各品类：预算内 + 未用 + 性别匹配，按匹配/质量分排序取前 4 作为候选
-  const rankCategory = (pool: ClothingItem[], cat: keyof NonNullable<AIBlueprint['keywords']>) => {
-    const keyword = keywordOf(cat);
-    return (pool || [])
-      .filter((item) => {
-        if (usedIds.has(item.id)) return false;
-        if (isGenderMismatch(item, profile)) return false;
-        if (!Number.isFinite(item.price) || item.price <= 0) return false;
-        if (Number.isFinite(budgetLimit) && item.price > budgetLimit) return false;
-        return true;
-      })
-      .map((item) => ({ item, score: scoreProduct(item, blueprint, keyword) }))
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 4);
-  };
-
-  const topList = rankCategory(pools.top || [], 'top');
-  const bottomList = rankCategory(pools.bottom || [], 'bottom');
-  const shoesList = rankCategory(pools.shoes || [], 'shoes');
-  const accessoryList = rankCategory(pools.accessory || [], 'accessory');
-  if (topList.length === 0 || bottomList.length === 0) return null;
-
-  // 枚举 top × bottom 组合，预算内优先保证「上衣+下装+鞋履」，再考虑配饰。
-  // 组合评分 = 各件匹配/质量分之和 + 完整度加成（鞋履 +30、配饰 +10），
-  // 选「预算内质量分最高的组合」而非最便宜组合，鞋履强烈优先。
-  let best: {
-    comboScore: number;
-    top: { item: ClothingItem; score: number };
-    bottom: { item: ClothingItem; score: number };
-    shoes: { item: ClothingItem; score: number } | null;
-    accessory: { item: ClothingItem; score: number } | null;
-    total: number;
-  } | null = null;
-
-  for (const topPick of topList) {
-    for (const bottomPick of bottomList) {
-      const baseTotal = topPick.item.price + bottomPick.item.price;
-      if (Number.isFinite(budgetLimit) && baseTotal > budgetLimit) continue;
-
-      const shoesInBudget = shoesList.filter((s) => !Number.isFinite(budgetLimit) || s.item.price <= budgetLimit - baseTotal);
-      const shoesPick = shoesInBudget.length > 0 ? shoesInBudget[0] : null;
-
-      const accRemain = Number.isFinite(budgetLimit)
-        ? budgetLimit - baseTotal - (shoesPick ? shoesPick.item.price : 0)
-        : Infinity;
-      const accessoryInBudget = accessoryList.filter((a) => a.item.price <= accRemain);
-      const accessoryPick = accessoryInBudget.length > 0 ? accessoryInBudget[0] : null;
-
-      const total = baseTotal
-        + (shoesPick ? shoesPick.item.price : 0)
-        + (accessoryPick ? accessoryPick.item.price : 0);
-      if (Number.isFinite(budgetLimit) && total > budgetLimit) continue;
-
-      const comboScore = topPick.score + bottomPick.score
-        + (shoesPick ? shoesPick.score + 30 : 0)
-        + (accessoryPick ? accessoryPick.score + 10 : 0);
-
-      // 分层优先：预算允许时「含鞋履」的组合严格优先于「无鞋履」，避免退化成只有上衣+下装；
-      // 同级组合内再选质量分最高的，而非最便宜。
-      if (
-        !best ||
-        (shoesPick && !best.shoes) ||
-        ((shoesPick ? 1 : 0) === (best.shoes ? 1 : 0) && comboScore > best.comboScore)
-      ) {
-        best = { comboScore, top: topPick, bottom: bottomPick, shoes: shoesPick, accessory: accessoryPick, total };
-
-      }
-    }
-  }
-
-  if (!best) return null;
-
-  const items: { id: string; reason: string }[] = [
-    { id: best.top.item.id, reason: `上装：${best.top.item.name}` },
-    { id: best.bottom.item.id, reason: `下装：${best.bottom.item.name}` },
-  ];
-  const spent = best.top.item.price + best.bottom.item.price;
-  if (best.shoes) {
-    items.push({ id: best.shoes.item.id, reason: `鞋履：${best.shoes.item.name}` });
-  }
-  if (best.accessory) {
-    items.push({ id: best.accessory.item.id, reason: `配饰：${best.accessory.item.name}` });
-  }
-  for (const item of items) usedIds.add(item.id);
-
-  return { items, spent };
-}
-
 export function readCachedAIRecommendation(profile: UserBodyProfile) {
   try {
     const raw = safeLocalGet(AI_CACHE_KEY);
@@ -344,6 +178,7 @@ export function readCachedAIRecommendation(profile: UserBodyProfile) {
       cached.candidateFingerprint !== getCandidateFingerprint(cached.result.candidates) ||
       cached.result.recommendation.source !== 'taobao' ||
       cached.result.recommendation.candidateFingerprint !== cached.candidateFingerprint ||
+      !hasCompleteOutfits(cached.result) ||
       cached.profileKey !== getAIRecommendationProfileKey(profile) ||
       Date.now() - cached.generatedAt > AI_CACHE_TTL
     ) {
@@ -361,7 +196,7 @@ export function readCachedAIRecommendation(profile: UserBodyProfile) {
 export function cacheAIRecommendation(profile: UserBodyProfile, result: AIRecommendationResult) {
   try {
     const candidateFingerprint = getCandidateFingerprint(result.candidates);
-    if (!candidateFingerprint || result.recommendation.source !== 'taobao' || result.recommendation.candidateFingerprint !== candidateFingerprint) return false;
+    if (!candidateFingerprint || !hasCompleteOutfits(result) || result.recommendation.source !== 'taobao' || result.recommendation.candidateFingerprint !== candidateFingerprint) return false;
     return safeLocalSet(AI_CACHE_KEY, JSON.stringify({
       source: 'taobao',
       candidateFingerprint,
@@ -391,75 +226,52 @@ export async function requestAIRecommendation(profile: UserBodyProfile): Promise
     });
     if (!response.ok) return null;
 
-    const result = await response.json() as { status?: string; recommendation?: { summary?: unknown; blueprints?: unknown } };
+    const result = await response.json() as {
+      status?: string;
+      recommendation?: { summary?: unknown; outfits?: unknown };
+      candidates?: TaobaoProduct[];
+    };
     const recommendation = result.recommendation;
     if (
       result.status !== 'ok' ||
       !recommendation ||
       typeof recommendation.summary !== 'string' ||
-      !Array.isArray(recommendation.blueprints) ||
-      recommendation.blueprints.length === 0
+      !Array.isArray(recommendation.outfits) ||
+      recommendation.outfits.length !== 3 ||
+      !Array.isArray(result.candidates)
     ) return null;
 
-    const blueprints = recommendation.blueprints.slice(0, 3) as AIBlueprint[];
-    const allCandidates: ClothingItem[] = [];
-    const seenIds = new Set<string>();
-    const addCandidates = (items: ClothingItem[]) => {
-      for (const item of items) {
-        if (!seenIds.has(item.id)) {
-          seenIds.add(item.id);
-          allCandidates.push(item);
-        }
-      }
-    };
-
-    const outfits: AIRecommendation['outfits'] = [];
-    const usedIds = new Set<string>();
+    const candidates = result.candidates.flatMap((product) => {
+      const item = toClothingItem(product, profile);
+      return item ? [item] : [];
+    });
+    const candidatesById = new Map(candidates.map((item) => [item.id, item]));
     const budget = Number(profile.budget);
-    const categoryOrder: { category: ClothingItem['category']; key: keyof NonNullable<AIBlueprint['keywords']> }[] = [
-      { category: 'top', key: 'top' },
-      { category: 'bottom', key: 'bottom' },
-      { category: 'shoes', key: 'shoes' },
-      { category: 'accessory', key: 'accessory' },
-    ];
-
-    for (const blueprint of blueprints) {
-      const keywords = blueprint.keywords || {};
-      const pools: Partial<Record<ClothingItem['category'], ClothingItem[]>> = {};
-
-      const loadCategory = async (category: ClothingItem['category'], keyword: string) => {
-        let products = keyword ? await fetchCategoryProducts(profile, category, keyword, controller.signal) : [];
-        if (products.length === 0) {
-          products = await fetchCategoryProducts(profile, category, '', controller.signal);
-        }
-        if (category === 'shoes') {
-          products = products.filter((item) => !NON_SHOE_PATTERN.test(item.name || ''));
-        }
-        addCandidates(products);
-        pools[category] = products;
-      };
-
-      await Promise.all(
-        categoryOrder.map(({ category, key }) => loadCategory(category, (keywords[key] || '').trim())),
-      );
-
-      const composed = composeOutfit(blueprint, pools, budget, usedIds, profile);
-      if (composed) {
-        outfits.push({
-          name: blueprint.name || `方案 ${outfits.length + 1}`,
-          stylingTip: [blueprint.style, blueprint.formality].filter(Boolean).join(' · ') || '按你的身形与场合搭配',
-          items: composed.items,
-        });
-      }
-    }
-
-    if (outfits.length === 0) return null;
-    const candidateFingerprint = getCandidateFingerprint(allCandidates);
+    const outfits = recommendation.outfits.flatMap((value, index) => {
+      if (typeof value !== 'object' || value === null) return [];
+      const source = value as { name?: unknown; stylingTip?: unknown; items?: unknown };
+      if (typeof source.name !== 'string' || typeof source.stylingTip !== 'string' || !Array.isArray(source.items)) return [];
+      const items = source.items.flatMap((item) => {
+        if (typeof item !== 'object' || item === null) return [];
+        const sourceItem = item as { id?: unknown; reason?: unknown };
+        return typeof sourceItem.id === 'string' && candidatesById.has(sourceItem.id)
+          ? [{ id: sourceItem.id, reason: typeof sourceItem.reason === 'string' ? sourceItem.reason : '' }]
+          : [];
+      });
+      const selected = items.map((item) => candidatesById.get(item.id)!);
+      const categories = new Set(selected.map((item) => item.category));
+      const total = selected.reduce((sum, item) => sum + item.price, 0);
+      if (items.length < 3 || !categories.has('top') || !categories.has('bottom') || !categories.has('shoes')) return [];
+      if (Number.isFinite(budget) && budget > 0 && total > budget) return [];
+      return [{ name: source.name || `方案 ${index + 1}`, stylingTip: source.stylingTip, items }];
+    });
+    if (outfits.length !== 3) return null;
+    const candidateFingerprint = getCandidateFingerprint(candidates);
     if (!candidateFingerprint) return null;
 
     return {
       recommendation: { source: 'taobao', candidateFingerprint, summary: recommendation.summary, outfits },
-      candidates: allCandidates,
+      candidates,
     };
   } catch {
     return null;

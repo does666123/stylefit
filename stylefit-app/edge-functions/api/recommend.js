@@ -1,3 +1,5 @@
+import { searchTaobaoCandidatePool } from '../lib/taobao.js';
+
 const endpoint = 'https://qianfan.baidubce.com/v2/chat/completions';
 const model = 'ernie-4.5-turbo-32k';
 const jsonHeaders = { 'Content-Type': 'application/json; charset=utf-8' };
@@ -6,6 +8,7 @@ const cacheTtlMs = 30 * 60 * 1000;
 const cacheLimit = 200;
 const recommendationCache = new Map();
 const inFlightRequests = new Map();
+const categories = ['top', 'bottom', 'shoes', 'accessory'];
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: jsonHeaders });
@@ -77,14 +80,14 @@ function readCachedRecommendation(key) {
     recommendationCache.delete(key);
     return null;
   }
-  return entry.recommendation;
+  return entry.result;
 }
 
-function cacheRecommendation(key, recommendation) {
+function cacheRecommendation(key, result) {
   while (recommendationCache.size >= cacheLimit) {
     recommendationCache.delete(recommendationCache.keys().next().value);
   }
-  recommendationCache.set(key, { createdAt: Date.now(), recommendation });
+  recommendationCache.set(key, { createdAt: Date.now(), result });
 }
 
 function pick(record, keys) {
@@ -154,6 +157,119 @@ function parseBlueprints(content) {
   return summary && blueprints.length ? { summary, blueprints } : null;
 }
 
+function getScene(profile) {
+  if (profile.gender === 'female') return profile.occasion === 'work' ? 'womens_work' : 'womens_minimal_top';
+  return profile.occasion === 'work' ? 'mens_work' : 'mens_casual_outerwear';
+}
+
+function mergeKeywords(blueprints) {
+  return Object.fromEntries(categories.map((category) => [
+    category,
+    [...new Set(blueprints.map((blueprint) => blueprint.keywords[category]).filter(Boolean))].slice(0, 3),
+  ]));
+}
+
+function isShoeProduct(text) {
+  return /皮鞋|乐福鞋|德比鞋|运动鞋|板鞋|帆布鞋|小白鞋|靴子|跑鞋|休闲鞋|凉鞋|拖鞋|高跟鞋|单鞋|球鞋|马丁靴|短靴|长靴/.test(text)
+    && !/袜子?|鞋垫|鞋带|鞋套|鞋刷|鞋油|鞋盒|鞋撑|鞋饰/.test(text);
+}
+
+function toCandidate(product, profile) {
+  const itemId = asText(product?.itemId, 80);
+  const title = asText(product?.title, 200);
+  const image = asText(product?.image, 2_000);
+  const promotionUrl = asText(product?.promotionUrl, 2_000);
+  const couponPrice = Number(product?.couponPrice || product?.price);
+  const category = categories.includes(product?.category) ? product.category : '';
+  if (!itemId || !title || !image || !promotionUrl || !category || !Number.isFinite(couponPrice) || couponPrice <= 0) return null;
+  return {
+    itemId,
+    id: `taobao-${itemId}`,
+    title,
+    image,
+    price: Number(product?.price) || couponPrice,
+    couponAmount: Number(product?.couponAmount) || 0,
+    couponPrice,
+    shopTitle: asText(product?.shopTitle, 120) || '淘宝联盟',
+    volume: Number(product?.volume) || 0,
+    category,
+    promotionUrl,
+    tags: ['淘宝联盟', category, profile.stylePreference || '', profile.occasion || '', profile.season || ''],
+  };
+}
+
+function profileTerms(profile) {
+  const styles = {
+    business: ['商务', '通勤', '西装', '衬衫', '西裤', '皮鞋'],
+    commute: ['通勤', '商务', '简约', '衬衫'],
+    casual: ['休闲', '基础', '牛仔', 't恤', '运动'],
+    sporty: ['运动', '跑步', '卫衣', '球鞋'],
+    streetwear: ['街头', '宽松', '工装', '潮'],
+    retro: ['复古', '格纹', '灯芯绒', '直筒'],
+    preppy: ['学院', '衬衫', '针织'],
+    minimal: ['简约', '基础', '纯色', '极简'],
+  };
+  const scenes = { daily: ['日常', '休闲'], work: ['职场', '通勤', '商务'], date: ['约会', '轻熟'], party: ['聚会', '派对'], campus: ['校园', '学院'], travel: ['旅行', '舒适'] };
+  return [...(styles[profile.stylePreference] || []), ...(scenes[profile.occasion] || [])];
+}
+
+function isCandidateEligible(candidate, profile) {
+  const text = `${candidate.title} ${candidate.category}`;
+  if (profile.gender === 'male' && /女(?:士|款|装)?|女式|女装|裙/.test(text)) return false;
+  if (profile.gender === 'female' && /男(?:士|款|装)?|男式|男装/.test(text)) return false;
+  if (candidate.category === 'shoes') return isShoeProduct(text);
+  const patterns = {
+    top: /上衣|T恤|t恤|衬衫|衬衣|针织|毛衣|卫衣|Polo|polo|外套|夹克|大衣|风衣|羽绒|西装/,
+    bottom: /裤|牛仔|半身裙/,
+    accessory: /包|帽|围巾|腰带|皮带|眼镜|首饰|领带|袜|丝巾/,
+  };
+  return patterns[candidate.category]?.test(text) || false;
+}
+
+function scoreCandidate(candidate, profile, keyword) {
+  const text = `${candidate.title} ${candidate.category}`.toLowerCase();
+  const tokens = String(keyword || '').match(/[\u4e00-\u9fff]{2,}|[A-Za-z0-9]+/g) || [];
+  const keywordScore = tokens.reduce((score, token) => score + (text.includes(token.toLowerCase()) ? 12 : 0), 0);
+  const styleScore = profileTerms(profile).reduce((score, term) => score + (text.includes(term.toLowerCase()) ? 5 : 0), 0);
+  return keywordScore + styleScore + Math.min(candidate.volume / 1_000, 8);
+}
+
+function rankCategory(candidates, profile, blueprint, category, usedIds, allowReuse) {
+  return candidates
+    .filter((candidate) => candidate.category === category && isCandidateEligible(candidate, profile))
+    .filter((candidate) => allowReuse || !usedIds.has(candidate.id))
+    .map((candidate) => ({ candidate, score: scoreCandidate(candidate, profile, blueprint.keywords[category]) }))
+    .sort((left, right) => right.score - left.score || left.candidate.couponPrice - right.candidate.couponPrice)
+    .slice(0, category === 'shoes' ? 10 : 20);
+}
+
+function composeOutfit(blueprint, candidates, profile, usedIds, allowReuse) {
+  const budget = Number(profile.budget);
+  const hasBudget = Number.isFinite(budget) && budget > 0;
+  const ranked = Object.fromEntries(categories.map((category) => [category, rankCategory(candidates, profile, blueprint, category, usedIds, allowReuse)]));
+  let best = null;
+  for (const top of ranked.top) {
+    for (const bottom of ranked.bottom) {
+      for (const shoes of ranked.shoes) {
+        const total = top.candidate.couponPrice + bottom.candidate.couponPrice + shoes.candidate.couponPrice;
+        if (hasBudget && total > budget) continue;
+        const score = top.score + bottom.score + shoes.score;
+        if (!best || score > best.score) best = { top, bottom, shoes, total, score };
+      }
+    }
+  }
+  if (!best) return null;
+  const items = [best.top, best.bottom, best.shoes];
+  const accessory = ranked.accessory.find(({ candidate }) => !hasBudget || best.total + candidate.couponPrice <= budget);
+  if (accessory) items.push(accessory);
+  return {
+    name: blueprint.name,
+    stylingTip: [blueprint.style, blueprint.fit, blueprint.formality].filter(Boolean).join(' · ') || '按你的身形与场合搭配',
+    items: items.map(({ candidate }) => ({ id: candidate.id, reason: `${candidate.category}：${candidate.title}` })),
+    selected: items.map(({ candidate }) => candidate),
+  };
+}
+
 function fallback(reason, details = {}) {
   return json({ status: 'fallback', reason, cached: false, ...details });
 }
@@ -206,9 +322,9 @@ export async function onRequest({ request, env }) {
     : undefined;
   const prompt = JSON.stringify({ profile, weather, userRequest });
   const cacheKey = recommendationCacheKey(body, profile, weather);
-  const cachedRecommendation = readCachedRecommendation(cacheKey);
-  if (cachedRecommendation) {
-    return json({ status: 'ok', recommendation: cachedRecommendation, cached: true });
+  const cachedResult = readCachedRecommendation(cacheKey);
+  if (cachedResult) {
+    return json({ status: 'ok', ...cachedResult, cached: true });
   }
 
   const apiKey = env.QIANFAN_API_KEY;
@@ -272,17 +388,47 @@ export async function onRequest({ request, env }) {
     const finishReason = asText(firstChoice?.finish_reason, 80) || 'unknown';
     const rawContent = typeof message?.content === 'string' ? message.content : '';
     const content = asText(rawContent, 12_000);
-    const recommendation = content && parseBlueprints(content);
-
-      return recommendation
-        ? { recommendation }
-        : {
+    const plan = content && parseBlueprints(content);
+    if (!plan) {
+      return {
           reason: 'AI response could not be validated',
           details: {
             providerCode: `finish_reason=${finishReason}`,
             providerMessage: rawContent.slice(0, 300),
           },
         };
+    }
+
+    const pool = await searchTaobaoCandidatePool(env, getScene(profile), mergeKeywords(plan.blueprints));
+    if (pool.error) return { reason: '淘宝联盟商品暂时不可用' };
+    const candidates = (pool.products || []).map((product) => toCandidate(product, profile)).filter(Boolean);
+    const usedIds = new Set();
+    const composed = [];
+    for (const blueprint of plan.blueprints) {
+      const outfit = composeOutfit(blueprint, candidates, profile, usedIds, false)
+        || composeOutfit(blueprint, candidates, profile, usedIds, true);
+      if (!outfit) return { reason: '本场景暂未找到包含上衣、下装和鞋履的真实商品' };
+      outfit.selected.forEach((candidate) => usedIds.add(candidate.id));
+      composed.push(outfit);
+    }
+    if (composed.length !== 3) return { reason: '本场景暂未找到三套完整的真实商品搭配' };
+
+    const selected = [];
+    const selectedIds = new Set();
+    for (const outfit of composed) {
+      for (const candidate of outfit.selected) {
+        if (selectedIds.has(candidate.id)) continue;
+        selectedIds.add(candidate.id);
+        selected.push(candidate);
+      }
+    }
+    return {
+      recommendation: {
+        summary: plan.summary,
+        outfits: composed.map(({ selected: _selected, ...outfit }) => outfit),
+      },
+      candidates: selected,
+    };
     } catch {
       return { reason: 'AI service is temporarily unavailable' };
     }
@@ -311,7 +457,9 @@ export async function onRequest({ request, env }) {
       if (!modelRequest) {
         modelRequest = generateRecommendation()
           .then((outcome) => {
-            if (outcome.recommendation) cacheRecommendation(cacheKey, outcome.recommendation);
+            if (outcome.recommendation && outcome.candidates) {
+              cacheRecommendation(cacheKey, { recommendation: outcome.recommendation, candidates: outcome.candidates });
+            }
             return outcome;
           })
           .finally(() => inFlightRequests.delete(cacheKey));
@@ -320,7 +468,7 @@ export async function onRequest({ request, env }) {
 
       const outcome = await modelRequest;
       complete(outcome.recommendation
-        ? { status: 'ok', recommendation: outcome.recommendation, cached: false }
+        ? { status: 'ok', recommendation: outcome.recommendation, candidates: outcome.candidates, cached: false }
         : { status: 'fallback', reason: outcome.reason, cached: false, ...outcome.details });
     } catch {
       complete({ status: 'fallback', reason: 'AI service is temporarily unavailable', cached: false });

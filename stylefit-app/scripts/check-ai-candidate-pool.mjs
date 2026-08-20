@@ -19,22 +19,18 @@ function planFor(gender) {
   const prefix = gender === 'female' ? '女士' : '男士';
   return {
     summary: '以清晰比例建立舒适且利落的场景穿搭。',
-    style: '场景化穿搭',
-    outfits: [
+    blueprints: [
       {
-        name: '利落通勤搭配', stylingTip: '上浅下深，保持线条干净。',
-        topKeywords: [`${prefix}商务衬衫`], bottomKeywords: [`${prefix}通勤西裤`],
-        shoesKeywords: [`${prefix}通勤皮鞋`], accessoryKeywords: [`${prefix}通勤腰带`],
+        name: '利落通勤搭配', style: '商务通勤', occasion: '职场', colors: ['白色', '深蓝'], fit: '合体', formality: '正式',
+        keywords: { top: `${prefix}商务衬衫`, bottom: `${prefix}通勤西裤`, shoes: `${prefix}通勤皮鞋`, accessory: `${prefix}通勤腰带` },
       },
       {
-        name: '简约运动通勤', stylingTip: '用轻量单品平衡通勤感。',
-        topKeywords: [`${prefix}简约Polo`], bottomKeywords: [`${prefix}锥形长裤`],
-        shoesKeywords: [`${prefix}简约运动鞋`], accessoryKeywords: [`${prefix}通勤帆布包`],
+        name: '简约运动通勤', style: '简约运动', occasion: '日常', colors: ['灰色', '白色'], fit: '直筒', formality: '休闲',
+        keywords: { top: `${prefix}简约Polo`, bottom: `${prefix}锥形长裤`, shoes: `${prefix}简约运动鞋`, accessory: `${prefix}通勤帆布包` },
       },
       {
-        name: '复古休闲层次', stylingTip: '保留复古轮廓与轻松比例。',
-        topKeywords: [`${prefix}复古针织上衣`], bottomKeywords: [`${prefix}复古直筒裤`],
-        shoesKeywords: [`${prefix}复古乐福鞋`], accessoryKeywords: [`${prefix}复古皮带`],
+        name: '复古休闲层次', style: '复古休闲', occasion: '日常', colors: ['棕色', '卡其'], fit: '宽松', formality: '休闲',
+        keywords: { top: `${prefix}复古针织上衣`, bottom: `${prefix}复古直筒裤`, shoes: `${prefix}复古乐福鞋`, accessory: `${prefix}复古皮带` },
       },
     ],
   };
@@ -44,7 +40,7 @@ globalThis.fetch = async (url, options = {}) => {
   if (String(url).includes('qianfan.baidubce.com')) {
     aiCalls += 1;
     const requestBody = JSON.parse(options.body);
-    activeGender = JSON.parse(requestBody.messages.at(-1).content).gender;
+    activeGender = JSON.parse(requestBody.messages.at(-1).content).profile.gender;
     return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(planFor(activeGender)) } }] }));
   }
 
@@ -113,11 +109,9 @@ try {
 
   omitShoes = true;
   const withoutShoes = await request({ ...scenarios[0], budget: 301 });
-  assert.equal(withoutShoes.status, 'ok');
-  assert.ok(withoutShoes.recommendation.outfits[0].items.length >= 2);
-  const withoutShoesIds = new Set(withoutShoes.recommendation.outfits[0].items.map((item) => item.id));
-  assert.equal(withoutShoes.candidates.some((item) => withoutShoesIds.has(item.id) && item.category === 'shoes'), false);
-  console.log('Single-AI Taobao matching checks passed');
+  assert.equal(withoutShoes.status, 'fallback');
+  assert.match(withoutShoes.reason, /鞋履/);
+  console.log('Complete-outfit Taobao matching checks passed');
 } finally {
   globalThis.fetch = originalFetch;
 }
