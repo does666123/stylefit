@@ -311,7 +311,7 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
         return item ? [item] : [];
       });
       const totalPrice = selected.reduce((total, item) => total + item.price, 0);
-      if (selected.length < 2 || (profile?.budget && totalPrice > profile.budget)) return [];
+      if (!selected.length || (profile?.budget && totalPrice > profile.budget)) return [];
 
       return [{
         id: `ai-outfit-${index}`,
@@ -330,7 +330,7 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
 
     return generated;
   }, [aiRecommendation, aiResult, profile]);
-  const hasRenderableAIOutfits = outfits.length === 3;
+  const hasRenderableAIOutfits = outfits.length > 0;
   const bmiInfo = useMemo(() => {
     if (!profile) return null;
     return getBMICategory(profile.height, profile.weight, t as any);

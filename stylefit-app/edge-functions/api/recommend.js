@@ -225,12 +225,7 @@ function isCandidateEligible(candidate, profile) {
   if (nonWearableTerms.test(text)) return false;
   if (profile.occasion !== 'travel' && defaultLifestyleTerms.test(text)) return false;
   if (candidate.category === 'shoes') return isShoeProduct(text);
-  const patterns = {
-    top: /上衣|T恤|t恤|衬衫|衬衣|针织|毛衣|卫衣|Polo|polo|外套|夹克|大衣|风衣|羽绒|西装/,
-    bottom: /裤|牛仔|半身裙/,
-    accessory: /包|腰带|皮带|围巾|丝巾|领带|胸针|耳饰|项链|手链|戒指|腕表/,
-  };
-  return patterns[candidate.category]?.test(text) || false;
+  return true;
 }
 
 function matchingTerms(text, values) {
@@ -277,6 +272,12 @@ function composeOutfit(blueprint, candidates, profile, usedIds, allowReuse) {
   const budget = Number(profile.budget);
   const hasBudget = Number.isFinite(budget) && budget > 0;
   const ranked = Object.fromEntries(categories.map((category) => [category, rankCategory(candidates, profile, blueprint, category, usedIds, allowReuse)]));
+  const createOutfit = (items) => ({
+    name: blueprint.name,
+    stylingTip: [blueprint.style, blueprint.fit, blueprint.formality].filter(Boolean).join(' · ') || '按你的身形与场合搭配',
+    items: items.map(({ candidate }) => ({ id: candidate.id, reason: `${candidate.category}：${candidate.title}` })),
+    selected: items.map(({ candidate }) => candidate),
+  });
   let best = null;
   for (const top of ranked.top) {
     for (const bottom of ranked.bottom) {
@@ -288,16 +289,25 @@ function composeOutfit(blueprint, candidates, profile, usedIds, allowReuse) {
       }
     }
   }
-  if (!best) return null;
-  const items = [best.top, best.bottom, best.shoes];
-  const accessory = ranked.accessory.find(({ candidate }) => !hasBudget || best.total + candidate.couponPrice <= budget);
-  if (accessory) items.push(accessory);
-  return {
-    name: blueprint.name,
-    stylingTip: [blueprint.style, blueprint.fit, blueprint.formality].filter(Boolean).join(' · ') || '按你的身形与场合搭配',
-    items: items.map(({ candidate }) => ({ id: candidate.id, reason: `${candidate.category}：${candidate.title}` })),
-    selected: items.map(({ candidate }) => candidate),
-  };
+  if (best) {
+    const items = [best.top, best.bottom, best.shoes];
+    const accessory = ranked.accessory.find(({ candidate }) => !hasBudget || best.total + candidate.couponPrice <= budget);
+    if (accessory) items.push(accessory);
+    return createOutfit(items);
+  }
+
+  for (const top of ranked.top) {
+    for (const bottom of ranked.bottom) {
+      if (!hasBudget || top.candidate.couponPrice + bottom.candidate.couponPrice <= budget) {
+        return createOutfit([top, bottom]);
+      }
+    }
+  }
+
+  const single = categories
+    .flatMap((category) => ranked[category])
+    .find(({ candidate }) => !hasBudget || candidate.couponPrice <= budget);
+  return single ? createOutfit([single]) : null;
 }
 
 function fallback(reason, details = {}) {
@@ -431,17 +441,26 @@ export async function onRequest({ request, env }) {
 
     const pool = await searchTaobaoCandidatePool(env, getScene(profile), mergeKeywords(plan.blueprints));
     if (pool.error) return { reason: '淘宝联盟商品暂时不可用' };
-    const candidates = (pool.products || []).map((product) => toCandidate(product, profile)).filter(Boolean);
+    const taobaoCount = Array.isArray(pool.products) ? pool.products.length : 0;
+    const candidates = (pool.products || [])
+      .map((product) => toCandidate(product, profile))
+      .filter(Boolean)
+      .filter((candidate) => isCandidateEligible(candidate, profile));
     const usedIds = new Set();
     const composed = [];
     for (const blueprint of plan.blueprints) {
       const outfit = composeOutfit(blueprint, candidates, profile, usedIds, false)
         || composeOutfit(blueprint, candidates, profile, usedIds, true);
-      if (!outfit) return { reason: '本场景暂未找到包含上衣、下装和鞋履的真实商品' };
+      if (!outfit) continue;
       outfit.selected.forEach((candidate) => usedIds.add(candidate.id));
       composed.push(outfit);
     }
-    if (composed.length !== 3) return { reason: '本场景暂未找到三套完整的真实商品搭配' };
+    console.info('[recommend] candidate pipeline', {
+      taobaoReturned: taobaoCount,
+      afterFiltering: candidates.length,
+      composedOutfits: composed.length,
+    });
+    if (!composed.length) return { reason: '本场景暂未找到可搭配的真实商品' };
 
     const selected = [];
     const selectedIds = new Set();

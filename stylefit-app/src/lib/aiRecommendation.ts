@@ -28,12 +28,9 @@ type CachedAIRecommendation = {
 };
 
 function hasCompleteOutfits(result: AIRecommendationResult) {
-  if (result.recommendation.outfits.length !== 3) return false;
+  if (!result.recommendation.outfits.length || result.recommendation.outfits.length > 3) return false;
   const candidatesById = new Map(result.candidates.map((item) => [item.id, item]));
-  return result.recommendation.outfits.every((outfit) => {
-    const categories = new Set(outfit.items.map((item) => candidatesById.get(item.id)?.category));
-    return categories.has('top') && categories.has('bottom') && categories.has('shoes');
-  });
+  return result.recommendation.outfits.every((outfit) => outfit.items.length > 0 && outfit.items.every((item) => candidatesById.has(item.id)));
 }
 
 export function safeSessionGet(key: string) {
@@ -237,7 +234,8 @@ export async function requestAIRecommendation(profile: UserBodyProfile): Promise
       !recommendation ||
       typeof recommendation.summary !== 'string' ||
       !Array.isArray(recommendation.outfits) ||
-      recommendation.outfits.length !== 3 ||
+      !recommendation.outfits.length ||
+      recommendation.outfits.length > 3 ||
       !Array.isArray(result.candidates)
     ) return null;
 
@@ -259,13 +257,12 @@ export async function requestAIRecommendation(profile: UserBodyProfile): Promise
           : [];
       });
       const selected = items.map((item) => candidatesById.get(item.id)!);
-      const categories = new Set(selected.map((item) => item.category));
       const total = selected.reduce((sum, item) => sum + item.price, 0);
-      if (items.length < 3 || !categories.has('top') || !categories.has('bottom') || !categories.has('shoes')) return [];
+      if (!items.length) return [];
       if (Number.isFinite(budget) && budget > 0 && total > budget) return [];
       return [{ name: source.name || `方案 ${index + 1}`, stylingTip: source.stylingTip, items }];
     });
-    if (outfits.length !== 3) return null;
+    if (!outfits.length) return null;
     const candidateFingerprint = getCandidateFingerprint(candidates);
     if (!candidateFingerprint) return null;
 

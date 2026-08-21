@@ -5,6 +5,7 @@ const originalFetch = globalThis.fetch;
 let aiCalls = 0;
 let taobaoCalls = 0;
 let omitShoes = false;
+let omitBottom = false;
 let activeGender = 'male';
 
 function titleFor(query) {
@@ -49,8 +50,9 @@ globalThis.fetch = async (url, options = {}) => {
   const title = titleFor(params.get('q') || '');
   const variants = ['黑色直筒', '卡其宽松', '深蓝修身'];
   const isShoeQuery = /鞋|靴/.test(title);
+  const isBottomQuery = /裤|裙/.test(title);
   const isAccessoryQuery = /包|帽|围巾|腰带|领带|袜/.test(title);
-  const items = omitShoes && isShoeQuery
+  const items = (omitShoes && isShoeQuery) || (omitBottom && isBottomQuery)
     ? []
     : Array.from({ length: 20 }, (_, index) => ({
       item_id: `${taobaoCalls}-${index}`,
@@ -111,9 +113,14 @@ try {
 
   omitShoes = true;
   const withoutShoes = await request({ ...scenarios[0], budget: 301 });
-  assert.equal(withoutShoes.status, 'fallback');
-  assert.match(withoutShoes.reason, /鞋履/);
-  console.log('Complete-outfit Taobao matching checks passed');
+  assert.equal(withoutShoes.status, 'ok');
+  assert.ok(withoutShoes.recommendation.outfits.every((outfit) => outfit.items.length >= 2));
+
+  omitBottom = true;
+  const singleItems = await request({ ...scenarios[0], budget: 302 });
+  assert.equal(singleItems.status, 'ok');
+  assert.ok(singleItems.recommendation.outfits.every((outfit) => outfit.items.length === 1));
+  console.log('Recommendation degradation checks passed');
 } finally {
   globalThis.fetch = originalFetch;
 }
