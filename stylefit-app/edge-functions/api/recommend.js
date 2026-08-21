@@ -265,7 +265,6 @@ function rankCategory(candidates, profile, blueprint, category, usedIds, allowRe
     .filter((candidate) => candidate.category === category && isCandidateEligible(candidate, profile))
     .filter((candidate) => allowReuse || !usedIds.has(candidate.id))
     .map((candidate) => ({ candidate, score: scoreCandidate(candidate, profile, blueprint, category) }))
-    .filter(({ score }) => score >= 75)
     .sort((left, right) => right.score - left.score || left.candidate.couponPrice - right.candidate.couponPrice);
   const usedShopTitles = new Set(candidates
     .filter((candidate) => usedIds.has(candidate.id))
