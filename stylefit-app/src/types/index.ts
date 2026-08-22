@@ -164,6 +164,10 @@ export interface OutfitSet {
   themeName?: string; // 主题名称（如"春季老钱风穿搭"）
   suitableBodyDesc?: string; // 适合身材描述
   stylingAdvice?: string; // 整体搭配建议
+  outfitReason?: string; // AI 搭配理由
+  suitableScene?: string; // 适合场景
+  styleTags?: string[]; // AI 风格标签
+  bodyAdvice?: string; // 身材建议
   itemReasons?: { itemId: string; reason: string }[]; // 每件单品的推荐理由
   // AI 匹配度字段
   matchScore?: number; // 套装整体匹配度（0-100）

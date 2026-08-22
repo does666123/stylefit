@@ -105,6 +105,10 @@ try {
       assert.ok(new Set(categoryItems.map((item) => item.shopTitle)).size >= 2);
     }
     for (const outfit of body.recommendation.outfits) {
+      assert.ok(typeof outfit.outfit_reason === 'string' && outfit.outfit_reason.length >= 50 && outfit.outfit_reason.length <= 100);
+      assert.ok(typeof outfit.suitable_scene === 'string' && outfit.suitable_scene.length > 0);
+      assert.equal(outfit.style_tags.length, 3);
+      assert.ok(typeof outfit.body_advice === 'string' && outfit.body_advice.length > 0);
       const selected = outfit.items.map((item) => body.candidates.find((candidate) => candidate.id === item.id));
       assert.ok(selected.some((item) => item.category === 'top'));
       assert.ok(selected.some((item) => item.category === 'bottom'));

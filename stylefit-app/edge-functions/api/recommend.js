@@ -328,6 +328,40 @@ function hasBudgetScore(candidate, category, profile) {
   return clamp((budgetItemScore(candidate, category, budget) + 3) / 6, 0, 1);
 }
 
+function bodyAdvice(profile) {
+  const adviceByBodyType = {
+    slim: '用微宽松层次和肩部线条增加分量感，避免过紧或过薄的单品。',
+    standard: '保持合体但不紧绷的比例，用清晰腰线和直筒线条提升利落感。',
+    athletic: '突出肩背优势，并用直筒下装平衡整体比例。',
+    curvy: '用高腰、垂感与清晰腰线优化比例，避免横向堆叠。',
+    plus: '优先垂感和直线剪裁，减少横向膨胀并保持舒适空间。',
+  };
+  return adviceByBodyType[profile.bodyType] || '用合体剪裁和干净层次保持舒适、利落的整体比例。';
+}
+
+function explainOutfit(blueprint, profile) {
+  const height = Number(profile.height);
+  const weight = Number(profile.weight);
+  const bmi = Number.isFinite(height) && height > 0 && Number.isFinite(weight) && weight > 0
+    ? (weight / ((height / 100) ** 2)).toFixed(1)
+    : '—';
+  const colors = blueprint.colors?.filter(Boolean).join('、') || '低饱和基础色';
+  const style = blueprint.style || profile.stylePreference || '简约风格';
+  const occasion = blueprint.occasion || profile.occasion || '日常';
+  const fit = blueprint.fit || '合体利落的版型';
+  return `结合你${Number.isFinite(height) ? `${height}cm` : '当前'}身高、${Number.isFinite(weight) ? `${weight}kg` : '当前'}体重与 BMI ${bmi}，以${fit}修饰身形；用${colors}建立${style}的统一层次，兼顾${occasion}场景的得体与舒适。`;
+}
+
+function outfitStyleTags(blueprint, profile) {
+  return [...new Set([
+    blueprint.style,
+    blueprint.formality,
+    blueprint.fit,
+    profile.stylePreference,
+    profile.occasion,
+  ].filter(Boolean))].slice(0, 3);
+}
+
 function rankCategory(candidates, profile, blueprint, category, usedIds, allowReuse, template) {
   const ranked = candidates
     .filter((candidate) => candidate.category === category && isCandidateEligible(candidate, profile))
@@ -349,6 +383,10 @@ function composeOutfit(blueprint, candidates, profile, usedIds, allowReuse, temp
   const createOutfit = (items) => ({
     name: blueprint.name,
     stylingTip: [blueprint.style, blueprint.fit, blueprint.formality].filter(Boolean).join(' · ') || '按你的身形与场合搭配',
+    outfit_reason: explainOutfit(blueprint, profile),
+    suitable_scene: blueprint.occasion || profile.occasion || '日常',
+    style_tags: outfitStyleTags(blueprint, profile),
+    body_advice: bodyAdvice(profile),
     items: items.map(({ candidate }) => ({ id: candidate.id, reason: `${candidate.category}：${candidate.title}` })),
     selected: items.map(({ candidate }) => candidate),
   });

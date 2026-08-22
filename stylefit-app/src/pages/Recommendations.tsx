@@ -324,6 +324,10 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
         occasion: profile?.occasion || selected[0].occasions[0] || 'daily',
         style: profile?.stylePreference || selected[0].styles[0] || 'casual',
         stylingAdvice: outfit.stylingTip,
+        outfitReason: outfit.outfitReason,
+        suitableScene: outfit.suitableScene,
+        styleTags: outfit.styleTags,
+        bodyAdvice: outfit.bodyAdvice,
         itemReasons: outfit.items.map(({ id, reason }) => ({ itemId: id, reason })),
       }];
     });
@@ -939,6 +943,22 @@ function OutfitCard({
             <span className={`outfit-budget-status ${outfit.totalPrice <= budget ? 'outfit-budget-in' : 'outfit-budget-over'}`}>
               {outfit.totalPrice <= budget ? '预算内' : '预算参考'} · ¥{formatAmount(outfit.totalPrice)} / ¥{formatAmount(budget)} · {outfit.totalPrice <= budget ? `剩余 ¥${formatAmount(budget - outfit.totalPrice)}` : `超出 ¥${formatAmount(outfit.totalPrice - budget)}`}
             </span>
+          )}
+          {(outfit.outfitReason || outfit.bodyAdvice || outfit.suitableScene || outfit.styleTags?.length) && (
+            <div className="mt-2 rounded-lg border border-[#E0782C]/20 bg-[#FFF8F2] px-3 py-2">
+              <div className="flex items-center gap-1 text-xs font-semibold text-[#C96A22]">
+                <Sparkles className="h-3.5 w-3.5" />
+                AI 搭配理由
+              </div>
+              {outfit.outfitReason && <p className="mt-1 text-xs leading-5 text-[#5D5B55]">{outfit.outfitReason}</p>}
+              {outfit.bodyAdvice && <p className="mt-1 text-xs leading-5 text-[#77736B]">身材建议：{outfit.bodyAdvice}</p>}
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {outfit.suitableScene && <span className="rounded-full bg-white px-2 py-0.5 text-[11px] text-[#6B6258]">适合：{outfit.suitableScene}</span>}
+                {outfit.styleTags?.map((tag) => (
+                  <span key={tag} className="rounded-full bg-white px-2 py-0.5 text-[11px] text-[#6B6258]">{styleTagLabels[tag] ?? tag}</span>
+                ))}
+              </div>
+            </div>
           )}
           {outfit.suitableBodyDesc && (
             <div className="flex items-center gap-1 text-xs text-[#8A8A84] mb-1">

@@ -7,6 +7,10 @@ export type AIRecommendation = {
   outfits: {
     name: string;
     stylingTip: string;
+    outfitReason?: string;
+    suitableScene?: string;
+    styleTags?: string[];
+    bodyAdvice?: string;
     items: { id: string; reason: string }[];
   }[];
 };
@@ -247,7 +251,15 @@ export async function requestAIRecommendation(profile: UserBodyProfile): Promise
     const budget = Number(profile.budget);
     const outfits = recommendation.outfits.flatMap((value, index) => {
       if (typeof value !== 'object' || value === null) return [];
-      const source = value as { name?: unknown; stylingTip?: unknown; items?: unknown };
+      const source = value as {
+        name?: unknown;
+        stylingTip?: unknown;
+        outfit_reason?: unknown;
+        suitable_scene?: unknown;
+        style_tags?: unknown;
+        body_advice?: unknown;
+        items?: unknown;
+      };
       if (typeof source.name !== 'string' || typeof source.stylingTip !== 'string' || !Array.isArray(source.items)) return [];
       const items = source.items.flatMap((item) => {
         if (typeof item !== 'object' || item === null) return [];
@@ -260,7 +272,18 @@ export async function requestAIRecommendation(profile: UserBodyProfile): Promise
       const total = selected.reduce((sum, item) => sum + item.price, 0);
       if (!items.length) return [];
       if (Number.isFinite(budget) && budget > 0 && total > budget) return [];
-      return [{ name: source.name || `方案 ${index + 1}`, stylingTip: source.stylingTip, items }];
+      const styleTags = Array.isArray(source.style_tags)
+        ? source.style_tags.filter((tag): tag is string => typeof tag === 'string' && Boolean(tag.trim())).slice(0, 3)
+        : [];
+      return [{
+        name: source.name || `方案 ${index + 1}`,
+        stylingTip: source.stylingTip,
+        outfitReason: typeof source.outfit_reason === 'string' ? source.outfit_reason : undefined,
+        suitableScene: typeof source.suitable_scene === 'string' ? source.suitable_scene : undefined,
+        styleTags,
+        bodyAdvice: typeof source.body_advice === 'string' ? source.body_advice : undefined,
+        items,
+      }];
     });
     if (!outfits.length) return null;
     const candidateFingerprint = getCandidateFingerprint(candidates);
