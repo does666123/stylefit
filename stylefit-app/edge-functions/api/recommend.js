@@ -9,11 +9,12 @@ const cacheLimit = 200;
 const recommendationCache = new Map();
 const inFlightRequests = new Map();
 const categories = ['top', 'bottom', 'shoes', 'accessory'];
-const styleTerms = ['商务', '通勤', '休闲', '运动', '街头', '复古', '学院', '日系', '韩系', '轻熟', '极简', '简约', '优雅', '老钱', 'clean', 'quiet'];
-const visualTerms = ['黑', '白', '灰', '蓝', '棕', '卡其', '米', '直筒', '阔腿', '宽松', '修身', '合体', '廓形', '羊毛', '羊绒', '真丝', '亚麻', '棉', '皮革', '真皮'];
+const styleTerms = ['商务', '通勤', '休闲', '运动', '街头', '复古', '学院', '日系', '韩系', '轻熟', '极简', '简约', '优雅', '老钱', '法式', 'clean', 'quiet'];
+const visualTerms = ['黑', '白', '灰', '蓝', '深蓝', '棕', '卡其', '米', '驼', '奶油', '直筒', '阔腿', '宽松', '修身', '合体', '廓形', '羊毛', '羊绒', '真丝', '亚麻', '棉', '皮革', '真皮'];
 const premiumTerms = ['羊毛', '羊绒', '真丝', '桑蚕丝', '亚麻', '纯棉', '棉质', '真皮', '皮革', '牛津纺', '针织', '垂感', '质感', '剪裁', '双面', '精纺'];
 const nonWearableTerms = /防晒|遮阳|功能|户外|沙滩|海边|泳衣|泳裤|游泳|露营|登山|钓鱼|旅行收纳|收纳包|洗漱包|行李|雨伞|水杯|手机|电脑|数码|家居|美妆|食品/;
 const defaultLifestyleTerms = /草帽|渔夫帽|遮阳帽|沙滩帽|夸张耳环|夸张项链|派对眼镜/;
+const lowQualityTerms = /大logo|大图案|夸张印花|荧光|撞色|彩虹|工具|功能|赠品|广告款|同款链接|清仓特价/;
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: jsonHeaders });
@@ -205,16 +206,16 @@ function toCandidate(product, profile) {
 
 function profileTerms(profile) {
   const styles = {
-    business: ['商务', '通勤', '西装', '衬衫', '西裤', '皮鞋'],
-    commute: ['通勤', '商务', '简约', '衬衫'],
-    casual: ['休闲', '基础', '牛仔', 't恤', '运动'],
+    business: ['商务', '通勤', '西装', '衬衫', '西裤', '皮鞋', '轻熟', '简约'],
+    casual: ['休闲', '基础', '牛仔', 't恤', '运动', 'clean'],
     sporty: ['运动', '跑步', '卫衣', '球鞋'],
     streetwear: ['街头', '宽松', '工装', '潮'],
     retro: ['复古', '格纹', '灯芯绒', '直筒'],
     preppy: ['学院', '衬衫', '针织'],
-    minimal: ['简约', '基础', '纯色', '极简'],
+    minimal: ['简约', '基础', '纯色', '极简', 'clean', '克制'],
+    elegant: ['优雅', '轻熟', '法式', '垂感', '简约', '质感'],
   };
-  const scenes = { daily: ['日常', '休闲'], work: ['职场', '通勤', '商务'], date: ['约会', '轻熟'], party: ['聚会', '派对'], campus: ['校园', '学院'], travel: ['旅行', '舒适'] };
+  const scenes = { daily: ['日常', '休闲'], work: ['职场', '通勤', '商务'], date: ['约会', '轻熟', '优雅'], party: ['聚会', '派对'], travel: ['旅行', '舒适'], formal: ['正式', '商务', '优雅'] };
   return [...(styles[profile.stylePreference] || []), ...(scenes[profile.occasion] || [])];
 }
 
@@ -232,6 +233,26 @@ function matchingTerms(text, values) {
   return [...new Set(values.filter(Boolean))].filter((term) => text.includes(String(term).toLowerCase())).length;
 }
 
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function budgetItemScore(candidate, category, budget) {
+  if (!Number.isFinite(budget) || budget <= 0) return 0;
+
+  const ratio = candidate.couponPrice / budget;
+  const ranges = {
+    top: [0.2, 0.4],
+    bottom: [0.2, 0.4],
+    shoes: [0.27, 0.5],
+    accessory: [0.04, 0.2],
+  };
+  const [min, max] = ranges[category] || [0, 1];
+  if (ratio >= min && ratio <= max) return 3;
+  if (ratio < min) return ratio >= min * 0.65 ? 1 : -1;
+  return ratio <= max * 1.2 ? 0 : -3;
+}
+
 function scoreCandidate(candidate, profile, blueprint, category) {
   const text = `${candidate.title} ${candidate.category}`.toLowerCase();
   const keyword = blueprint.keywords[category] || '';
@@ -246,13 +267,19 @@ function scoreCandidate(candidate, profile, blueprint, category) {
     plus: ['垂感', '直筒', '宽松', '深色'],
   };
   const fitMatches = matchingTerms(text, fitTerms[profile.bodyType] || []);
+  const colorMatches = matchingTerms(text, [...(blueprint.colors || []), ...visualTerms.slice(0, 10)]);
   const premiumMatches = matchingTerms(text, premiumTerms);
-  const styleUnity = Math.min(30, 18 + keywordMatches * 6 + profileMatches * 2);
-  const bodyFit = Math.min(25, 18 + fitMatches * 4);
-  const occasionFit = Math.min(20, 15 + profileMatches * 2);
-  const sophistication = Math.min(15, 7 + premiumMatches * 4);
-  const productQuality = Math.min(10, 3 + Math.log10(Math.max(candidate.volume, 1) + 1) * 3);
-  return styleUnity + bodyFit + occasionFit + sophistication + productQuality;
+  const lowQualityPenalty = lowQualityTerms.test(text) ? 8 : 0;
+  const styleMatch = clamp(12 + keywordMatches * 5 + profileMatches * 2, 0, 30);
+  const colorMatch = clamp(10 + colorMatches * 3 - lowQualityPenalty, 0, 20);
+  const silhouetteFit = clamp(11 + fitMatches * 4, 0, 20);
+  const sceneMatch = clamp(8 + profileMatches * 2, 0, 15);
+  const quality = clamp(
+    5 + premiumMatches * 2 + Math.log10(Math.max(candidate.volume, 1) + 1) * 2 + budgetItemScore(candidate, category, Number(profile.budget)) - lowQualityPenalty,
+    0,
+    15,
+  );
+  return styleMatch + colorMatch + silhouetteFit + sceneMatch + quality;
 }
 
 function rankCategory(candidates, profile, blueprint, category, usedIds, allowReuse) {
@@ -284,7 +311,16 @@ function composeOutfit(blueprint, candidates, profile, usedIds, allowReuse) {
       for (const shoes of ranked.shoes) {
         const total = top.candidate.couponPrice + bottom.candidate.couponPrice + shoes.candidate.couponPrice;
         if (hasBudget && total > budget) continue;
-        const score = top.score + bottom.score + shoes.score;
+        const budgetRatio = hasBudget ? total / budget : 0;
+        const utilizationScore = !hasBudget ? 0 : budgetRatio >= 0.6
+          ? 6 + Math.min(4, (budgetRatio - 0.6) * 10)
+          : Math.max(-4, (budgetRatio - 0.6) * 10);
+        const allocationScore = !hasBudget ? 0 : [
+          budgetItemScore(top.candidate, 'top', budget),
+          budgetItemScore(bottom.candidate, 'bottom', budget),
+          budgetItemScore(shoes.candidate, 'shoes', budget),
+        ].reduce((sum, value) => sum + value, 0);
+        const score = top.score + bottom.score + shoes.score + utilizationScore + allocationScore;
         if (!best || score > best.score) best = { top, bottom, shoes, total, score };
       }
     }
@@ -458,13 +494,20 @@ export async function onRequest({ request, env }) {
       outfit.selected.forEach((candidate) => usedIds.add(candidate.id));
       composed.push(outfit);
     }
-    console.info('[recommend] candidate pipeline', {
+    const topScored = Object.fromEntries(categories.map((category) => {
+      const first = rankCategory(candidates, profile, plan.blueprints[0], category, new Set(), true)[0];
+      return [category, first ? { title: first.candidate.title, score: Math.round(first.score) } : null];
+    }));
+    console.info('[recommend] stylist pipeline', {
+      profile: pick(profile, ['gender', 'bodyType', 'stylePreference', 'occasion', 'season', 'budget']),
+      generatedStyles: plan.blueprints.map((blueprint) => blueprint.style || blueprint.name),
       taobaoReturned: taobaoCount,
       afterFiltering: candidates.length,
       tops: categoryCounts.top,
       bottoms: categoryCounts.bottom,
       shoes: categoryCounts.shoes,
       composedOutfits: composed.length,
+      topScored,
     });
     if (!composed.length) return { reason: '本场景暂未找到可搭配的真实商品' };
 

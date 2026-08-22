@@ -16,6 +16,13 @@ function titleFor(query) {
   return `${query || `${prefix}商务衬衫`} 棉质合体上衣`;
 }
 
+function priceFor(query) {
+  if (/鞋|靴/.test(query)) return '99';
+  if (/裤|裙/.test(query)) return '89';
+  if (/包|帽|围巾|腰带|领带|袜/.test(query)) return '29';
+  return '79';
+}
+
 function planFor(gender) {
   const prefix = gender === 'female' ? '女士' : '男士';
   return {
@@ -57,7 +64,7 @@ globalThis.fetch = async (url, options = {}) => {
     : Array.from({ length: 20 }, (_, index) => ({
       item_id: `${taobaoCalls}-${index}`,
       publish_info: { coupon_share_url: 'https://uland.taobao.com/coupon/example' },
-      price_promotion_info: { zk_final_price: '109', final_promotion_price: '89' },
+      price_promotion_info: { zk_final_price: '109', final_promotion_price: priceFor(title) },
       item_basic_info: { title: isShoeQuery && index < 2 ? `${activeGender === 'female' ? '女士' : '男士'}${index ? '皮鞋鞋垫' : '运动袜子'}` : isAccessoryQuery && index === 0 ? `${activeGender === 'female' ? '女士' : '男士'}草帽 沙滩遮阳帽` : `${title} ${variants[index % variants.length]}`, pict_url: 'https://img.alicdn.com/example.jpg', shop_title: `测试店铺${taobaoCalls}-${index % variants.length}`, volume: 12, category_name: '服装' },
     }));
   return new Response(JSON.stringify({
@@ -77,10 +84,10 @@ async function request(profile) {
 
 try {
   const scenarios = [
-    { gender: 'male', height: 175, weight: 70, stylePreference: 'sporty', occasion: 'daily', season: 'autumn', bodyType: 'standard', skinTone: 'medium', budget: 300 },
+    { gender: 'male', height: 173, weight: 52, stylePreference: 'minimal', occasion: 'daily', season: 'autumn', bodyType: 'slim', skinTone: 'medium', budget: 300 },
     { gender: 'male', height: 175, weight: 70, stylePreference: 'business', occasion: 'work', season: 'autumn', bodyType: 'standard', skinTone: 'medium', budget: 400 },
-    { gender: 'female', height: 165, weight: 52, stylePreference: 'commute', occasion: 'work', season: 'autumn', bodyType: 'standard', skinTone: 'medium', budget: 300 },
-    { gender: 'female', height: 165, weight: 52, stylePreference: 'preppy', occasion: 'campus', season: 'autumn', bodyType: 'standard', skinTone: 'medium', budget: 300 },
+    { gender: 'female', height: 165, weight: 50, stylePreference: 'elegant', occasion: 'work', season: 'autumn', bodyType: 'standard', skinTone: 'medium', budget: 300 },
+    { gender: 'female', height: 165, weight: 52, stylePreference: 'casual', occasion: 'date', season: 'autumn', bodyType: 'standard', skinTone: 'medium', budget: 300 },
   ];
   for (const profile of scenarios) {
     const body = await request(profile);
@@ -105,7 +112,9 @@ try {
       assert.equal(selected.some((item) => item.category === 'shoes' && /袜子?|鞋垫|鞋带|鞋套|鞋刷|鞋油|鞋盒|鞋撑|鞋饰/.test(item.title)), false);
       assert.equal(selected.some((item) => /草帽|沙滩|功能|露营/.test(item.title)), false);
       assert.ok(selected.every((item) => item.title.startsWith(profile.gender === 'female' ? '女士' : '男士')));
-      assert.ok(selected.reduce((sum, item) => sum + item.couponPrice, 0) <= profile.budget);
+      const total = selected.reduce((sum, item) => sum + item.couponPrice, 0);
+      assert.ok(total <= profile.budget);
+      assert.ok(total >= profile.budget * 0.6);
     }
   }
   assert.equal(aiCalls, 4);
