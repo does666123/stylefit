@@ -120,6 +120,10 @@ try {
   const singleItems = await request({ ...scenarios[0], budget: 302 });
   assert.equal(singleItems.status, 'ok');
   assert.ok(singleItems.recommendation.outfits.every((outfit) => outfit.items.length === 1));
+  assert.ok(singleItems.recommendation.outfits.every((outfit) => {
+    const selected = outfit.items.map((item) => singleItems.candidates.find((candidate) => candidate.id === item.id));
+    return selected.every((item) => item.category === 'top');
+  }));
   console.log('Recommendation degradation checks passed');
 } finally {
   globalThis.fetch = originalFetch;

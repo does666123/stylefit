@@ -286,7 +286,11 @@ export async function searchTaobaoCandidatePool(env, sceneKey, keywordGroups) {
   });
   const results = await Promise.all(searches.map(({ category, keyword }) =>
     searchTaobaoProducts(env, sceneKey, category, 1, keyword)));
-  const successful = results.filter((result) => !result.error);
+  const missingCoreCategories = ['top', 'bottom'].filter((category) => !results.some((result, index) =>
+    searches[index].category === category && !result.error && (result.products || []).length));
+  const fallbackResults = await Promise.all(missingCoreCategories.map((category) =>
+    searchTaobaoProducts(env, sceneKey, category, 1, scene.queries[category])));
+  const successful = [...results, ...fallbackResults].filter((result) => !result.error);
   if (!successful.length) {
     return results.find((result) => result.error === 'not_configured')
       || results.find((result) => result.error)

@@ -304,8 +304,7 @@ function composeOutfit(blueprint, candidates, profile, usedIds, allowReuse) {
     }
   }
 
-  const single = categories
-    .flatMap((category) => ranked[category])
+  const single = ranked.top
     .find(({ candidate }) => !hasBudget || candidate.couponPrice <= budget);
   return single ? createOutfit([single]) : null;
 }
@@ -446,6 +445,10 @@ export async function onRequest({ request, env }) {
       .map((product) => toCandidate(product, profile))
       .filter(Boolean)
       .filter((candidate) => isCandidateEligible(candidate, profile));
+    const categoryCounts = Object.fromEntries(categories.map((category) => [
+      category,
+      candidates.filter((candidate) => candidate.category === category).length,
+    ]));
     const usedIds = new Set();
     const composed = [];
     for (const blueprint of plan.blueprints) {
@@ -458,6 +461,9 @@ export async function onRequest({ request, env }) {
     console.info('[recommend] candidate pipeline', {
       taobaoReturned: taobaoCount,
       afterFiltering: candidates.length,
+      tops: categoryCounts.top,
+      bottoms: categoryCounts.bottom,
+      shoes: categoryCounts.shoes,
       composedOutfits: composed.length,
     });
     if (!composed.length) return { reason: '本场景暂未找到可搭配的真实商品' };
