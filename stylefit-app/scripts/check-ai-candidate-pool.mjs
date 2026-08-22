@@ -122,18 +122,14 @@ try {
 
   omitShoes = true;
   const withoutShoes = await request({ ...scenarios[0], budget: 301 });
-  assert.equal(withoutShoes.status, 'ok');
-  assert.ok(withoutShoes.recommendation.outfits.every((outfit) => outfit.items.length >= 2));
+  assert.equal(withoutShoes.status, 'fallback');
+  assert.equal(withoutShoes.reason, '本场景暂未找到可搭配的真实商品');
 
   omitBottom = true;
-  const singleItems = await request({ ...scenarios[0], budget: 302 });
-  assert.equal(singleItems.status, 'ok');
-  assert.ok(singleItems.recommendation.outfits.every((outfit) => outfit.items.length === 1));
-  assert.ok(singleItems.recommendation.outfits.every((outfit) => {
-    const selected = outfit.items.map((item) => singleItems.candidates.find((candidate) => candidate.id === item.id));
-    return selected.every((item) => item.category === 'top');
-  }));
-  console.log('Recommendation degradation checks passed');
+  const withoutBottom = await request({ ...scenarios[0], budget: 302 });
+  assert.equal(withoutBottom.status, 'fallback');
+  assert.equal(withoutBottom.reason, '本场景暂未找到可搭配的真实商品');
+  console.log('Recommendation style template checks passed');
 } finally {
   globalThis.fetch = originalFetch;
 }

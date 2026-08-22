@@ -17,6 +17,18 @@ const refinedDesignTerms = ['简约', '极简', '基础', '纯色', '剪裁', '�
 const nonWearableTerms = /防晒|遮阳|功能|户外|沙滩|海边|泳衣|泳裤|游泳|露营|登山|钓鱼|旅行收纳|收纳包|洗漱包|行李|雨伞|水杯|手机|电脑|数码|家居|美妆|食品/;
 const defaultLifestyleTerms = /草帽|渔夫帽|遮阳帽|沙滩帽|夸张耳环|夸张项链|派对眼镜/;
 const lowQualityTerms = /大logo|大图案|夸张印花|荧光|撞色|彩虹|工具|功能|赠品|广告款|同款链接|清仓特价/;
+const styleTemplates = {
+  male: [
+    { name: '老钱风', keywords: ['针织', '衬衫', '西裤', '卡其裤', '乐福鞋', '皮鞋', '羊毛', '棉麻', '米白', '灰色', '深棕', '藏蓝'], forbidden: ['大logo', '卡通', '运动鞋', '荧光'] },
+    { name: 'Clean Fit', keywords: ['纯色', 't恤', '宽松裤', '直筒裤', '基础', '小白鞋', '灰', '黑', '白'], forbidden: ['大logo', '卡通', '荧光'] },
+    { name: '韩系轻熟', keywords: ['短外套', '针织', '衬衫', '阔腿裤', '简约', '乐福鞋', '皮鞋'], forbidden: ['大logo', '卡通', '荧光'] },
+  ],
+  female: [
+    { name: '韩系简约', keywords: ['针织', '半裙', '西裤', '短外套', '玛丽珍鞋', '浅色', '简约'], forbidden: ['大logo', '卡通', '荧光'] },
+    { name: '法式温柔', keywords: ['衬衫', '碎花', '裙装', '针织', '低饱和', '浅色'], forbidden: ['大logo', '卡通', '荧光'] },
+    { name: '通勤高级', keywords: ['西装', '风衣', '直筒裤', '皮鞋', '衬衫', '针织'], forbidden: ['大logo', '卡通', '荧光'] },
+  ],
+};
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: jsonHeaders });
@@ -235,6 +247,18 @@ function matchingTerms(text, values) {
   return [...new Set(values.filter(Boolean))].filter((term) => text.includes(String(term).toLowerCase())).length;
 }
 
+function resolveStyleTemplate(profile, blueprint, index) {
+  const templates = styleTemplates[profile.gender === 'female' ? 'female' : 'male'];
+  const context = `${profile.stylePreference || ''} ${blueprint.style || ''} ${blueprint.formality || ''}`.toLowerCase();
+  const matched = templates.find((template) => template.keywords.some((term) => context.includes(term.toLowerCase())));
+  return matched || templates[index % templates.length];
+}
+
+function matchesStyleTemplate(candidate, template) {
+  const text = `${candidate.title} ${candidate.category}`.toLowerCase();
+  return !template.forbidden.some((term) => text.includes(term.toLowerCase()));
+}
+
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
@@ -255,7 +279,7 @@ function budgetItemScore(candidate, category, budget) {
   return ratio <= max * 1.2 ? 0 : -3;
 }
 
-function scoreCandidate(candidate, profile, blueprint, category) {
+function scoreCandidate(candidate, profile, blueprint, category, template) {
   const text = `${candidate.title} ${candidate.category}`.toLowerCase();
   const keyword = blueprint.keywords[category] || '';
   const lookTerms = [...styleTerms, ...visualTerms].filter((term) => `${blueprint.style || ''} ${blueprint.colors?.join(' ') || ''} ${blueprint.fit || ''} ${blueprint.formality || ''} ${keyword}`.includes(term));
@@ -289,14 +313,27 @@ function scoreCandidate(candidate, profile, blueprint, category) {
     0,
     20,
   );
-  return styleMatch + colorMatch + silhouetteFit + sceneMatch + quality + sophistication;
+  const templateMatches = matchingTerms(text, template.keywords);
+  const styleMatchScore = clamp(
+    templateMatches * 10 + (sophistication / 20) * 30 + (silhouetteFit / 20) * 20 + hasBudgetScore(candidate, category, profile) * 10,
+    0,
+    100,
+  );
+  return styleMatch + colorMatch + silhouetteFit + sceneMatch + quality + sophistication + styleMatchScore;
 }
 
-function rankCategory(candidates, profile, blueprint, category, usedIds, allowReuse) {
+function hasBudgetScore(candidate, category, profile) {
+  const budget = Number(profile.budget);
+  if (!Number.isFinite(budget) || budget <= 0) return 0.5;
+  return clamp((budgetItemScore(candidate, category, budget) + 3) / 6, 0, 1);
+}
+
+function rankCategory(candidates, profile, blueprint, category, usedIds, allowReuse, template) {
   const ranked = candidates
     .filter((candidate) => candidate.category === category && isCandidateEligible(candidate, profile))
+    .filter((candidate) => matchesStyleTemplate(candidate, template))
     .filter((candidate) => allowReuse || !usedIds.has(candidate.id))
-    .map((candidate) => ({ candidate, score: scoreCandidate(candidate, profile, blueprint, category) }))
+    .map((candidate) => ({ candidate, score: scoreCandidate(candidate, profile, blueprint, category, template) }))
     .sort((left, right) => right.score - left.score || left.candidate.couponPrice - right.candidate.couponPrice);
   const usedShopTitles = new Set(candidates
     .filter((candidate) => usedIds.has(candidate.id))
@@ -305,10 +342,10 @@ function rankCategory(candidates, profile, blueprint, category, usedIds, allowRe
   return (freshShops.length ? freshShops : ranked).slice(0, category === 'shoes' ? 10 : 20);
 }
 
-function composeOutfit(blueprint, candidates, profile, usedIds, allowReuse) {
+function composeOutfit(blueprint, candidates, profile, usedIds, allowReuse, template) {
   const budget = Number(profile.budget);
   const hasBudget = Number.isFinite(budget) && budget > 0;
-  const ranked = Object.fromEntries(categories.map((category) => [category, rankCategory(candidates, profile, blueprint, category, usedIds, allowReuse)]));
+  const ranked = Object.fromEntries(categories.map((category) => [category, rankCategory(candidates, profile, blueprint, category, usedIds, allowReuse, template)]));
   const createOutfit = (items) => ({
     name: blueprint.name,
     stylingTip: [blueprint.style, blueprint.fit, blueprint.formality].filter(Boolean).join(' · ') || '按你的身形与场合搭配',
@@ -342,17 +379,7 @@ function composeOutfit(blueprint, candidates, profile, usedIds, allowReuse) {
     return createOutfit(items);
   }
 
-  for (const top of ranked.top) {
-    for (const bottom of ranked.bottom) {
-      if (!hasBudget || top.candidate.couponPrice + bottom.candidate.couponPrice <= budget) {
-        return createOutfit([top, bottom]);
-      }
-    }
-  }
-
-  const single = ranked.top
-    .find(({ candidate }) => !hasBudget || candidate.couponPrice <= budget);
-  return single ? createOutfit([single]) : null;
+  return null;
 }
 
 function fallback(reason, details = {}) {
@@ -497,15 +524,17 @@ export async function onRequest({ request, env }) {
     ]));
     const usedIds = new Set();
     const composed = [];
-    for (const blueprint of plan.blueprints) {
-      const outfit = composeOutfit(blueprint, candidates, profile, usedIds, false)
-        || composeOutfit(blueprint, candidates, profile, usedIds, true);
+    for (const [index, blueprint] of plan.blueprints.entries()) {
+      const template = resolveStyleTemplate(profile, blueprint, index);
+      const outfit = composeOutfit(blueprint, candidates, profile, usedIds, false, template)
+        || composeOutfit(blueprint, candidates, profile, usedIds, true, template);
       if (!outfit) continue;
       outfit.selected.forEach((candidate) => usedIds.add(candidate.id));
       composed.push(outfit);
     }
+    const firstTemplate = resolveStyleTemplate(profile, plan.blueprints[0], 0);
     const topScored = Object.fromEntries(categories.map((category) => {
-      const first = rankCategory(candidates, profile, plan.blueprints[0], category, new Set(), true)[0];
+      const first = rankCategory(candidates, profile, plan.blueprints[0], category, new Set(), true, firstTemplate)[0];
       return [category, first ? { title: first.candidate.title, score: Math.round(first.score) } : null];
     }));
     console.info('[recommend] stylist pipeline', {
