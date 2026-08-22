@@ -65,7 +65,7 @@ globalThis.fetch = async (url, options = {}) => {
       item_id: `${taobaoCalls}-${index}`,
       publish_info: { coupon_share_url: 'https://uland.taobao.com/coupon/example' },
       price_promotion_info: { zk_final_price: '109', final_promotion_price: priceFor(title) },
-      item_basic_info: { title: isShoeQuery && index < 2 ? `${activeGender === 'female' ? '女士' : '男士'}${index ? '皮鞋鞋垫' : '运动袜子'}` : isAccessoryQuery && index === 0 ? `${activeGender === 'female' ? '女士' : '男士'}草帽 沙滩遮阳帽` : `${title} ${variants[index % variants.length]}`, pict_url: 'https://img.alicdn.com/example.jpg', shop_title: `测试店铺${taobaoCalls}-${index % variants.length}`, volume: 12, category_name: '服装' },
+      item_basic_info: { title: isShoeQuery && index < 2 ? `${activeGender === 'female' ? '女士' : '男士'}${index ? '皮鞋鞋垫' : '运动袜子'}` : isAccessoryQuery && index === 0 ? `${activeGender === 'female' ? '女士' : '男士'}草帽 沙滩遮阳帽` : index === 19 ? `${title} 荧光大logo夸张印花款` : `${title} ${variants[index % variants.length]}`, pict_url: 'https://img.alicdn.com/example.jpg', shop_title: `测试店铺${taobaoCalls}-${index % variants.length}`, volume: 12, category_name: '服装' },
     }));
   return new Response(JSON.stringify({
     tbk_dg_material_optional_upgrade_response: { result_list: { map_data: items }, total_results: items.length },
@@ -110,7 +110,7 @@ try {
       assert.ok(selected.some((item) => item.category === 'bottom'));
       assert.ok(selected.some((item) => item.category === 'shoes'));
       assert.equal(selected.some((item) => item.category === 'shoes' && /袜子?|鞋垫|鞋带|鞋套|鞋刷|鞋油|鞋盒|鞋撑|鞋饰/.test(item.title)), false);
-      assert.equal(selected.some((item) => /草帽|沙滩|功能|露营/.test(item.title)), false);
+      assert.equal(selected.some((item) => /草帽|沙滩|功能|露营|荧光|大logo|夸张印花/.test(item.title)), false);
       assert.ok(selected.every((item) => item.title.startsWith(profile.gender === 'female' ? '女士' : '男士')));
       const total = selected.reduce((sum, item) => sum + item.couponPrice, 0);
       assert.ok(total <= profile.budget);

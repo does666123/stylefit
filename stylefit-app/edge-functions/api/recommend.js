@@ -12,6 +12,8 @@ const categories = ['top', 'bottom', 'shoes', 'accessory'];
 const styleTerms = ['商务', '通勤', '休闲', '运动', '街头', '复古', '学院', '日系', '韩系', '轻熟', '极简', '简约', '优雅', '老钱', '法式', 'clean', 'quiet'];
 const visualTerms = ['黑', '白', '灰', '蓝', '深蓝', '棕', '卡其', '米', '驼', '奶油', '直筒', '阔腿', '宽松', '修身', '合体', '廓形', '羊毛', '羊绒', '真丝', '亚麻', '棉', '皮革', '真皮'];
 const premiumTerms = ['羊毛', '羊绒', '真丝', '桑蚕丝', '亚麻', '纯棉', '棉质', '真皮', '皮革', '牛津纺', '针织', '垂感', '质感', '剪裁', '双面', '精纺'];
+const elevatedStyleTerms = ['clean fit', 'clean', 'quiet', '老钱', '韩系', '轻熟', '极简', '简约', '法式', '日系', '优雅', '学院', '复古', '商务休闲'];
+const refinedDesignTerms = ['简约', '极简', '基础', '纯色', '剪裁', '合体', '垂感', '廓形', '无logo', '无标'];
 const nonWearableTerms = /防晒|遮阳|功能|户外|沙滩|海边|泳衣|泳裤|游泳|露营|登山|钓鱼|旅行收纳|收纳包|洗漱包|行李|雨伞|水杯|手机|电脑|数码|家居|美妆|食品/;
 const defaultLifestyleTerms = /草帽|渔夫帽|遮阳帽|沙滩帽|夸张耳环|夸张项链|派对眼镜/;
 const lowQualityTerms = /大logo|大图案|夸张印花|荧光|撞色|彩虹|工具|功能|赠品|广告款|同款链接|清仓特价/;
@@ -270,6 +272,9 @@ function scoreCandidate(candidate, profile, blueprint, category) {
   const colorMatches = matchingTerms(text, [...(blueprint.colors || []), ...visualTerms.slice(0, 10)]);
   const premiumMatches = matchingTerms(text, premiumTerms);
   const lowQualityPenalty = lowQualityTerms.test(text) ? 8 : 0;
+  const designMatches = matchingTerms(text, refinedDesignTerms);
+  const lookText = `${blueprint.style || ''} ${blueprint.fit || ''} ${blueprint.formality || ''} ${profile.stylePreference || ''}`.toLowerCase();
+  const elevatedStyleMatches = matchingTerms(text, elevatedStyleTerms.filter((term) => lookText.includes(term)));
   const styleMatch = clamp(12 + keywordMatches * 5 + profileMatches * 2, 0, 30);
   const colorMatch = clamp(10 + colorMatches * 3 - lowQualityPenalty, 0, 20);
   const silhouetteFit = clamp(11 + fitMatches * 4, 0, 20);
@@ -279,7 +284,12 @@ function scoreCandidate(candidate, profile, blueprint, category) {
     0,
     15,
   );
-  return styleMatch + colorMatch + silhouetteFit + sceneMatch + quality;
+  const sophistication = clamp(
+    4 + premiumMatches * 2 + designMatches * 2 + elevatedStyleMatches * 3 - lowQualityPenalty,
+    0,
+    20,
+  );
+  return styleMatch + colorMatch + silhouetteFit + sceneMatch + quality + sophistication;
 }
 
 function rankCategory(candidates, profile, blueprint, category, usedIds, allowReuse) {
