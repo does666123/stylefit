@@ -1,4 +1,5 @@
 import { searchTaobaoCandidatePool } from '../lib/taobao.js';
+import { scoreBottomKnowledge } from '../lib/style-knowledge.js';
 
 const endpoint = 'https://qianfan.baidubce.com/v2/chat/completions';
 const model = 'ernie-4.5-turbo-32k';
@@ -319,7 +320,10 @@ function scoreCandidate(candidate, profile, blueprint, category, template) {
     0,
     100,
   );
-  return styleMatch + colorMatch + silhouetteFit + sceneMatch + quality + sophistication + styleMatchScore;
+  const knowledgeScore = category === 'bottom'
+    ? scoreBottomKnowledge(candidate, profile, blueprint, template)
+    : 0;
+  return styleMatch + colorMatch + silhouetteFit + sceneMatch + quality + sophistication + styleMatchScore + knowledgeScore;
 }
 
 function hasBudgetScore(candidate, category, profile) {

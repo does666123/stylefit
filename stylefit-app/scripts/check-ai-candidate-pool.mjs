@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { onRequest } from '../edge-functions/api/recommend.js';
+import { analyzeStyleKnowledge, scoreBottomKnowledge } from '../edge-functions/lib/style-knowledge.js';
 
 const originalFetch = globalThis.fetch;
 let aiCalls = 0;
@@ -83,6 +84,14 @@ async function request(profile) {
 }
 
 try {
+  const cleanFitBlueprint = { style: 'Clean Fit', fit: '直筒' };
+  const cleanFitTemplate = { name: 'Clean Fit' };
+  const straightTrousers = { title: '男士高腰垂感直筒西裤 羊毛感', category: 'bottom' };
+  const joggers = { title: '男士束脚运动裤', category: 'bottom' };
+  assert.equal(analyzeStyleKnowledge(straightTrousers.title, straightTrousers.category).category, 'bottom');
+  assert.ok(scoreBottomKnowledge(straightTrousers, { stylePreference: 'minimal' }, cleanFitBlueprint, cleanFitTemplate)
+    > scoreBottomKnowledge(joggers, { stylePreference: 'minimal' }, cleanFitBlueprint, cleanFitTemplate));
+
   const scenarios = [
     { gender: 'male', height: 173, weight: 52, stylePreference: 'minimal', occasion: 'daily', season: 'autumn', bodyType: 'slim', skinTone: 'medium', budget: 300 },
     { gender: 'male', height: 175, weight: 70, stylePreference: 'business', occasion: 'work', season: 'autumn', bodyType: 'standard', skinTone: 'medium', budget: 400 },
