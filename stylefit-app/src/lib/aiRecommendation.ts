@@ -94,6 +94,7 @@ export function getAIRecommendationProfileKey(profile: UserBodyProfile) {
     profile.occasion,
     profile.season,
     profile.budget ?? null,
+    profile.mode ?? 'daily',
   ]);
 }
 

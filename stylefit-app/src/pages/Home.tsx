@@ -25,7 +25,7 @@ import { useT } from '@/i18n';
 import { fetchWeatherWithCache, interpretWeather, type WeatherData } from '@/lib/weather';
 import { loadProfile } from '@/hooks/useRecommendation';
 import { STYLEFIT_DATA_CLEARED_EVENT } from '@/lib/localData';
-import type { UserBodyProfile } from '@/types';
+import type { RecommendationMode, UserBodyProfile } from '@/types';
 
 const SilkBackground = lazy(() => import('@/components/SilkBackground'));
 
@@ -58,6 +58,7 @@ export function HomePage() {
   const navigate = useNavigate();
   const { t } = useT();
   const [existingProfile, setExistingProfile] = useState<UserBodyProfile | null>(loadProfile);
+  const [mode, setMode] = useState<RecommendationMode>(() => existingProfile?.mode === 'advanced' ? 'advanced' : 'daily');
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [weatherLoading, setWeatherLoading] = useState(true);
   const [weatherRefreshing, setWeatherRefreshing] = useState(false);
@@ -186,7 +187,7 @@ export function HomePage() {
   };
 
   const startSurvey = () => {
-    navigate('/survey', existingProfile ? { state: { restartSurvey: true } } : undefined);
+    navigate('/survey', { state: { restartSurvey: Boolean(existingProfile), mode } });
   };
 
   const prefetchSurvey = () => {
@@ -250,6 +251,24 @@ export function HomePage() {
                   {t('home.hero.welcomeBack')}
                 </div>
               )}
+
+              <div className="mt-7 inline-flex max-w-full rounded-2xl border border-[#1A1A1A]/10 bg-white/90 p-1.5 shadow-[0_10px_30px_rgba(26,26,26,0.06)] backdrop-blur" role="group" aria-label="推荐模式">
+                  {([
+                    { value: 'daily', title: '日常穿搭', description: '简单实用，兼顾性价比' },
+                    { value: 'advanced', title: '高级潮流', description: '更注重风格、版型与质感' },
+                  ] as const).map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setMode(option.value)}
+                      aria-pressed={mode === option.value}
+                      className={`focus-ring min-h-12 rounded-xl px-3 text-left transition-colors sm:px-4 ${mode === option.value ? 'bg-[#1A1A1A] text-white shadow-sm' : 'text-[#555550] hover:bg-[#F4F2EE]'}`}
+                    >
+                      <span className="block text-sm font-semibold">{option.title}</span>
+                      <span className={`mt-0.5 block text-xs ${mode === option.value ? 'text-white/75' : 'text-[#77756F]'}`}>{option.description}</span>
+                    </button>
+                  ))}
+              </div>
 
               <div data-hero-actions className="mt-9 flex flex-col gap-3 sm:flex-row">
                 <Button

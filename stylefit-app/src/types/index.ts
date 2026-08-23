@@ -22,6 +22,8 @@ export type Occasion =
 
 export type Season = 'spring' | 'summer' | 'autumn' | 'winter' | 'all';
 
+export type RecommendationMode = 'daily' | 'advanced';
+
 export interface BodyMeasurements {
   shoulderWidth?: number; // cm
   waist?: number; // cm
@@ -41,6 +43,7 @@ export interface UserBodyProfile {
   stylePreference: StylePreference;
   occasion: Occasion;
   season: Season;
+  mode?: RecommendationMode;
   measurements: BodyMeasurements;
 }
 

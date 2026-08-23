@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/select';
 import { ArrowRight, ArrowLeft, Check, Loader2, Sparkles, Ruler, AlertCircle } from 'lucide-react';
 import { useT } from '@/i18n';
-import type { UserBodyProfile, Gender, BodyType, SkinTone, StylePreference, Occasion, Season } from '../types';
+import type { UserBodyProfile, Gender, BodyType, SkinTone, StylePreference, Occasion, Season, RecommendationMode } from '../types';
 import { saveProfile } from '../hooks/useRecommendation';
 import {
   cacheAIRecommendation,
@@ -31,6 +31,7 @@ const defaultProfile: Partial<UserBodyProfile> = {
   gender: 'male',
   height: 175,
   weight: 70,
+  mode: 'daily',
   measurements: {},
 };
 
@@ -104,15 +105,21 @@ export default function Survey() {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useT();
-  const restartSurvey = Boolean((location.state as { restartSurvey?: boolean } | null)?.restartSurvey);
+  const surveyState = location.state as { restartSurvey?: boolean; mode?: RecommendationMode } | null;
+  const restartSurvey = Boolean(surveyState?.restartSurvey);
   const [initialDraft] = useState<SurveyDraft | null>(() => restartSurvey ? null : readDraft());
+  const selectedMode: RecommendationMode = surveyState?.mode === 'advanced' || initialDraft?.profile.mode === 'advanced' ? 'advanced' : 'daily';
   const [step, setStep] = useState(initialDraft?.step ?? 0);
   const [loading, setLoading] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [submittedProfile, setSubmittedProfile] = useState<UserBodyProfile | null>(null);
   const [errors, setErrors] = useState<ValidationErrors>({});
   const submitInFlight = useRef(false);
-  const [profile, setProfile] = useState<Partial<UserBodyProfile>>(initialDraft?.profile ?? defaultProfile);
+  const [profile, setProfile] = useState<Partial<UserBodyProfile>>(() => ({
+    ...defaultProfile,
+    ...(initialDraft?.profile ?? {}),
+    mode: selectedMode,
+  }));
 
   useEffect(() => {
     if (restartSurvey) {
@@ -226,6 +233,7 @@ export default function Survey() {
       season: profile.season!,
       age: profile.age,
       budget: profile.budget,
+      mode: profile.mode === 'advanced' ? 'advanced' : 'daily',
       measurements: profile.measurements || {},
     };
     // 持久化到 localStorage，防止刷新后数据丢失

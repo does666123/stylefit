@@ -1,5 +1,5 @@
 import { searchTaobaoCandidatePool } from '../lib/taobao.js';
-import { scoreBottomKnowledge, scoreOutfitMatch } from '../lib/style-knowledge.js';
+import { getStyleTagLabels, matchesRecommendationMode, scoreBottomKnowledge, scoreOutfitMatch, scoreRecommendationMode } from '../lib/style-knowledge.js';
 
 const endpoint = 'https://qianfan.baidubce.com/v2/chat/completions';
 const model = 'ernie-4.5-turbo-32k';
@@ -90,6 +90,7 @@ function recommendationCacheKey(body, profile, weather) {
     asText(profile.occasion, 40) || 'any',
     asText(profile.gender, 20) || 'any',
     style,
+    profile.mode === 'advanced' ? 'advanced' : 'daily',
     Number.isFinite(budget) && budget > 0 ? budget : 'any',
   ].join('|');
 }
@@ -356,8 +357,9 @@ function explainOutfit(blueprint, profile) {
   return `结合你${Number.isFinite(height) ? `${height}cm` : '当前'}身高、${Number.isFinite(weight) ? `${weight}kg` : '当前'}体重与 BMI ${bmi}，以${fit}修饰身形；用${colors}建立${style}的统一层次，兼顾${occasion}场景的得体与舒适。`;
 }
 
-function outfitStyleTags(blueprint, profile) {
+function outfitStyleTags(blueprint, profile, template) {
   return [...new Set([
+    ...getStyleTagLabels(profile, blueprint, template),
     blueprint.style,
     blueprint.formality,
     blueprint.fit,
@@ -370,8 +372,9 @@ function rankCategory(candidates, profile, blueprint, category, usedIds, allowRe
   const ranked = candidates
     .filter((candidate) => candidate.category === category && isCandidateEligible(candidate, profile))
     .filter((candidate) => matchesStyleTemplate(candidate, template))
+    .filter((candidate) => matchesRecommendationMode(candidate, profile))
     .filter((candidate) => allowReuse || !usedIds.has(candidate.id))
-    .map((candidate) => ({ candidate, score: scoreCandidate(candidate, profile, blueprint, category, template) }))
+    .map((candidate) => ({ candidate, score: scoreCandidate(candidate, profile, blueprint, category, template) + scoreRecommendationMode(candidate, profile, blueprint, template) }))
     .sort((left, right) => right.score - left.score || left.candidate.couponPrice - right.candidate.couponPrice);
   const usedShopTitles = new Set(candidates
     .filter((candidate) => usedIds.has(candidate.id))
@@ -389,7 +392,7 @@ function composeOutfit(blueprint, candidates, profile, usedIds, allowReuse, temp
     stylingTip: [blueprint.style, blueprint.fit, blueprint.formality].filter(Boolean).join(' · ') || '按你的身形与场合搭配',
     outfit_reason: explainOutfit(blueprint, profile),
     suitable_scene: blueprint.occasion || profile.occasion || '日常',
-    style_tags: outfitStyleTags(blueprint, profile),
+    style_tags: outfitStyleTags(blueprint, profile, template),
     body_advice: bodyAdvice(profile),
     items: items.map(({ candidate }) => ({ id: candidate.id, reason: `${candidate.category}：${candidate.title}` })),
     selected: items.map(({ candidate }) => candidate),
@@ -463,7 +466,7 @@ export async function onRequest({ request, env }) {
   const profileRecord = asRecord(body?.profile);
   const profile = pick(profileRecord, [
     'gender', 'height', 'weight', 'age', 'budget', 'bodyType', 'skinTone',
-    'stylePreference', 'styleTags', 'occasion', 'season',
+    'stylePreference', 'styleTags', 'occasion', 'season', 'mode',
   ]);
   const measurements = pick(asRecord(profileRecord?.measurements), [
     'shoulderWidth', 'bust', 'waist', 'hips', 'inseam',

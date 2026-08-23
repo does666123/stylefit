@@ -19,6 +19,15 @@ const bottomKnowledge = {
 const materialTerms = ['羊毛', '毛呢', '针织', '棉麻', '亚麻', '真皮', '灯芯绒', '牛仔'];
 const fitTerms = ['高腰', '宽直筒', '直筒', '阔腿', '宽松', '垂感', '修身', '紧身', '束脚', '运动'];
 const basicColors = ['黑', '白', '灰', '米', '卡其', '棕', '深蓝', '藏蓝'];
+const advancedRejectTerms = /大logo|大标|卡通|夸张印花|荧光|爆款|网红|地摊|清仓|直播款|速干|训练服|篮球服|足球服|健身服/;
+const styleTagRules = {
+  clean_fit: { label: 'Clean Fit', terms: ['clean fit', 'clean', '简约', '极简', '纯色', '基础', '直筒', '小白鞋'] },
+  old_money: { label: 'Old Money', terms: ['old money', 'quiet luxury', '老钱', '针织', '羊毛', '衬衫', '西裤', '乐福鞋'] },
+  cityboy: { label: 'Cityboy', terms: ['cityboy', 'city boy', '城市', '宽松', '廓形', '工装', '衬衫'] },
+  american_vintage: { label: '美式复古', terms: ['美式', '复古', '水洗', '牛仔', '工装', '灯芯绒', '板鞋'] },
+  korean: { label: '韩系', terms: ['韩系', '轻熟', '短外套', '阔腿', '简洁', '垂感'] },
+  french: { label: '法式', terms: ['法式', '优雅', '针织', '衬衫', '低饱和', '玛丽珍'] },
+};
 
 const outfitKnowledge = {
   cleanFit: {
@@ -53,6 +62,35 @@ export function analyzeStyleKnowledge(title, category) {
     fit: fitTerms.filter((term) => text.includes(term)),
     material: materialTerms.filter((term) => text.includes(term)),
   };
+}
+
+export function getStyleTags(profile, blueprint, template) {
+  const context = [profile?.stylePreference, profile?.occasion, blueprint?.style, blueprint?.fit, blueprint?.formality, template?.name]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+  const tags = Object.entries(styleTagRules)
+    .filter(([, rule]) => rule.terms.some((term) => context.includes(term)))
+    .map(([id]) => id);
+  return tags.length ? tags : ['clean_fit'];
+}
+
+export function getStyleTagLabels(profile, blueprint, template) {
+  return getStyleTags(profile, blueprint, template).map((tag) => styleTagRules[tag].label);
+}
+
+export function matchesRecommendationMode(candidate, profile) {
+  if (profile?.mode !== 'advanced') return true;
+  return !advancedRejectTerms.test(String(candidate?.title || '').toLowerCase());
+}
+
+export function scoreRecommendationMode(candidate, profile, blueprint, template) {
+  if (profile?.mode !== 'advanced') return 0;
+  const text = String(candidate?.title || '').toLowerCase();
+  const styleMatches = getStyleTags(profile, blueprint, template)
+    .reduce((count, tag) => count + countMatches(text, styleTagRules[tag].terms), 0);
+  const refinedMatches = countMatches(text, ['羊毛', '毛呢', '针织', '棉麻', '亚麻', '真皮', '简约', '纯色', '剪裁', '垂感', '直筒']);
+  return styleMatches * 4 + refinedMatches * 2;
 }
 
 export function scoreBottomKnowledge(candidate, profile, blueprint, template) {

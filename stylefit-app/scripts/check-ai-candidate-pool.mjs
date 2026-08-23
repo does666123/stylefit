@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { onRequest } from '../edge-functions/api/recommend.js';
-import { analyzeStyleKnowledge, scoreBottomKnowledge, scoreOutfitMatch } from '../edge-functions/lib/style-knowledge.js';
+import { analyzeStyleKnowledge, matchesRecommendationMode, scoreBottomKnowledge, scoreOutfitMatch, scoreRecommendationMode } from '../edge-functions/lib/style-knowledge.js';
 
 const originalFetch = globalThis.fetch;
 let aiCalls = 0;
@@ -103,12 +103,20 @@ try {
   ];
   assert.ok(scoreOutfitMatch(cleanOutfit, { stylePreference: 'minimal', occasion: 'daily', bodyType: 'slim' }, cleanFitBlueprint, cleanFitTemplate)
     > scoreOutfitMatch(mismatchedOutfit, { stylePreference: 'minimal', occasion: 'daily', bodyType: 'slim' }, cleanFitBlueprint, cleanFitTemplate));
+  const advancedProfile = { mode: 'advanced', stylePreference: 'minimal', occasion: 'daily' };
+  const dailyProfile = { ...advancedProfile, mode: 'daily' };
+  const premiumTop = { title: '男士简约羊毛感针织衫', category: 'top' };
+  const logoTop = { title: '男士大logo夸张印花T恤', category: 'top' };
+  assert.equal(matchesRecommendationMode(logoTop, advancedProfile), false);
+  assert.equal(matchesRecommendationMode(logoTop, dailyProfile), true);
+  assert.ok(scoreRecommendationMode(premiumTop, advancedProfile, cleanFitBlueprint, cleanFitTemplate) > 0);
 
   const scenarios = [
     { gender: 'male', height: 173, weight: 52, stylePreference: 'minimal', occasion: 'daily', season: 'autumn', bodyType: 'slim', skinTone: 'medium', budget: 300 },
     { gender: 'male', height: 175, weight: 70, stylePreference: 'business', occasion: 'work', season: 'autumn', bodyType: 'standard', skinTone: 'medium', budget: 400 },
     { gender: 'female', height: 165, weight: 50, stylePreference: 'elegant', occasion: 'work', season: 'autumn', bodyType: 'standard', skinTone: 'medium', budget: 300 },
     { gender: 'female', height: 165, weight: 52, stylePreference: 'casual', occasion: 'date', season: 'autumn', bodyType: 'standard', skinTone: 'medium', budget: 300 },
+    { gender: 'male', height: 173, weight: 52, stylePreference: 'minimal', occasion: 'daily', season: 'autumn', bodyType: 'slim', skinTone: 'medium', budget: 300, mode: 'advanced' },
   ];
   for (const profile of scenarios) {
     const body = await request(profile);
@@ -142,8 +150,8 @@ try {
       assert.ok(total >= profile.budget * 0.6);
     }
   }
-  assert.equal(aiCalls, 4);
-  assert.equal(taobaoCalls, 48);
+  assert.equal(aiCalls, 5);
+  assert.equal(taobaoCalls, 60);
 
   omitShoes = true;
   const withoutShoes = await request({ ...scenarios[0], budget: 301 });
