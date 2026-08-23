@@ -369,11 +369,17 @@ function outfitStyleTags(blueprint, profile, template) {
 }
 
 function rankCategory(candidates, profile, blueprint, category, usedIds, allowReuse, template) {
-  const ranked = candidates
+  const base = candidates
     .filter((candidate) => candidate.category === category && isCandidateEligible(candidate, profile))
-    .filter((candidate) => matchesStyleTemplate(candidate, template))
-    .filter((candidate) => matchesRecommendationMode(candidate, profile))
     .filter((candidate) => allowReuse || !usedIds.has(candidate.id))
+  const templateMatches = base.filter((candidate) => matchesStyleTemplate(candidate, template));
+  const eligible = profile.mode === 'advanced' && templateMatches.length < 3 ? base : templateMatches;
+  const preferred = profile.mode === 'advanced'
+    ? eligible.filter((candidate) => matchesRecommendationMode(candidate, profile)
+      && scoreRecommendationMode(candidate, profile, blueprint, template) >= 30)
+    : eligible;
+  const pool = profile.mode === 'advanced' && preferred.length >= 3 ? preferred : eligible;
+  const ranked = pool
     .map((candidate) => ({ candidate, score: scoreCandidate(candidate, profile, blueprint, category, template) + scoreRecommendationMode(candidate, profile, blueprint, template) }))
     .sort((left, right) => right.score - left.score || left.candidate.couponPrice - right.candidate.couponPrice);
   const usedShopTitles = new Set(candidates

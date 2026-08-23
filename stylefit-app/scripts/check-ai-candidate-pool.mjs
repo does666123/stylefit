@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';
 import { onRequest } from '../edge-functions/api/recommend.js';
-import { analyzeStyleKnowledge, matchesRecommendationMode, scoreBottomKnowledge, scoreOutfitMatch, scoreRecommendationMode } from '../edge-functions/lib/style-knowledge.js';
+import { analyzeStyleKnowledge, getCandidateStyleProfile, matchesRecommendationMode, scoreBottomKnowledge, scoreOutfitMatch, scoreRecommendationMode } from '../edge-functions/lib/style-knowledge.js';
 
 const originalFetch = globalThis.fetch;
 let aiCalls = 0;
 let taobaoCalls = 0;
 let omitShoes = false;
 let omitBottom = false;
+let onlyLowQuality = false;
 let activeGender = 'male';
 
 function titleFor(query) {
@@ -66,7 +67,7 @@ globalThis.fetch = async (url, options = {}) => {
       item_id: `${taobaoCalls}-${index}`,
       publish_info: { coupon_share_url: 'https://uland.taobao.com/coupon/example' },
       price_promotion_info: { zk_final_price: '109', final_promotion_price: priceFor(title) },
-      item_basic_info: { title: isShoeQuery && index < 2 ? `${activeGender === 'female' ? '女士' : '男士'}${index ? '皮鞋鞋垫' : '运动袜子'}` : isAccessoryQuery && index === 0 ? `${activeGender === 'female' ? '女士' : '男士'}草帽 沙滩遮阳帽` : index === 19 ? `${title} 荧光大logo夸张印花款` : `${title} ${variants[index % variants.length]}`, pict_url: 'https://img.alicdn.com/example.jpg', shop_title: `测试店铺${taobaoCalls}-${index % variants.length}`, volume: 12, category_name: '服装' },
+      item_basic_info: { title: isShoeQuery && index < 2 ? `${activeGender === 'female' ? '女士' : '男士'}${index ? '皮鞋鞋垫' : '运动袜子'}` : isAccessoryQuery && index === 0 ? `${activeGender === 'female' ? '女士' : '男士'}草帽 沙滩遮阳帽` : onlyLowQuality ? `${title} 大logo夸张印花基础款` : index === 19 ? `${title} 荧光大logo夸张印花款` : `${title} ${variants[index % variants.length]}`, pict_url: 'https://img.alicdn.com/example.jpg', shop_title: `测试店铺${taobaoCalls}-${index % variants.length}`, volume: 12, category_name: '服装' },
     }));
   return new Response(JSON.stringify({
     tbk_dg_material_optional_upgrade_response: { result_list: { map_data: items }, total_results: items.length },
@@ -110,6 +111,9 @@ try {
   assert.equal(matchesRecommendationMode(logoTop, advancedProfile), false);
   assert.equal(matchesRecommendationMode(logoTop, dailyProfile), true);
   assert.ok(scoreRecommendationMode(premiumTop, advancedProfile, cleanFitBlueprint, cleanFitTemplate) > 0);
+  assert.deepEqual(getCandidateStyleProfile({ title: '男士宽松羊毛针织衫', category: 'top' }), {
+    style: ['old_money', 'cityboy', 'french', 'street'], fit: ['oversize'], qualityLevel: 'premium',
+  });
 
   const scenarios = [
     { gender: 'male', height: 173, weight: 52, stylePreference: 'minimal', occasion: 'daily', season: 'autumn', bodyType: 'slim', skinTone: 'medium', budget: 300 },
@@ -150,8 +154,13 @@ try {
       assert.ok(total >= profile.budget * 0.6);
     }
   }
-  assert.equal(aiCalls, 5);
-  assert.equal(taobaoCalls, 60);
+  onlyLowQuality = true;
+  const advancedFallback = await request({ ...scenarios[4], budget: 303 });
+  assert.equal(advancedFallback.status, 'ok');
+  assert.equal(advancedFallback.recommendation.outfits.length, 3);
+  onlyLowQuality = false;
+  assert.equal(aiCalls, 6);
+  assert.equal(taobaoCalls, 72);
 
   omitShoes = true;
   const withoutShoes = await request({ ...scenarios[0], budget: 301 });
