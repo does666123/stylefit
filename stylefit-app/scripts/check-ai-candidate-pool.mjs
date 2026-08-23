@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { onRequest } from '../edge-functions/api/recommend.js';
-import { analyzeStyleKnowledge, scoreBottomKnowledge } from '../edge-functions/lib/style-knowledge.js';
+import { analyzeStyleKnowledge, scoreBottomKnowledge, scoreOutfitMatch } from '../edge-functions/lib/style-knowledge.js';
 
 const originalFetch = globalThis.fetch;
 let aiCalls = 0;
@@ -91,6 +91,18 @@ try {
   assert.equal(analyzeStyleKnowledge(straightTrousers.title, straightTrousers.category).category, 'bottom');
   assert.ok(scoreBottomKnowledge(straightTrousers, { stylePreference: 'minimal' }, cleanFitBlueprint, cleanFitTemplate)
     > scoreBottomKnowledge(joggers, { stylePreference: 'minimal' }, cleanFitBlueprint, cleanFitTemplate));
+  const cleanOutfit = [
+    { candidate: { category: 'top', title: '男士基础纯色针织衫' } },
+    { candidate: straightTrousers },
+    { candidate: { category: 'shoes', title: '男士简约小白鞋' } },
+  ];
+  const mismatchedOutfit = [
+    { candidate: { category: 'top', title: '男士大logo潮牌T恤' } },
+    { candidate: joggers },
+    { candidate: { category: 'shoes', title: '男士夸张运动球鞋' } },
+  ];
+  assert.ok(scoreOutfitMatch(cleanOutfit, { stylePreference: 'minimal', occasion: 'daily', bodyType: 'slim' }, cleanFitBlueprint, cleanFitTemplate)
+    > scoreOutfitMatch(mismatchedOutfit, { stylePreference: 'minimal', occasion: 'daily', bodyType: 'slim' }, cleanFitBlueprint, cleanFitTemplate));
 
   const scenarios = [
     { gender: 'male', height: 173, weight: 52, stylePreference: 'minimal', occasion: 'daily', season: 'autumn', bodyType: 'slim', skinTone: 'medium', budget: 300 },

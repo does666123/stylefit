@@ -1,5 +1,5 @@
 import { searchTaobaoCandidatePool } from '../lib/taobao.js';
-import { scoreBottomKnowledge } from '../lib/style-knowledge.js';
+import { scoreBottomKnowledge, scoreOutfitMatch } from '../lib/style-knowledge.js';
 
 const endpoint = 'https://qianfan.baidubce.com/v2/chat/completions';
 const model = 'ernie-4.5-turbo-32k';
@@ -409,8 +409,10 @@ function composeOutfit(blueprint, candidates, profile, usedIds, allowReuse, temp
           budgetItemScore(bottom.candidate, 'bottom', budget),
           budgetItemScore(shoes.candidate, 'shoes', budget),
         ].reduce((sum, value) => sum + value, 0);
-        const score = top.score + bottom.score + shoes.score + utilizationScore + allocationScore;
-        if (!best || score > best.score) best = { top, bottom, shoes, total, score };
+        const items = [top, bottom, shoes];
+        const outfitMatchScore = scoreOutfitMatch(items, profile, blueprint, template);
+        const score = top.score + bottom.score + shoes.score + utilizationScore + allocationScore + outfitMatchScore;
+        if (!best || score > best.score) best = { top, bottom, shoes, total, score, outfitMatchScore };
       }
     }
   }
