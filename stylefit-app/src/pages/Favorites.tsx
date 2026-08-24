@@ -1,4 +1,4 @@
-import { useLocation, useNavigate } from 'react-router';
+import { useNavigate } from 'react-router';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -21,16 +21,14 @@ import { useFavorites } from '@/hooks/useRecommendation';
 
 export function FavoritesPage() {
   const navigate = useNavigate();
-  const location = useLocation();
   const { t } = useT();
   const { favoriteItems, isFavorite, toggleFavorite } = useFavorites();
-  const fromRecommendations = Boolean((location.state as { fromRecommendations?: boolean } | null)?.fromRecommendations);
-  const returnToRecommendations = () => {
-    if (fromRecommendations) {
+  const returnToPreviousPage = () => {
+    if (window.history.length > 1) {
       navigate(-1);
       return;
     }
-    navigate('/recommendations');
+    navigate('/');
   };
 
   return (
@@ -51,11 +49,11 @@ export function FavoritesPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={returnToRecommendations}
+              onClick={returnToPreviousPage}
               className="favorites-back-button"
             >
               <ArrowLeft className="mr-1 h-4 w-4" />
-              {t('favorites.backToRecommendations')}
+              {t('favorites.back')}
             </Button>
           </div>
         </div>
@@ -103,10 +101,10 @@ export function FavoritesPage() {
               {t('favorites.empty.desc')}
             </p>
             <Button
-              onClick={returnToRecommendations}
+              onClick={returnToPreviousPage}
               className="sf-primary-button"
             >
-              {t('favorites.empty.button')}
+              {t('favorites.back')}
             </Button>
           </div>
         )}

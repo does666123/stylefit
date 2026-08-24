@@ -161,7 +161,7 @@ async function shareOutfitPoster(profile: UserBodyProfile, outfit: OutfitSet, fo
   context.fillText('StyleFit', 184, 130);
   context.fillStyle = '#C96A22';
   context.font = '600 28px sans-serif';
-  context.fillText('我的 AI 穿搭报告', 72, 268);
+  context.fillText('我的 AI 穿着报告', 72, 268);
   context.fillStyle = '#1A1A1A';
   context.font = '600 78px sans-serif';
   drawLines(outfit.themeName || outfit.name, 72, 375, 96, width - 144, 2);
@@ -174,7 +174,7 @@ async function shareOutfitPoster(profile: UserBodyProfile, outfit: OutfitSet, fo
   context.fill();
   context.fillStyle = '#C96A22';
   context.font = '600 28px sans-serif';
-  context.fillText('AI 穿搭方向', 112, 750);
+  context.fillText('AI 穿着方向', 112, 750);
   context.fillStyle = '#34322E';
   context.font = '400 34px sans-serif';
   drawLines(outfit.outfitReason || outfit.stylingAdvice || '根据你的身材、风格与场景，定制一套更好穿的搭配。', 112, 825, 52, width - 224, format === 'xiaohongshu' ? 4 : 6);
@@ -189,7 +189,7 @@ async function shareOutfitPoster(profile: UserBodyProfile, outfit: OutfitSet, fo
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
   if (!blob) return;
   const file = new File([blob], `stylefit-${format}.png`, { type: 'image/png' });
-  const shareData = { title: '我的 StyleFit AI 穿搭', text: '我的 StyleFit AI 穿搭报告', files: [file] };
+  const shareData = { title: '我的 StyleFit AI 穿着', text: '我的 StyleFit AI 穿着报告', files: [file] };
   if (navigator.share && (!navigator.canShare || navigator.canShare(shareData))) {
     await navigator.share(shareData);
     return;
@@ -740,7 +740,7 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
               aria-current={isDiscover ? undefined : 'page'}
             >
               <Sparkles className="h-4 w-4" />
-              AI穿搭
+              AI穿着
             </Button>
             <Button
               variant="ghost"
@@ -756,7 +756,7 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
         {!isDiscover && (
           <div className="mb-5 flex justify-center">
             <span className="inline-flex rounded-full border border-[#E0782C]/25 bg-[#FFF7EF] px-3 py-1.5 text-sm font-medium text-[#C96A22]">
-              {profile.mode === 'advanced' ? '高级潮流 · AI Stylist' : '日常穿搭 · 好穿省心'}
+              {profile.mode === 'advanced' ? '高级潮流 · AI Stylist' : '日常穿着 · 好穿省心'}
             </span>
           </div>
         )}
@@ -870,7 +870,7 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <Button variant="ghost" size="sm" onClick={() => setShareOpen(true)} className="border border-[#E0782C]/30 bg-white text-[#C96A22] hover:bg-[#FFF4EC] hover:text-[#B75616]">
-                  <Share2 className="mr-1 h-3.5 w-3.5" />分享我的 AI 穿搭
+                  <Share2 className="mr-1 h-3.5 w-3.5" />分享我的 AI 穿着
                 </Button>
                 <Button variant="ghost" size="sm" onClick={regenerateAIRecommendation} disabled={aiLoading} className="border border-[#E0782C]/30 bg-white text-[#C96A22] hover:bg-[#FFF4EC] hover:text-[#B75616]">
                   不满意？重新生成 AI
@@ -898,11 +898,11 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
             </div>
             <Dialog open={shareOpen} onOpenChange={setShareOpen}>
               <DialogContent className="max-w-[min(92vw,430px)] border-[#E5E2DA] bg-[#FCFAF5] p-5">
-                <DialogTitle className="text-lg font-semibold text-[#1A1A1A]">分享我的 AI 穿搭</DialogTitle>
+                <DialogTitle className="text-lg font-semibold text-[#1A1A1A]">分享我的 AI 穿着</DialogTitle>
                 <p className="text-sm leading-6 text-[#6B6B66]">海报只包含你的风格报告与主推荐 Look，不含商品推广链接。</p>
                 <div className={`mt-3 overflow-hidden rounded-2xl bg-[linear-gradient(135deg,#F9F6F0,#F2EAE0_58%,#E7EFF2)] p-5 text-[#1A1A1A] ${shareFormat === 'xiaohongshu' ? 'aspect-[3/4]' : 'aspect-[9/16]'}`}>
                   <div className="flex items-center gap-2 text-sm font-semibold"><span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#1A1A1A] text-[10px] text-white">SF</span>StyleFit</div>
-                  <p className="mt-8 text-xs font-medium tracking-[0.14em] text-[#C96A22]">我的 AI 穿搭报告</p>
+                  <p className="mt-8 text-xs font-medium tracking-[0.14em] text-[#C96A22]">我的 AI 穿着报告</p>
                   <h3 className="mt-2 text-2xl font-semibold leading-tight">{outfits[0]?.themeName || outfits[0]?.name}</h3>
                   <p className="mt-3 text-sm text-[#5D5B55]">{profile.height}cm / {mapBodyType(profile.bodyType, t as any)} / {mapStyle(profile.stylePreference, t as any)}</p>
                   <div className="mt-6 rounded-xl bg-white/90 p-3 text-sm leading-6 text-[#5D5B55]">

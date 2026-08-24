@@ -254,8 +254,8 @@ export function HomePage() {
 
               <div className="mt-7 flex w-full max-w-[32rem] rounded-2xl border border-[#1A1A1A]/10 bg-white/90 p-1.5 shadow-[0_10px_30px_rgba(26,26,26,0.06)] backdrop-blur sm:inline-flex sm:w-auto" role="group" aria-label="推荐模式">
                 {([
-                    { value: 'daily', title: '日常穿搭', description: '简单好穿 · 实用省心 · 性价比' },
-                    { value: 'advanced', title: 'AI潮流穿搭', description: '年轻高级 · 风格进阶 · AI Stylist' },
+                    { value: 'daily', title: '日常穿着', description: '简单好穿 · 实用省心 · 性价比' },
+                    { value: 'advanced', title: 'AI潮流穿着', description: '年轻高级 · 风格进阶 · AI Stylist' },
                   ] as const).map((option) => (
                     <button
                       key={option.value}

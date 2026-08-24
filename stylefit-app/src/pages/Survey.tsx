@@ -247,7 +247,7 @@ export default function Survey() {
   };
 
   if (loading) {
-    return <LoadingScreen message="AI 正在生成专属穿搭..." />;
+    return <LoadingScreen message="AI 正在生成专属穿着..." />;
   }
 
   if (submittedProfile && retryCount > 0) {
@@ -359,7 +359,7 @@ export default function Survey() {
                     <Label className="mb-2 block">推荐模式</Label>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       {[
-                        { value: 'daily', title: '日常穿搭', desc: '实用好穿，优先场景、舒适度与性价比。' },
+                        { value: 'daily', title: '日常穿着', desc: '实用好穿，优先场景、舒适度与性价比。' },
                         { value: 'advanced', title: '高级潮流', desc: '更强调版型、配色、材质与整体风格。' },
                       ].map((option) => (
                         <button

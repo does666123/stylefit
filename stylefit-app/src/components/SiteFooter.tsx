@@ -18,7 +18,7 @@ export default function SiteFooter() {
     {
       title: 'StyleFit',
       items: [
-        { label: 'AI穿搭', to: '/' },
+        { label: 'AI穿着', to: '/' },
         { label: '为你推荐', to: '/recommendations' },
         { label: '我的收藏', to: '/favorites' },
       ],
@@ -68,7 +68,7 @@ export default function SiteFooter() {
             <li>
               <Link to="/" className="focus-ring inline-flex items-center gap-1.5 rounded transition-colors hover:text-[#C96A22]">
                 <Sparkles className="h-3.5 w-3.5" />
-                AI穿搭
+                AI穿着
               </Link>
             </li>
             <li>

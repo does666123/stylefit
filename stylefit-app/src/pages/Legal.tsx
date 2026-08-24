@@ -34,8 +34,8 @@ function LegalPage({ title, updatedAt, children }: LegalPageProps) {
 
 export function PrivacyPage() {
   return <LegalPage title="隐私政策" updatedAt="2026年8月">
-    <section><h2>我们收集的信息</h2><p>我们仅处理你主动填写的穿搭偏好资料：性别、身高、体重、年龄、体型、肤色、风格偏好、场合、季节和预算，以及你保存的收藏和推荐结果。</p></section>
-    <section><h2>信息的使用目的</h2><p>这些信息用于生成个性化穿搭推荐、保存问卷进度、展示收藏内容和最近的推荐结果。</p></section>
+    <section><h2>我们收集的信息</h2><p>我们仅处理你主动填写的穿着偏好资料：性别、身高、体重、年龄、体型、肤色、风格偏好、场合、季节和预算，以及你保存的收藏和推荐结果。</p></section>
+    <section><h2>信息的使用目的</h2><p>这些信息用于生成个性化穿着推荐、保存问卷进度、展示收藏内容和最近的推荐结果。</p></section>
     <section><h2>数据保存方式</h2><p>当前版本主要将上述数据保存在你正在使用的浏览器 localStorage 中。更换浏览器或设备，或清理浏览器数据后，这些数据可能消失。</p></section>
     <section><h2>第三方服务</h2><p>AI 推荐请求会将生成推荐所需的问卷信息发送至网站后端接口。我们会在后续服务变化时更新本政策。</p></section>
     <section><h2>你的权利</h2><p>你可以随时通过页脚的“清除本地数据”删除本机保存的画像、收藏、推荐缓存和问卷草稿。删除后无法恢复，需要重新填写问卷。</p></section>
@@ -45,7 +45,7 @@ export function PrivacyPage() {
 
 export function TermsPage() {
   return <LegalPage title="用户协议" updatedAt="2026年8月">
-    <section><h2>服务说明</h2><p>StyleFit 提供穿搭参考和商品信息展示，不构成医疗、健康、专业形象咨询或购买保证。</p></section>
+    <section><h2>服务说明</h2><p>StyleFit 提供穿着参考和商品信息展示，不构成医疗、健康、专业形象咨询或购买保证。</p></section>
     <section><h2>推荐参考</h2><p>推荐结果仅供参考。请结合自身需求、实际尺码和商品信息，自行判断是否适合。</p></section>
     <section><h2>使用规范</h2><p>你不得利用网站从事违法、攻击、爬取、干扰或破坏服务等行为。</p></section>
     <section><h2>服务调整</h2><p>网站可能因功能升级、服务维护或第三方服务异常而调整或暂停部分功能。</p></section>

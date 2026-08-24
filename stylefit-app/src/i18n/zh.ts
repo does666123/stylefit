@@ -23,8 +23,8 @@ const zh = {
   'common.female': '女',
   'common.favorites': '我的收藏',
   'common.retakeTest': '重新测试',
-  'common.aiStyling': 'AI穿搭',
-  'loading.brand': 'STYLEFIT AI 穿搭',
+  'common.aiStyling': 'AI穿着',
+  'loading.brand': 'STYLEFIT AI 穿着',
 
   // Language
   'lang.switchToEn': '切换到英文',
@@ -32,10 +32,10 @@ const zh = {
 
   // Home - Hero
   'home.hero.badge': 'AI 智能推荐',
-  'home.hero.aiRecommend': '基于你的身材、风格和场合，AI 为你推荐穿搭方案',
+  'home.hero.aiRecommend': '基于你的身材、风格和场合，AI 为你推荐穿着方案',
   'home.hero.title1': '穿出你的',
   'home.hero.title2': '专属风格',
-  'home.hero.desc': '基于你的身材、风格和场合，AI 为你量身推荐穿搭方案',
+  'home.hero.desc': '基于你的身材、风格和场合，AI 为你量身推荐穿着方案',
   'home.hero.welcomeBack': '欢迎回来，上次推荐与收藏仍为你保留',
   'home.hero.viewMyRecommendations': '继续上次推荐',
   'home.hero.startTestNow': '开始测试',
@@ -59,7 +59,7 @@ const zh = {
   'home.product.cottonShirt': '条纹棉质衬衫',
   'home.tag.new': '新品',
   'home.tag.hot': '热门',
-  'home.stylingNotes': '穿搭灵感',
+  'home.stylingNotes': '穿着灵感',
   'home.occasions.display': '场合',
   'home.process.display': '流程',
   'home.personalStyling': '私人造型',
@@ -67,14 +67,14 @@ const zh = {
   'home.brandMotto1': '时尚',
   'home.brandMotto2': '真实自我',
   'home.flow.profile': '个人档案',
-  'home.flow.context': '穿搭场景',
+  'home.flow.context': '穿着场景',
   'home.flow.looks': '专属造型',
 
   // Home - Occasions
   'home.occasions.title': '今天去哪',
-  'home.occasions.subtitle': '选择场合，快速获取穿搭建议',
+  'home.occasions.subtitle': '选择场合，快速获取穿着建议',
   'home.occasions.work.title': '职场通勤',
-  'home.occasions.work.desc': '干练专业的职场穿搭',
+  'home.occasions.work.desc': '干练专业的职场穿着',
   'home.occasions.date.title': '浪漫约会',
   'home.occasions.date.desc': '精致有型的约会装扮',
   'home.occasions.sport.title': '运动休闲',
@@ -82,17 +82,17 @@ const zh = {
   'home.occasions.party.title': '派对聚会',
   'home.occasions.party.desc': '时尚亮眼的派对造型',
   'home.occasions.travel.title': '旅行出游',
-  'home.occasions.travel.desc': '轻松实用的旅行穿搭',
+  'home.occasions.travel.desc': '轻松实用的旅行穿着',
   'home.occasions.formal.title': '正式场合',
   'home.occasions.formal.desc': '庄重得体的正式装扮',
 
   // Home - Steps
   'home.steps.title': '如何运作',
-  'home.steps.subtitle': '三步获取专属穿搭推荐',
+  'home.steps.subtitle': '三步获取专属穿着推荐',
   'home.steps.step1.title': '填写问卷',
   'home.steps.step1.desc': '告诉我们你的身材数据和风格偏好',
   'home.steps.step2.title': 'AI 分析',
-  'home.steps.step2.desc': '智能匹配最适合你的穿搭方案',
+  'home.steps.step2.desc': '智能匹配最适合你的穿着方案',
   'home.steps.step3.title': '获取推荐',
   'home.steps.step3.desc': '查看个性化推荐，收藏喜欢的单品',
 
@@ -102,20 +102,20 @@ const zh = {
   'home.features.feature2.title': '风格匹配',
   'home.features.feature2.desc': '符合你的个人风格偏好',
   'home.features.feature3.title': '场合推荐',
-  'home.features.feature3.desc': '针对不同场合的穿搭建议',
+  'home.features.feature3.desc': '针对不同场合的穿着建议',
   'home.features.feature4.title': '天气感知',
   'home.features.feature4.desc': '根据实时天气调整推荐',
 
   // Home - CTA
-  'home.cta.title': '准备好提升你的穿搭品味了吗？',
-  'home.cta.desc': '只需几分钟，获取专属于你的穿搭推荐',
+  'home.cta.title': '准备好提升你的穿着品味了吗？',
+  'home.cta.desc': '只需几分钟，获取专属于你的穿着推荐',
   'home.cta.button': '立即开始',
 
   // Home - Footer
   'home.footer.tagline': 'StyleFit - 让每一天都穿得恰到好处',
   'footer.settings': '设置',
   'footer.aiStylingStudio': 'AI 造型工作室',
-  'footer.tagline': '基于身材、风格与场合的 AI 智能穿搭推荐',
+  'footer.tagline': '基于身材、风格与场合的 AI 智能穿着推荐',
 
   // Home - Weather
   'home.weather.feelsLike': '体感 {{temp}}°C',
@@ -208,14 +208,14 @@ const zh = {
   'survey.budget.placeholder': '500（不填则不限预算）',
   'survey.btn.prev': '上一步',
   'survey.btn.next': '下一步',
-  'survey.btn.submit': '生成我的穿搭推荐',
+  'survey.btn.submit': '生成我的穿着推荐',
   'survey.btn.generating': 'AI 分析中...',
 
   // Recommendations
   'rec.eyebrow.discover': '个人发现',
   'rec.eyebrow.styling': '私人造型',
   'rec.title': '推荐结果',
-  'rec.subtitle': '根据你的个人风格，为你精选以下穿搭方案',
+  'rec.subtitle': '根据你的个人风格，为你精选以下穿着方案',
   'rec.matchScore': '匹配度',
   'rec.reason': '推荐理由',
   'rec.tips': '搭配建议',
@@ -314,7 +314,7 @@ const zh = {
   'rec.bmi.overweight.advice': '建议选择垂感好、略宽松的款式，V领、竖条纹、深色等元素有助于视觉显瘦。避免过于紧身或过于oversized的极端款式。',
   'rec.bmi.obese': '偏胖',
   'rec.bmi.obese.advice': '建议选择深色、版型挺括的服装，V领和竖条纹是显瘦利器。避免过于紧身或过于宽松的款式，适度宽松最得体。',
-  'rec.outfit.styleNames': '都市精英穿搭,质感日常搭配,周末休闲风格,商务轻正装,潮流街头搭配,简约高级感',
+  'rec.outfit.styleNames': '都市精英穿着,质感日常搭配,周末休闲风格,商务轻正装,潮流街头搭配,简约高级感',
   'rec.outfit.heightDesc': '{{height}}cm左右',
   'rec.outfit.bodyFit': '适合{{bodyType}}身材',
   'rec.outfit.mostBodyTypes': '适合大多数身材',
@@ -338,7 +338,7 @@ const zh = {
   'rec.tips.outerwear': '外套敞开穿更显随性',
   'rec.tips.accessory': '配饰点缀提升整体精致度',
   'rec.tips.standard': '简约搭配即可穿出好效果',
-  'rec.outfitRecommendations': '穿搭搭配推荐',
+  'rec.outfitRecommendations': '穿着搭配推荐',
   'rec.forYou': '为你推荐',
   'rec.favoriteItems': '我的收藏',
   'rec.itemCount': '共 {{count}} 件',
@@ -362,7 +362,7 @@ const zh = {
 
   // Favorites
   'fav.title': '我的收藏',
-  'fav.subtitle': '你喜欢的穿搭单品',
+  'fav.subtitle': '你喜欢的穿着单品',
   'fav.empty': '还没有收藏',
   'fav.emptyHint': '去推荐页收藏你喜欢的单品吧',
   'fav.goToRecommendations': '去看推荐',
@@ -370,10 +370,11 @@ const zh = {
   'favorites.title': '我的收藏',
   'favorites.count': '{{count}} 件单品',
   'favorites.empty.title': '还没有收藏',
-  'favorites.empty.desc': '去推荐页收藏你喜欢的单品吧',
+  'favorites.empty.desc': '返回上一页查看推荐内容或收藏单品吧',
   'favorites.empty.button': '去看推荐',
   'favorites.removeFavorite': '取消收藏',
   'favorites.backToRecommendations': '返回推荐',
+  'favorites.back': '返回上一步',
   'favorites.buyNow': '立即购买',
   'favorites.stylingTips': '搭配建议',
 
@@ -408,7 +409,7 @@ const zh = {
   'match.reason.skinTone': '{{skinTone}}肤色更显气色',
   'match.reason.weather': '适合当前{{weather}}天气',
   'match.reason.budget': '在你的预算范围内',
-  'match.reason.age': '适合{{age}}岁的穿搭风格',
+  'match.reason.age': '适合{{age}}岁的穿着风格',
   'match.bodyType.slim': '偏瘦',
   'match.bodyType.standard': '标准',
   'match.bodyType.athletic': '运动型',

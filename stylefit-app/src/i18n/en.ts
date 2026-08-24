@@ -372,10 +372,11 @@ const en: Record<TranslationKey, string> = {
   'favorites.title': 'My Favorites',
   'favorites.count': '{{count}} items',
   'favorites.empty.title': 'No favorites yet',
-  'favorites.empty.desc': 'Go to recommendations to favorite items you like',
+  'favorites.empty.desc': 'Go back to view recommendations or save items you like',
   'favorites.empty.button': 'View Recommendations',
   'favorites.removeFavorite': 'Remove Favorite',
   'favorites.backToRecommendations': 'Back to Recommendations',
+  'favorites.back': 'Go Back',
   'favorites.buyNow': 'Buy Now',
   'favorites.stylingTips': 'Styling Tips',
 
