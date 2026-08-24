@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ArrowRight, ArrowLeft, Check, Loader2, Sparkles, Ruler, AlertCircle } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Check, Loader2, Sparkles, Ruler, AlertCircle, House } from 'lucide-react';
 import { useT } from '@/i18n';
 import type { UserBodyProfile, Gender, BodyType, SkinTone, StylePreference, Occasion, Season, RecommendationMode } from '../types';
 import { saveProfile } from '../hooks/useRecommendation';
@@ -288,9 +288,16 @@ export default function Survey() {
             </div>
             <span className="text-xl font-semibold tracking-[-0.02em] text-[#1A1A1A]">StyleFit</span>
           </button>
-          <div className="text-right">
-            <div className="text-sm font-medium text-[#C96A22]">{t('survey.stepIndicator', { step: step + 1, total: allSteps.length })}</div>
-            <div className="mt-0.5 text-xs text-[#5F5F5A]">{t(allSteps[step] as any)}</div>
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="sm" onClick={() => navigate('/')} className="text-[#4A4A45] hover:bg-[#FFF4EC] hover:text-[#C96A22]">
+              <House className="mr-1 h-4 w-4" />
+              <span className="hidden sm:inline">返回首页</span>
+              <span className="sm:hidden">首页</span>
+            </Button>
+            <div className="text-right">
+              <div className="text-sm font-medium text-[#C96A22]">{t('survey.stepIndicator', { step: step + 1, total: allSteps.length })}</div>
+              <div className="mt-0.5 text-xs text-[#5F5F5A]">{t(allSteps[step] as any)}</div>
+            </div>
           </div>
         </div>
       </nav>
@@ -344,6 +351,30 @@ export default function Survey() {
                           }`}
                         >
                           {t(opt.labelKey as any)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="mb-2 block">推荐模式</Label>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      {[
+                        { value: 'daily', title: '日常穿搭', desc: '实用好穿，优先场景、舒适度与性价比。' },
+                        { value: 'advanced', title: '高级潮流', desc: '更强调版型、配色、材质与整体风格。' },
+                      ].map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => update('mode', option.value as RecommendationMode)}
+                          aria-pressed={profile.mode === option.value}
+                          className={`survey-option rounded-xl border-2 px-4 py-3 text-left transition-all ${
+                            profile.mode === option.value
+                              ? 'border-[#E0782C] bg-[#FFF4EC] shadow-[0_6px_16px_rgba(224,120,44,0.14)]'
+                              : 'border-[#E5E2DA] bg-white hover:border-[#E0782C]/50 hover:bg-[#FFF7EF]'
+                          }`}
+                        >
+                          <span className="block font-semibold text-[#1A1A1A]">{option.title}</span>
+                          <span className="mt-1 block text-xs leading-5 text-[#6B6B66]">{option.desc}</span>
                         </button>
                       ))}
                     </div>

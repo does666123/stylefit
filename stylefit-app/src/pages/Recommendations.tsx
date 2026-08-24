@@ -618,6 +618,13 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
             </Button>
           </div>
         </div>
+        {!isDiscover && (
+          <div className="mb-5 flex justify-center">
+            <span className="inline-flex rounded-full border border-[#E0782C]/25 bg-[#FFF7EF] px-3 py-1.5 text-sm font-medium text-[#C96A22]">
+              {profile.mode === 'advanced' ? '高级潮流 · AI Stylist' : '日常穿搭 · 好穿省心'}
+            </span>
+          </div>
+        )}
         {!isDiscover && !aiLoading && !hasRenderableAIOutfits && (
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#E0782C]/25 bg-[#FFF7EF] px-4 py-3 text-sm text-[#6B6B66]">
             <span>AI 推荐结果已过期，可重新生成</span>
