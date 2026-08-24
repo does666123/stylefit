@@ -1005,6 +1005,131 @@
 }
 
 @media (max-width: 767px) {
+  .phase-two-favorites {
+    overflow-x: hidden;
+  }
+
+  .favorites-nav > div {
+    height: 3.25rem;
+    padding-inline: 0.75rem;
+  }
+
+  .favorites-content {
+    padding: 1rem 0.75rem 1.5rem;
+  }
+
+  .favorites-heading {
+    margin-bottom: 0.75rem;
+  }
+
+  .favorites-heading h1 {
+    font-size: 1.25rem;
+  }
+
+  .favorites-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem;
+  }
+
+  .favorites-grid > div {
+    min-width: 0;
+  }
+
+  .favorite-card {
+    border-radius: 0.75rem;
+    box-shadow: 0 6px 18px rgba(26, 26, 26, 0.05) !important;
+  }
+
+  .favorite-image {
+    max-height: 13.75rem;
+    aspect-ratio: 1 / 1;
+  }
+
+  .favorite-image img {
+    object-fit: cover;
+  }
+
+  .favorite-image > .absolute.top-3.left-3 {
+    top: 0.45rem;
+    left: 0.45rem;
+  }
+
+  .favorite-image > .absolute.top-3.right-3 {
+    display: none;
+  }
+
+  .favorite-category-badge {
+    padding: 0.18rem 0.45rem;
+    font-size: 0.65rem;
+  }
+
+  .favorite-remove-icon {
+    top: 0.45rem;
+    right: 0.45rem;
+    bottom: auto;
+    width: 2rem;
+    height: 2rem;
+    background: rgba(255, 255, 255, 0.86) !important;
+    backdrop-filter: blur(6px);
+  }
+
+  .favorite-remove-icon .h-5 {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .favorite-card-content {
+    padding: 0.6rem;
+  }
+
+  .favorite-brand {
+    overflow: hidden;
+    margin-bottom: 0.2rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.7rem;
+  }
+
+  .favorite-name {
+    display: -webkit-box;
+    overflow: hidden;
+    min-height: 2.5rem;
+    margin-bottom: 0.4rem;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+
+  .favorite-reason,
+  .favorite-description,
+  .favorite-card-content > .mb-2.flex,
+  .favorite-tips,
+  .favorite-remove-button {
+    display: none;
+  }
+
+  .favorite-card-content > .flex.items-center.justify-between {
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .favorite-card-content .text-xl {
+    font-size: 1.125rem;
+    line-height: 1.5rem;
+  }
+
+  .favorite-card-content .text-xs.text-\[\#8A8A84\] {
+    display: none;
+  }
+
+  .favorite-buy-button {
+    min-height: 2.5rem;
+    padding-inline: 0.55rem;
+    font-size: 0.72rem;
+    white-space: nowrap;
+  }
+
   .phase-two-results {
     overflow-x: hidden;
   }

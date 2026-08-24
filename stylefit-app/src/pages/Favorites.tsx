@@ -59,9 +59,9 @@ export function FavoritesPage() {
         </div>
       </nav>
 
-      <div className="mx-auto max-w-6xl px-4 py-8">
+      <div className="favorites-content mx-auto max-w-6xl px-4 py-8">
         {/* Header */}
-        <div className="mb-6 animate-fade-in-up">
+        <div className="favorites-heading mb-6 animate-fade-in-up">
           <div className="flex items-center gap-2 mb-1">
             <Heart className="h-5 w-5 fill-[#E0782C] text-[#E0782C]" />
             <h1 className="text-2xl font-bold text-[#1A1A1A]">{t('favorites.title')}</h1>
@@ -73,7 +73,7 @@ export function FavoritesPage() {
 
         {/* Favorites Grid */}
         {favoriteItems.length > 0 ? (
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="favorites-grid grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {favoriteItems.map((item, idx) => (
               <div
                 key={item.id}
@@ -137,7 +137,7 @@ function FavoriteCard({
 
   return (
     <Card className="favorite-card group overflow-hidden">
-      <div className="relative aspect-[4/5] overflow-hidden bg-[#1B1E26]">
+      <div className="favorite-image relative aspect-[4/5] overflow-hidden bg-[#1B1E26]">
         {!imgError ? (
           <img
             src={item.image}
@@ -172,9 +172,9 @@ function FavoriteCard({
         </button>
       </div>
 
-      <CardContent className="p-4">
-        <div className="mb-1 text-xs text-[#8A8A84]">{item.brand}</div>
-        <h3 className="mb-2 text-base font-semibold text-[#1A1A1A] line-clamp-1">{item.name}</h3>
+      <CardContent className="favorite-card-content p-4">
+        <div className="favorite-brand mb-1 text-xs text-[#8A8A84]">{item.brand}</div>
+        <h3 className="favorite-name mb-2 text-base font-semibold text-[#1A1A1A] line-clamp-1">{item.name}</h3>
 
         {/* Recommend reason */}
         {item.recommendReason && (
@@ -184,7 +184,7 @@ function FavoriteCard({
           </div>
         )}
 
-        <p className="mb-3 text-sm text-[#6B6B66] line-clamp-2 leading-relaxed">{item.description}</p>
+        <p className="favorite-description mb-3 text-sm text-[#6B6B66] line-clamp-2 leading-relaxed">{item.description}</p>
 
         {/* Suitable info */}
         <div className="mb-2 flex flex-wrap gap-1.5">
@@ -220,7 +220,7 @@ function FavoriteCard({
               <span className="ml-1.5 text-xs text-[#8A8A84]">{item.priceRange}</span>
             )}
           </div>
-          <Button size="sm" className="sf-primary-button" onClick={() => window.open(item.buyLink, '_blank')}>
+          <Button size="sm" className="favorite-buy-button sf-primary-button" onClick={() => window.open(item.buyLink, '_blank')}>
             {t('favorites.buyNow')}<ExternalLink className="ml-1 h-3 w-3" />
           </Button>
         </div>
