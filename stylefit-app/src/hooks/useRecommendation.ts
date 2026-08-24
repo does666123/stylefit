@@ -495,24 +495,28 @@ export function useFavorites() {
       if (raw) {
         const saved = JSON.parse(raw) as unknown;
         if (Array.isArray(saved)) {
-          setFavorites(saved.flatMap((favorite) => {
-            if (typeof favorite === 'string') {
-              return [{ id: favorite, addedAt: '' }];
+          setFavorites(saved.flatMap((favorite): FavoriteItem[] => {
+            if (typeof favorite === 'string' || typeof favorite === 'number') {
+              return [{ id: String(favorite), addedAt: '' }];
             }
-            if (
-              favorite &&
-              typeof favorite === 'object' &&
-              'id' in favorite &&
-              typeof favorite.id === 'string'
-            ) {
-              return [{
-                id: favorite.id,
-                addedAt: 'addedAt' in favorite && typeof favorite.addedAt === 'string'
-                  ? favorite.addedAt
-                  : '',
-              }];
-            }
-            return [];
+            if (!favorite || typeof favorite !== 'object') return [];
+
+            const savedFavorite = favorite as Record<string, unknown>;
+            const savedId = savedFavorite.id ?? savedFavorite.itemId ?? savedFavorite.productId;
+            if (typeof savedId !== 'string' && typeof savedId !== 'number') return [];
+
+            const savedItem = savedFavorite.item;
+            const item = savedItem && typeof savedItem === 'object'
+              ? savedItem as ClothingItem
+              : typeof savedFavorite.name === 'string' && typeof savedFavorite.image === 'string'
+                ? savedFavorite as unknown as ClothingItem
+                : undefined;
+
+            return [{
+              id: String(savedId),
+              addedAt: typeof savedFavorite.addedAt === 'string' ? savedFavorite.addedAt : '',
+              item,
+            }];
           }));
         }
       }
@@ -531,22 +535,24 @@ export function useFavorites() {
   }, [favorites, loaded]);
 
   const isFavorite = useCallback((id: string) => {
-    return favorites.some(f => f.id === id);
+    return favorites.some(f => f.id === String(id));
   }, [favorites]);
 
-  const toggleFavorite = useCallback((id: string) => {
+  const toggleFavorite = useCallback((itemOrId: ClothingItem | string) => {
+    const id = typeof itemOrId === 'string' ? itemOrId : itemOrId.id;
     setFavorites(prev => {
-      const exists = prev.some(f => f.id === id);
+      const exists = prev.some(f => f.id === String(id));
       if (exists) {
-        return prev.filter(f => f.id !== id);
+        return prev.filter(f => f.id !== String(id));
       }
-      return [...prev, { id, addedAt: new Date().toISOString() }];
+      const item = typeof itemOrId === 'string' ? getProductById(id) : itemOrId;
+      return [...prev, { id: String(id), addedAt: new Date().toISOString(), item }];
     });
   }, []);
 
   const favoriteItems = useMemo(() => {
     return favorites
-      .map(f => getProductById(f.id))
+      .map(f => f.item || getProductById(f.id))
       .filter((c): c is ClothingItem => !!c);
   }, [favorites]);
 

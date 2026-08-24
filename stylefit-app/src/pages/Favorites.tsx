@@ -39,10 +39,10 @@ export function FavoritesPage() {
       <nav className="favorites-nav sticky top-0 z-50">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 overflow-hidden rounded-lg bg-[#1B1E26]">
+            <div className="flex h-8 w-8 overflow-hidden rounded-lg border border-[#EEEBE3] bg-white">
               <img src="/stylefit-logo.jpg" alt="" width="32" height="32" className="h-full w-full object-cover" />
             </div>
-            <span className="text-xl font-bold tracking-tight text-[#F7F4EE]">
+            <span className="text-xl font-bold tracking-tight text-[#1A1A1A]">
               StyleFit
             </span>
           </div>
@@ -65,10 +65,10 @@ export function FavoritesPage() {
         {/* Header */}
         <div className="mb-6 animate-fade-in-up">
           <div className="flex items-center gap-2 mb-1">
-            <Heart className="h-5 w-5 fill-[#D7C39D] text-[#D7C39D]" />
-            <h1 className="text-2xl font-bold text-[#F7F4EE]">{t('favorites.title')}</h1>
+            <Heart className="h-5 w-5 fill-[#E0782C] text-[#E0782C]" />
+            <h1 className="text-2xl font-bold text-[#1A1A1A]">{t('favorites.title')}</h1>
           </div>
-          <p className="text-sm text-[#AAA49B]">
+          <p className="text-sm text-[#6B6B66]">
             {t('favorites.count', { count: favoriteItems.length })}
           </p>
         </div>
@@ -96,10 +96,10 @@ export function FavoritesPage() {
             <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full">
               <Heart className="h-8 w-8" />
             </div>
-            <h3 className="mb-2 text-lg font-semibold text-[#F7F4EE]">
+            <h3 className="mb-2 text-lg font-semibold text-[#1A1A1A]">
               {t('favorites.empty.title')}
             </h3>
-            <p className="mb-6 text-sm text-[#AAA49B]">
+            <p className="mb-6 text-sm text-[#6B6B66]">
               {t('favorites.empty.desc')}
             </p>
             <Button
@@ -123,7 +123,7 @@ function FavoriteCard({
 }: {
   item: ClothingItem;
   isFavorite: (id: string) => boolean;
-  toggleFavorite: (id: string) => void;
+  toggleFavorite: (item: ClothingItem | string) => void;
   t: (key: any, params?: any) => string;
 }) {
   const [imgError, setImgError] = useState(false);
@@ -166,7 +166,7 @@ function FavoriteCard({
         </div>
         {/* Remove from favorites button */}
         <button
-          onClick={() => toggleFavorite(item.id)}
+          onClick={() => toggleFavorite(item)}
           className="favorite-remove-icon absolute bottom-3 right-3 flex h-9 w-9 items-center justify-center rounded-full transition-transform hover:scale-110"
           title={t('favorites.removeFavorite')}
         >
@@ -175,8 +175,8 @@ function FavoriteCard({
       </div>
 
       <CardContent className="p-4">
-        <div className="mb-1 text-xs text-[#AAA49B]">{item.brand}</div>
-        <h3 className="mb-2 text-base font-semibold text-[#F7F4EE] line-clamp-1">{item.name}</h3>
+        <div className="mb-1 text-xs text-[#8A8A84]">{item.brand}</div>
+        <h3 className="mb-2 text-base font-semibold text-[#1A1A1A] line-clamp-1">{item.name}</h3>
 
         {/* Recommend reason */}
         {item.recommendReason && (
@@ -186,7 +186,7 @@ function FavoriteCard({
           </div>
         )}
 
-        <p className="mb-3 text-sm text-[#AAA49B] line-clamp-2 leading-relaxed">{item.description}</p>
+        <p className="mb-3 text-sm text-[#6B6B66] line-clamp-2 leading-relaxed">{item.description}</p>
 
         {/* Suitable info */}
         <div className="mb-2 flex flex-wrap gap-1.5">
@@ -207,19 +207,19 @@ function FavoriteCard({
         {/* Styling tips */}
         {item.stylingTips && (
           <div className="favorite-tips mb-3 rounded-lg border border-dashed px-2.5 py-1.5">
-            <p className="text-xs text-[#AAA49B]">
-              <span className="font-medium text-slate-600">{t('favorites.stylingTips')}：</span>{item.stylingTips}
+            <p className="text-xs text-[#6B6B66]">
+              <span className="font-medium text-[#4A4A45]">{t('favorites.stylingTips')}：</span>{item.stylingTips}
             </p>
           </div>
         )}
 
         <div className="flex items-center justify-between">
           <div>
-            <span className="text-xl font-bold text-[#F7F4EE]">
+            <span className="text-xl font-bold text-[#C96A22]">
               {item.currency}{item.price}
             </span>
             {item.priceRange && (
-              <span className="ml-1.5 text-xs text-[#AAA49B]">{item.priceRange}</span>
+              <span className="ml-1.5 text-xs text-[#8A8A84]">{item.priceRange}</span>
             )}
           </div>
           <Button size="sm" className="sf-primary-button" onClick={() => window.open(item.buyLink, '_blank')}>
@@ -232,7 +232,7 @@ function FavoriteCard({
           variant="ghost"
           size="sm"
           className="favorite-remove-button mt-3 w-full"
-          onClick={() => toggleFavorite(item.id)}
+          onClick={() => toggleFavorite(item)}
         >
           <Trash2 className="mr-1.5 h-3.5 w-3.5" />
           {t('favorites.removeFavorite')}

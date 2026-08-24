@@ -181,4 +181,5 @@ export interface OutfitSet {
 export interface FavoriteItem {
   id: string;
   addedAt: string;
+  item?: ClothingItem;
 }

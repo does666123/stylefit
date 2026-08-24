@@ -1068,7 +1068,7 @@ function OutfitCard({
 }: {
   outfit: OutfitSet;
   isFavorite: (id: string) => boolean;
-  toggleFavorite: (id: string) => void;
+  toggleFavorite: (item: ClothingItem | string) => void;
   index: number;
   budget?: number;
 }) {
@@ -1170,7 +1170,7 @@ function OutfitCard({
                 <ProductImage item={item} className="h-full w-full object-cover" />
               </button>
               <button
-                onClick={() => toggleFavorite(item.id)}
+                onClick={() => toggleFavorite(item)}
                 className="absolute top-0.5 right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-white/90 shadow-sm"
               >
                 <Heart
@@ -1203,7 +1203,7 @@ function OutfitCard({
                       <div className="flex shrink-0 items-center gap-1">
                         <span className="text-xs font-bold text-[#1A1A1A]">¥{item.price}</span>
                         <button
-                          onClick={() => toggleFavorite(item.id)}
+                          onClick={() => toggleFavorite(item)}
                           className="result-item-favorite flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-sm"
                           aria-label={isFavorite(item.id) ? '取消收藏' : '收藏商品'}
                         >
@@ -1278,7 +1278,7 @@ function ClothingCard({
 }: {
   item: ClothingItem;
   isFavorite: (id: string) => boolean;
-  toggleFavorite: (id: string) => void;
+  toggleFavorite: (item: ClothingItem | string) => void;
   taobaoMeta?: TaobaoProductMeta;
 }) {
   const { t } = useT();
@@ -1300,14 +1300,14 @@ function ClothingCard({
           </Badge>
         </div>
         <button
-          onClick={() => toggleFavorite(item.id)}
-          className="absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 shadow-md transition-transform hover:scale-110 sm:bottom-3 sm:right-3 sm:h-9 sm:w-9"
+          onClick={() => toggleFavorite(item)}
+          className="absolute bottom-2 right-2 flex h-11 w-11 items-center justify-center rounded-full bg-white/90 shadow-md transition-transform hover:scale-110 sm:bottom-3 sm:right-3 sm:h-9 sm:w-9"
         >
           <Heart className={`h-5 w-5 ${fav ? 'fill-red-500 text-red-500' : 'text-[#9A9A94]'}`} />
         </button>
       </div>
 
-      <CardContent className="p-2.5 sm:p-4">
+      <CardContent className="result-product-card-content p-2.5 sm:p-4">
         <div className="mb-1 truncate text-[10px] text-[#8A8A84] sm:text-xs">{item.brand}</div>
         <h3 className="mb-2 line-clamp-2 text-sm font-semibold text-[#1A1A1A] sm:text-base sm:line-clamp-1">{item.name}</h3>
 
@@ -1370,7 +1370,8 @@ function ClothingCard({
               <span className="ml-1.5 text-xs text-[#8A8A84]">{item.priceRange}</span>
             )}
           </div>
-          <Button size="sm" className="h-8 w-8 bg-[#E0782C] p-0 text-white hover:bg-[#C96A22] sm:h-9 sm:w-auto sm:px-3" onClick={() => window.open(item.buyLink, '_blank')} aria-label={t('rec.goToBuy')}>
+          <Button size="sm" className="h-11 min-w-11 bg-[#E0782C] px-2 text-white hover:bg-[#C96A22] sm:h-9 sm:min-w-0 sm:w-auto sm:px-3" onClick={() => window.open(item.buyLink, '_blank')} aria-label={t('rec.goToBuy')}>
+            <span className="text-xs sm:hidden">购买</span>
             <span className="hidden sm:inline">{t('rec.goToBuy')}</span><ExternalLink className="h-3 w-3 sm:ml-1" />
           </Button>
         </div>
