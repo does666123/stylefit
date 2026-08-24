@@ -42,6 +42,7 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { readQuickSceneContext, type QuickScene } from '@/lib/quickScene';
 
 type ProductSourceStatus = 'loading' | 'demo' | 'live' | 'empty';
 
@@ -318,13 +319,19 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
   const isDiscover = view === 'discover';
 
   // 从 URL 读取场合参数
-  const urlOccasion = new URLSearchParams(location.search).get('occasion') || '';
+  const searchParams = new URLSearchParams(location.search);
+  const urlOccasion = searchParams.get('occasion') || '';
+  const quickScene = searchParams.get('entryMode') === 'quick_scene'
+    ? searchParams.get('scene') as QuickScene | null
+    : null;
   const isValidOccasion = ['work', 'date', 'daily', 'party', 'travel', 'formal'].includes(urlOccasion);
   const locationState = location.state as { profile?: UserBodyProfile; aiRecommendation?: AIRecommendation; aiCandidates?: ClothingItem[] } | null;
 
   // 优先从 location.state 读取，如果没有则从 localStorage 读取（解决刷新后数据丢失问题）
   const [profile] = useState<UserBodyProfile | null>(() => {
     if (locationState?.profile) return locationState.profile;
+    const quickSceneContext = readQuickSceneContext(quickScene);
+    if (quickSceneContext) return quickSceneContext.profile;
     return loadProfile() || (isValidOccasion ? getNeutralProfile(urlOccasion) : null);
   });
   const savedDiscover = isDiscover && profile && discoverSnapshot?.profileKey === getAIRecommendationProfileKey(profile)

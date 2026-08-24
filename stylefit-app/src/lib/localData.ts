@@ -9,6 +9,7 @@ const LOCAL_STORAGE_KEYS = [
 const SESSION_STORAGE_KEYS = [
   'stylefit_survey_draft',
   'stylefit_ai_recommendation',
+  'stylefit_quick_scene_context',
 ] as const;
 
 export const STYLEFIT_DATA_CLEARED_EVENT = 'stylefit:local-data-cleared';
