@@ -1033,6 +1033,10 @@
     padding-inline: 0.4rem;
   }
 
+  .result-nav details > div {
+    min-width: 8rem;
+  }
+
   .result-nav .h-4 {
     width: 1rem;
     height: 1rem;
@@ -1092,7 +1096,7 @@
   }
 
   .result-outfit-card {
-    width: 95%;
+    width: 100%;
     max-width: 34rem;
     margin: 0 auto 0.5rem;
   }
@@ -1127,12 +1131,37 @@
 
   .result-outfit-item-image {
     width: 6.5rem;
-    height: 7.5rem;
+    height: 6.5rem;
   }
 
   .result-outfit-item .result-item-name {
-    white-space: normal;
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
     line-height: 1.35;
+  }
+
+  .result-item-category {
+    border: 1px solid rgba(224, 120, 44, 0.22);
+    border-radius: 999px;
+    background: #fff7ef;
+    color: #b75616;
+    font-size: 0.65rem;
+    line-height: 1.25rem;
+    padding-inline: 0.45rem;
+  }
+
+  .result-outfit-title > div:last-child {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .result-outfit-title > div:last-child button {
+    min-height: 2.75rem;
+    flex: 1 1 0;
+    padding-inline: 0.5rem;
+    font-size: 0.72rem;
   }
 
   .result-item-buy {

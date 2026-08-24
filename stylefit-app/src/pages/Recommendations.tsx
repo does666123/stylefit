@@ -22,6 +22,9 @@ import {
   MapPin,
   Check,
   Search,
+  ChevronDown,
+  MoreHorizontal,
+  Share2,
 } from 'lucide-react';
 import type { UserBodyProfile, ClothingItem, OutfitSet } from '../types';
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
@@ -99,6 +102,105 @@ const styleTagLabels: Record<string, string> = {
   daily: '日常',
   minimal: '简约',
 };
+
+type SharePosterFormat = 'xiaohongshu' | 'douyin';
+
+function wrapPosterText(context: CanvasRenderingContext2D, text: string, maxWidth: number) {
+  const lines: string[] = [];
+  let line = '';
+  for (const character of text) {
+    const nextLine = `${line}${character}`;
+    if (line && context.measureText(nextLine).width > maxWidth) {
+      lines.push(line);
+      line = character;
+    } else {
+      line = nextLine;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+async function shareOutfitPoster(profile: UserBodyProfile, outfit: OutfitSet, format: SharePosterFormat) {
+  const width = 1080;
+  const height = format === 'xiaohongshu' ? 1440 : 1920;
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext('2d');
+  if (!context) return;
+
+  const style = mapStyle(profile.stylePreference, (key) => ({
+    'match.style.casual': '休闲', 'match.style.business': '商务', 'match.style.streetwear': '街头',
+    'match.style.minimal': '简约', 'match.style.elegant': '优雅', 'match.style.sporty': '运动',
+  }[key] || key));
+  const body = mapBodyType(profile.bodyType, (key) => ({
+    'match.bodyType.slim': '偏瘦', 'match.bodyType.standard': '标准', 'match.bodyType.athletic': '运动型',
+    'match.bodyType.curvy': '曲线型', 'match.bodyType.plus': '丰腴型',
+  }[key] || key));
+  const tags = (outfit.styleTags?.length ? outfit.styleTags : outfit.tags)
+    .map((tag) => styleTagLabels[tag] || tag)
+    .slice(0, 3);
+  const drawLines = (text: string, x: number, y: number, lineHeight: number, maxWidth: number, maxLines = 3) => {
+    wrapPosterText(context, text, maxWidth).slice(0, maxLines).forEach((line, index) => context.fillText(line, x, y + lineHeight * index));
+  };
+
+  const gradient = context.createLinearGradient(0, 0, width, height);
+  gradient.addColorStop(0, '#F9F6F0');
+  gradient.addColorStop(0.62, '#F2EAE0');
+  gradient.addColorStop(1, '#E7EFF2');
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, width, height);
+  context.fillStyle = '#1A1A1A';
+  context.fillRect(72, 72, 90, 90);
+  context.fillStyle = '#FFFFFF';
+  context.font = '600 42px sans-serif';
+  context.fillText('SF', 94, 130);
+  context.fillStyle = '#1A1A1A';
+  context.font = '600 40px sans-serif';
+  context.fillText('StyleFit', 184, 130);
+  context.fillStyle = '#C96A22';
+  context.font = '600 28px sans-serif';
+  context.fillText('我的 AI 穿搭报告', 72, 268);
+  context.fillStyle = '#1A1A1A';
+  context.font = '600 78px sans-serif';
+  drawLines(outfit.themeName || outfit.name, 72, 375, 96, width - 144, 2);
+  context.fillStyle = 'rgba(26, 26, 26, 0.68)';
+  context.font = '400 34px sans-serif';
+  context.fillText(`${profile.height}cm / ${body} / ${style}`, 72, 590);
+  context.fillStyle = '#FFFFFF';
+  context.beginPath();
+  context.roundRect(72, 675, width - 144, format === 'xiaohongshu' ? 420 : 570, 36);
+  context.fill();
+  context.fillStyle = '#C96A22';
+  context.font = '600 28px sans-serif';
+  context.fillText('AI 穿搭方向', 112, 750);
+  context.fillStyle = '#34322E';
+  context.font = '400 34px sans-serif';
+  drawLines(outfit.outfitReason || outfit.stylingAdvice || '根据你的身材、风格与场景，定制一套更好穿的搭配。', 112, 825, 52, width - 224, format === 'xiaohongshu' ? 4 : 6);
+  const tagY = format === 'xiaohongshu' ? 1150 : 1325;
+  context.fillStyle = '#C96A22';
+  context.font = '600 26px sans-serif';
+  context.fillText(tags.length ? tags.join('  ·  ') : '专属风格搭配', 72, tagY);
+  context.fillStyle = 'rgba(26, 26, 26, 0.56)';
+  context.font = '400 26px sans-serif';
+  context.fillText('StyleFit AI 私人造型师', 72, height - 88);
+
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+  if (!blob) return;
+  const file = new File([blob], `stylefit-${format}.png`, { type: 'image/png' });
+  const shareData = { title: '我的 StyleFit AI 穿搭', text: '我的 StyleFit AI 穿搭报告', files: [file] };
+  if (navigator.share && (!navigator.canShare || navigator.canShare(shareData))) {
+    await navigator.share(shareData);
+    return;
+  }
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = file.name;
+  link.click();
+  URL.revokeObjectURL(url);
+}
 
 const catList: { key: TaobaoCategory; labelKey: string; icon: React.ReactNode }[] = [
   { key: 'all', labelKey: 'rec.category.all', icon: <Sparkles className="h-4 w-4" /> },
@@ -252,6 +354,8 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
   });
   const aiRecommendation = aiResult?.recommendation || null;
   const [aiLoading, setAILoading] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareFormat, setShareFormat] = useState<SharePosterFormat>('xiaohongshu');
 
   const setCategoryFeed = useCallback((category: TaobaoCategory, feed: TaobaoFeed) => {
     const next = { ...categoryFeedsRef.current, [category]: feed };
@@ -548,6 +652,24 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
             <span className="text-xl font-bold tracking-tight text-[#1A1A1A]">StyleFit</span>
           </div>
           <div className="flex min-w-0 items-center gap-1 sm:gap-2">
+            <div className="flex min-w-0 items-center gap-0.5 sm:hidden">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/recommendations')}
+                className={`h-10 gap-1 px-1.5 text-xs ${isDiscover ? 'text-[#4A4A45]' : 'bg-[#FFF4EC] text-[#C96A22]'}`}
+              >
+                <Sparkles className="h-3.5 w-3.5" />AI
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/discover')}
+                className={`h-10 gap-1 px-1.5 text-xs ${isDiscover ? 'bg-[#FFF4EC] text-[#C96A22]' : 'text-[#4A4A45]'}`}
+              >
+                <ShoppingBag className="h-3.5 w-3.5" />商品
+              </Button>
+            </div>
             <Button
               variant="ghost"
               size="sm"
@@ -577,11 +699,24 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
               variant="ghost"
               size="sm"
               onClick={restartSurvey}
-              className="text-[#4A4A45] hover:bg-[#FFF4EC] hover:text-[#C96A22]"
+              className="hidden text-[#4A4A45] hover:bg-[#FFF4EC] hover:text-[#C96A22] sm:inline-flex"
             >
               <ArrowLeft className="mr-1 h-4 w-4" />
               <span className="text-xs sm:text-sm"><span className="sm:hidden">重测</span><span className="hidden sm:inline">{t('common.retakeTest')}</span></span>
             </Button>
+            <details className="relative sm:hidden">
+              <summary className="focus-ring flex h-10 w-9 cursor-pointer list-none items-center justify-center rounded-lg text-[#4A4A45] hover:bg-[#FFF4EC] [&::-webkit-details-marker]:hidden" aria-label="更多操作">
+                <MoreHorizontal className="h-4 w-4" />
+              </summary>
+              <div className="absolute right-0 top-11 z-50 w-32 rounded-xl border border-[#E5E2DA] bg-white p-1.5 shadow-lg">
+                <button type="button" onClick={() => navigate('/')} className="focus-ring flex min-h-10 w-full items-center gap-2 rounded-lg px-2 text-left text-xs text-[#4A4A45] hover:bg-[#FFF4EC]">
+                  <House className="h-3.5 w-3.5" />返回首页
+                </button>
+                <button type="button" onClick={restartSurvey} className="focus-ring flex min-h-10 w-full items-center gap-2 rounded-lg px-2 text-left text-xs text-[#4A4A45] hover:bg-[#FFF4EC]">
+                  <ArrowLeft className="h-3.5 w-3.5" />重新测试
+                </button>
+              </div>
+            </details>
           </div>
         </div>
       </nav>
@@ -733,9 +868,14 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
                 {hasRenderableAIOutfits && aiRecommendation && <Badge className="result-ai-badge">AI</Badge>}
                 {hasRenderableAIOutfits && outfits.length < 3 && <span className="text-xs text-[#8A8A84]">已生成 {outfits.length} 套搭配，可稍后重新生成更多方案</span>}
               </div>
-              <Button variant="ghost" size="sm" onClick={regenerateAIRecommendation} disabled={aiLoading} className="shrink-0 border border-[#E0782C]/30 bg-white text-[#C96A22] hover:bg-[#FFF4EC] hover:text-[#B75616]">
-                不满意？重新生成 AI
-              </Button>
+              <div className="flex shrink-0 items-center gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setShareOpen(true)} className="border border-[#E0782C]/30 bg-white text-[#C96A22] hover:bg-[#FFF4EC] hover:text-[#B75616]">
+                  <Share2 className="mr-1 h-3.5 w-3.5" />分享我的 AI 穿搭
+                </Button>
+                <Button variant="ghost" size="sm" onClick={regenerateAIRecommendation} disabled={aiLoading} className="border border-[#E0782C]/30 bg-white text-[#C96A22] hover:bg-[#FFF4EC] hover:text-[#B75616]">
+                  不满意？重新生成 AI
+                </Button>
+              </div>
             </div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {outfits.map((outfit, idx) => (
@@ -756,6 +896,35 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
                 查看为你推荐
               </Button>
             </div>
+            <Dialog open={shareOpen} onOpenChange={setShareOpen}>
+              <DialogContent className="max-w-[min(92vw,430px)] border-[#E5E2DA] bg-[#FCFAF5] p-5">
+                <DialogTitle className="text-lg font-semibold text-[#1A1A1A]">分享我的 AI 穿搭</DialogTitle>
+                <p className="text-sm leading-6 text-[#6B6B66]">海报只包含你的风格报告与主推荐 Look，不含商品推广链接。</p>
+                <div className={`mt-3 overflow-hidden rounded-2xl bg-[linear-gradient(135deg,#F9F6F0,#F2EAE0_58%,#E7EFF2)] p-5 text-[#1A1A1A] ${shareFormat === 'xiaohongshu' ? 'aspect-[3/4]' : 'aspect-[9/16]'}`}>
+                  <div className="flex items-center gap-2 text-sm font-semibold"><span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#1A1A1A] text-[10px] text-white">SF</span>StyleFit</div>
+                  <p className="mt-8 text-xs font-medium tracking-[0.14em] text-[#C96A22]">我的 AI 穿搭报告</p>
+                  <h3 className="mt-2 text-2xl font-semibold leading-tight">{outfits[0]?.themeName || outfits[0]?.name}</h3>
+                  <p className="mt-3 text-sm text-[#5D5B55]">{profile.height}cm / {mapBodyType(profile.bodyType, t as any)} / {mapStyle(profile.stylePreference, t as any)}</p>
+                  <div className="mt-6 rounded-xl bg-white/90 p-3 text-sm leading-6 text-[#5D5B55]">
+                    {outfits[0]?.outfitReason || outfits[0]?.stylingAdvice || '根据你的身材、风格与场景，定制一套更好穿的搭配。'}
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-1.5">
+                    {(outfits[0]?.styleTags?.length ? outfits[0].styleTags : outfits[0]?.tags || []).slice(0, 3).map((tag) => <span key={tag} className="rounded-full bg-white/85 px-2 py-1 text-[11px] text-[#6B6258]">{styleTagLabels[tag] || tag}</span>)}
+                  </div>
+                  <p className="mt-auto pt-6 text-xs text-[#77736B]">StyleFit AI 私人造型师</p>
+                </div>
+                <div className="flex gap-2" role="group" aria-label="海报比例">
+                  <Button type="button" variant="outline" onClick={() => setShareFormat('xiaohongshu')} className={`flex-1 ${shareFormat === 'xiaohongshu' ? 'border-[#E0782C] bg-[#FFF4EC] text-[#C96A22]' : ''}`}>小红书 3:4</Button>
+                  <Button type="button" variant="outline" onClick={() => setShareFormat('douyin')} className={`flex-1 ${shareFormat === 'douyin' ? 'border-[#E0782C] bg-[#FFF4EC] text-[#C96A22]' : ''}`}>抖音 9:16</Button>
+                </div>
+                <Button type="button" className="sf-primary-button w-full" onClick={() => {
+                  const outfit = outfits[0];
+                  if (outfit) void shareOutfitPoster(profile, outfit, shareFormat).catch(() => undefined);
+                }}>
+                  <Share2 className="mr-2 h-4 w-4" />生成并分享海报
+                </Button>
+              </DialogContent>
+            </Dialog>
           </div>
         )}
 
@@ -905,6 +1074,7 @@ function OutfitCard({
 }) {
   const { t } = useT();
   const [previewItem, setPreviewItem] = useState<ClothingItem | null>(null);
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
   const itemReasonMap = useMemo(() => {
     const map: Record<string, string> = {};
     outfit.itemReasons?.forEach(r => { map[r.itemId] = r.reason; });
@@ -957,14 +1127,17 @@ function OutfitCard({
                 <Sparkles className="h-3.5 w-3.5" />
                 AI 搭配理由
               </div>
-              {outfit.outfitReason && <p className="mt-1 text-xs leading-5 text-[#5D5B55]">{outfit.outfitReason}</p>}
-              {outfit.bodyAdvice && <p className="mt-1 text-xs leading-5 text-[#77736B]">身材建议：{outfit.bodyAdvice}</p>}
+              {outfit.outfitReason && <p className={`mt-1 text-xs leading-5 text-[#5D5B55] ${detailsExpanded ? '' : 'line-clamp-2 md:line-clamp-none'}`}>{outfit.outfitReason}</p>}
+              {outfit.bodyAdvice && <p className={`mt-1 text-xs leading-5 text-[#77736B] ${detailsExpanded ? '' : 'hidden md:block'}`}>身材建议：{outfit.bodyAdvice}</p>}
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {outfit.suitableScene && <span className="rounded-full bg-white px-2 py-0.5 text-[11px] text-[#6B6258]">适合：{outfit.suitableScene}</span>}
                 {outfit.styleTags?.map((tag) => (
                   <span key={tag} className="rounded-full bg-white px-2 py-0.5 text-[11px] text-[#6B6258]">{styleTagLabels[tag] ?? tag}</span>
                 ))}
               </div>
+              {(outfit.outfitReason || outfit.bodyAdvice) && <button type="button" onClick={() => setDetailsExpanded((current) => !current)} className="focus-ring mt-2 text-xs font-medium text-[#C96A22] md:hidden">
+                {detailsExpanded ? '收起' : '展开查看更多'} <ChevronDown className={`ml-0.5 inline h-3 w-3 transition-transform ${detailsExpanded ? 'rotate-180' : ''}`} />
+              </button>}
             </div>
           )}
           {outfit.suitableBodyDesc && (
@@ -1023,11 +1196,9 @@ function OutfitCard({
                   <ProductImage item={item} className="result-outfit-item-image h-12 w-12 rounded-md object-cover shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1">
-                      <div className="flex items-center gap-1 min-w-0">
+                      <div className="flex min-w-0 items-center gap-1">
                         <span className="result-item-brand text-xs">{item.brand}</span>
-                        <span className="result-item-name truncate text-xs font-medium">
-                          {categoryLabel[item.category] || item.category} · {item.name}
-                        </span>
+                        <span className="result-item-category shrink-0">{categoryLabel[item.category] || item.category}</span>
                       </div>
                       <div className="flex shrink-0 items-center gap-1">
                         <span className="text-xs font-bold text-[#1A1A1A]">¥{item.price}</span>
@@ -1040,6 +1211,7 @@ function OutfitCard({
                         </button>
                       </div>
                     </div>
+                    <span className="result-item-name mt-0.5 block text-xs font-medium">{item.name}</span>
                     {itemReasonMap[item.id] && (
                       <p className="result-item-description mt-0.5 text-xs line-clamp-2">
                         {itemReasonMap[item.id]}

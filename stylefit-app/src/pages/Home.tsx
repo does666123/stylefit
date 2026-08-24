@@ -252,17 +252,17 @@ export function HomePage() {
                 </div>
               )}
 
-              <div className="mt-7 inline-flex max-w-full rounded-2xl border border-[#1A1A1A]/10 bg-white/90 p-1.5 shadow-[0_10px_30px_rgba(26,26,26,0.06)] backdrop-blur" role="group" aria-label="推荐模式">
-                  {([
-                    { value: 'daily', title: '日常穿搭', description: '简单实用，兼顾性价比' },
-                    { value: 'advanced', title: '高级潮流', description: '更注重风格、版型与质感' },
+              <div className="mt-7 flex w-full max-w-[32rem] rounded-2xl border border-[#1A1A1A]/10 bg-white/90 p-1.5 shadow-[0_10px_30px_rgba(26,26,26,0.06)] backdrop-blur sm:inline-flex sm:w-auto" role="group" aria-label="推荐模式">
+                {([
+                    { value: 'daily', title: '日常穿搭', description: '简单好穿 · 实用省心 · 性价比' },
+                    { value: 'advanced', title: 'AI潮流穿搭', description: '年轻高级 · 风格进阶 · AI Stylist' },
                   ] as const).map((option) => (
                     <button
                       key={option.value}
                       type="button"
                       onClick={() => setMode(option.value)}
                       aria-pressed={mode === option.value}
-                      className={`focus-ring min-h-12 rounded-xl px-3 text-left transition-colors sm:px-4 ${mode === option.value ? 'bg-[#1A1A1A] text-white shadow-sm' : 'text-[#555550] hover:bg-[#F4F2EE]'}`}
+                      className={`focus-ring min-h-14 min-w-0 flex-1 rounded-xl px-3 text-left transition-colors sm:min-h-12 sm:flex-none sm:px-4 ${mode === option.value ? 'bg-[#1A1A1A] text-white shadow-sm' : 'text-[#555550] hover:bg-[#F4F2EE]'} ${option.value === 'advanced' && mode !== option.value ? 'border border-[#E0782C]/20 bg-[#FFF8F2] sm:border-transparent sm:bg-transparent' : ''}`}
                     >
                       <span className="block text-sm font-semibold">{option.title}</span>
                       <span className={`mt-0.5 block text-xs ${mode === option.value ? 'text-white/75' : 'text-[#77756F]'}`}>{option.description}</span>
