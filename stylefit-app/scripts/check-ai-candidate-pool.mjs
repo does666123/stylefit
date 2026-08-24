@@ -154,13 +154,23 @@ try {
       assert.ok(total >= profile.budget * 0.6);
     }
   }
+  const dailyResult = await request({ ...scenarios[0], budget: 304, mode: 'daily' });
+  const advancedResult = await request({ ...scenarios[4], budget: 304 });
+  assert.match(dailyResult.recommendation.outfits[0].stylingTip, /日常好穿/);
+  assert.match(advancedResult.recommendation.outfits[0].stylingTip, /风格进阶/);
+  assert.ok(dailyResult.recommendation.outfits[0].style_tags.includes('日常好穿'));
+  assert.ok(advancedResult.recommendation.outfits[0].style_tags.includes('AI Stylist'));
+  assert.notDeepEqual(
+    dailyResult.recommendation.outfits.flatMap((outfit) => outfit.items.map((item) => item.id)),
+    advancedResult.recommendation.outfits.flatMap((outfit) => outfit.items.map((item) => item.id)),
+  );
   onlyLowQuality = true;
   const advancedFallback = await request({ ...scenarios[4], budget: 303 });
   assert.equal(advancedFallback.status, 'ok');
   assert.equal(advancedFallback.recommendation.outfits.length, 3);
   onlyLowQuality = false;
-  assert.equal(aiCalls, 6);
-  assert.equal(taobaoCalls, 72);
+  assert.equal(aiCalls, 8);
+  assert.equal(taobaoCalls, 96);
 
   omitShoes = true;
   const withoutShoes = await request({ ...scenarios[0], budget: 301 });

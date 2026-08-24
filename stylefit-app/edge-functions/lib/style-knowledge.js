@@ -116,15 +116,13 @@ export function scoreRecommendationMode(candidate, profile, blueprint, template)
   if (/修身|合体|运动型/.test(fitContext)) preferredFits.add('slim');
   const fitMatches = candidateProfile.fit.reduce((count, tag) => count + (preferredFits.has(tag) ? 1 : 0), 0);
   const colorMatches = countMatches(text, [...(blueprint?.colors || []), ...basicColors]);
-  const budget = Number(profile?.budget);
-  const priceRatio = Number.isFinite(budget) && budget > 0 ? Number(candidate?.couponPrice) / budget : 0.3;
-  const budgetScore = priceRatio > 0 && priceRatio <= 0.5 ? 15 : priceRatio <= 0.65 ? 9 : 4;
-  const qualityBonus = candidateProfile.qualityLevel === 'premium' ? 6 : 0;
-  return clamp(styleMatches * 10, 0, 40)
+  const sophistication = countMatches(text, [...materialTerms, '简约', '纯色', '剪裁', '质感', '垂感', '无logo']);
+  const quality = Math.log10(Math.max(Number(candidate?.volume) || 0, 1) + 1) * 3;
+  return clamp(styleMatches * 8, 0, 30)
     + clamp(fitMatches * 15 + candidateProfile.fit.length * 2, 0, 25)
     + clamp(colorMatches * 4, 0, 20)
-    + budgetScore
-    + qualityBonus;
+    + clamp(sophistication * 3 + (candidateProfile.qualityLevel === 'premium' ? 4 : 0), 0, 15)
+    + clamp(4 + quality, 0, 10);
 }
 
 export function scoreBottomKnowledge(candidate, profile, blueprint, template) {

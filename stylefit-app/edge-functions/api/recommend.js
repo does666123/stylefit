@@ -1,5 +1,5 @@
 import { searchTaobaoCandidatePool } from '../lib/taobao.js';
-import { getStyleTagLabels, matchesRecommendationMode, scoreBottomKnowledge, scoreOutfitMatch, scoreRecommendationMode } from '../lib/style-knowledge.js';
+import { getStyleTagLabels, matchesRecommendationMode, scoreOutfitMatch, scoreRecommendationMode } from '../lib/style-knowledge.js';
 
 const endpoint = 'https://qianfan.baidubce.com/v2/chat/completions';
 const model = 'ernie-4.5-turbo-32k';
@@ -10,24 +10,23 @@ const cacheLimit = 200;
 const recommendationCache = new Map();
 const inFlightRequests = new Map();
 const categories = ['top', 'bottom', 'shoes', 'accessory'];
-const styleTerms = ['商务', '通勤', '休闲', '运动', '街头', '复古', '学院', '日系', '韩系', '轻熟', '极简', '简约', '优雅', '老钱', '法式', 'clean', 'quiet'];
-const visualTerms = ['黑', '白', '灰', '蓝', '深蓝', '棕', '卡其', '米', '驼', '奶油', '直筒', '阔腿', '宽松', '修身', '合体', '廓形', '羊毛', '羊绒', '真丝', '亚麻', '棉', '皮革', '真皮'];
-const premiumTerms = ['羊毛', '羊绒', '真丝', '桑蚕丝', '亚麻', '纯棉', '棉质', '真皮', '皮革', '牛津纺', '针织', '垂感', '质感', '剪裁', '双面', '精纺'];
-const elevatedStyleTerms = ['clean fit', 'clean', 'quiet', '老钱', '韩系', '轻熟', '极简', '简约', '法式', '日系', '优雅', '学院', '复古', '商务休闲'];
-const refinedDesignTerms = ['简约', '极简', '基础', '纯色', '剪裁', '合体', '垂感', '廓形', '无logo', '无标'];
 const nonWearableTerms = /防晒|遮阳|功能|户外|沙滩|海边|泳衣|泳裤|游泳|露营|登山|钓鱼|旅行收纳|收纳包|洗漱包|行李|雨伞|水杯|手机|电脑|数码|家居|美妆|食品/;
 const defaultLifestyleTerms = /草帽|渔夫帽|遮阳帽|沙滩帽|夸张耳环|夸张项链|派对眼镜/;
 const lowQualityTerms = /大logo|大图案|夸张印花|荧光|撞色|彩虹|工具|功能|赠品|广告款|同款链接|清仓特价/;
 const styleTemplates = {
   male: [
-    { name: '老钱风', keywords: ['针织', '衬衫', '西裤', '卡其裤', '乐福鞋', '皮鞋', '羊毛', '棉麻', '米白', '灰色', '深棕', '藏蓝'], forbidden: ['大logo', '卡通', '运动鞋', '荧光'] },
     { name: 'Clean Fit', keywords: ['纯色', 't恤', '宽松裤', '直筒裤', '基础', '小白鞋', '灰', '黑', '白'], forbidden: ['大logo', '卡通', '荧光'] },
+    { name: '老钱风', keywords: ['针织', '衬衫', '西裤', '卡其裤', '乐福鞋', '皮鞋', '羊毛', '棉麻', '米白', '灰色', '深棕', '藏蓝'], forbidden: ['大logo', '卡通', '运动鞋', '荧光'] },
+    { name: 'City Boy', keywords: ['宽松', '廓形', '衬衫', '直筒裤', '工装', '板鞋', '深蓝', '卡其'], forbidden: ['大logo', '卡通', '荧光'] },
+    { name: '美式复古', keywords: ['水洗', '牛仔', '工装', '宽松', '直筒', '针织', '板鞋'], forbidden: ['西装', '领带', '荧光'] },
     { name: '韩系轻熟', keywords: ['短外套', '针织', '衬衫', '阔腿裤', '简约', '乐福鞋', '皮鞋'], forbidden: ['大logo', '卡通', '荧光'] },
   ],
   female: [
+    { name: 'Clean Girl', keywords: ['针织', '纯色', '高腰', '直筒', '浅色', '玛丽珍鞋', '小白鞋'], forbidden: ['大logo', '卡通', '荧光'] },
     { name: '韩系简约', keywords: ['针织', '半裙', '西裤', '短外套', '玛丽珍鞋', '浅色', '简约'], forbidden: ['大logo', '卡通', '荧光'] },
     { name: '法式温柔', keywords: ['衬衫', '碎花', '裙装', '针织', '低饱和', '浅色'], forbidden: ['大logo', '卡通', '荧光'] },
     { name: '通勤高级', keywords: ['西装', '风衣', '直筒裤', '皮鞋', '衬衫', '针织'], forbidden: ['大logo', '卡通', '荧光'] },
+    { name: 'Y2K', keywords: ['短款', '牛仔', '高腰', '修身', '厚底鞋', '银色'], forbidden: ['大logo', '荧光'] },
   ],
 };
 
@@ -220,21 +219,6 @@ function toCandidate(product, profile) {
   };
 }
 
-function profileTerms(profile) {
-  const styles = {
-    business: ['商务', '通勤', '西装', '衬衫', '西裤', '皮鞋', '轻熟', '简约'],
-    casual: ['休闲', '基础', '牛仔', 't恤', '运动', 'clean'],
-    sporty: ['运动', '跑步', '卫衣', '球鞋'],
-    streetwear: ['街头', '宽松', '工装', '潮'],
-    retro: ['复古', '格纹', '灯芯绒', '直筒'],
-    preppy: ['学院', '衬衫', '针织'],
-    minimal: ['简约', '基础', '纯色', '极简', 'clean', '克制'],
-    elegant: ['优雅', '轻熟', '法式', '垂感', '简约', '质感'],
-  };
-  const scenes = { daily: ['日常', '休闲'], work: ['职场', '通勤', '商务'], date: ['约会', '轻熟', '优雅'], party: ['聚会', '派对'], travel: ['旅行', '舒适'], formal: ['正式', '商务', '优雅'] };
-  return [...(styles[profile.stylePreference] || []), ...(scenes[profile.occasion] || [])];
-}
-
 function isCandidateEligible(candidate, profile) {
   const text = `${candidate.title} ${candidate.category}`;
   if (profile.gender === 'male' && /女(?:士|款|装)?|女式|女装|裙/.test(text)) return false;
@@ -281,50 +265,19 @@ function budgetItemScore(candidate, category, budget) {
   return ratio <= max * 1.2 ? 0 : -3;
 }
 
-function scoreCandidate(candidate, profile, blueprint, category, template) {
+function scoreCandidate(candidate, profile, blueprint, category) {
   const text = `${candidate.title} ${candidate.category}`.toLowerCase();
-  const keyword = blueprint.keywords[category] || '';
-  const lookTerms = [...styleTerms, ...visualTerms].filter((term) => `${blueprint.style || ''} ${blueprint.colors?.join(' ') || ''} ${blueprint.fit || ''} ${blueprint.formality || ''} ${keyword}`.includes(term));
-  const keywordMatches = matchingTerms(text, [keyword, ...lookTerms]);
-  const profileMatches = matchingTerms(text, profileTerms(profile));
-  const fitTerms = {
-    slim: ['宽松', '廓形', '肩', '叠穿', '针织'],
-    standard: ['合体', '直筒', '简约'],
-    athletic: ['合体', '修身', '直筒'],
-    curvy: ['高腰', '收腰', '垂感', '直筒'],
-    plus: ['垂感', '直筒', '宽松', '深色'],
-  };
-  const fitMatches = matchingTerms(text, fitTerms[profile.bodyType] || []);
-  const colorMatches = matchingTerms(text, [...(blueprint.colors || []), ...visualTerms.slice(0, 10)]);
-  const premiumMatches = matchingTerms(text, premiumTerms);
-  const lowQualityPenalty = lowQualityTerms.test(text) ? 8 : 0;
-  const designMatches = matchingTerms(text, refinedDesignTerms);
-  const lookText = `${blueprint.style || ''} ${blueprint.fit || ''} ${blueprint.formality || ''} ${profile.stylePreference || ''}`.toLowerCase();
-  const elevatedStyleMatches = matchingTerms(text, elevatedStyleTerms.filter((term) => lookText.includes(term)));
-  const styleMatch = clamp(12 + keywordMatches * 5 + profileMatches * 2, 0, 30);
-  const colorMatch = clamp(10 + colorMatches * 3 - lowQualityPenalty, 0, 20);
-  const silhouetteFit = clamp(11 + fitMatches * 4, 0, 20);
-  const sceneMatch = clamp(8 + profileMatches * 2, 0, 15);
-  const quality = clamp(
-    5 + premiumMatches * 2 + Math.log10(Math.max(candidate.volume, 1) + 1) * 2 + budgetItemScore(candidate, category, Number(profile.budget)) - lowQualityPenalty,
-    0,
-    15,
-  );
-  const sophistication = clamp(
-    4 + premiumMatches * 2 + designMatches * 2 + elevatedStyleMatches * 3 - lowQualityPenalty,
-    0,
-    20,
-  );
-  const templateMatches = matchingTerms(text, template.keywords);
-  const styleMatchScore = clamp(
-    templateMatches * 10 + (sophistication / 20) * 30 + (silhouetteFit / 20) * 20 + hasBudgetScore(candidate, category, profile) * 10,
-    0,
-    100,
-  );
-  const knowledgeScore = category === 'bottom'
-    ? scoreBottomKnowledge(candidate, profile, blueprint, template)
-    : 0;
-  return styleMatch + colorMatch + silhouetteFit + sceneMatch + quality + sophistication + styleMatchScore + knowledgeScore;
+  const sceneTerms = profile.occasion === 'work' ? ['通勤', '商务', '职场', '衬衫', '西裤', '皮鞋']
+    : profile.occasion === 'date' ? ['约会', '优雅', '轻熟', '简约', '乐福鞋', '玛丽珍']
+      : ['日常', '休闲', '基础', '牛仔', 't恤', '小白鞋', '板鞋'];
+  const comfortTerms = ['舒适', '柔软', '亲肤', '纯棉', '棉质', '针织', '宽松', '直筒', '透气', '休闲'];
+  const basicTerms = ['基础', '纯色', '简约', '百搭', '直筒', '小白鞋', '德训鞋'];
+  const sceneScore = clamp(15 + matchingTerms(text, [...sceneTerms, blueprint.occasion]) * 4, 0, 35);
+  const comfortScore = clamp(8 + matchingTerms(text, comfortTerms) * 3, 0, 25);
+  const budgetScore = clamp(hasBudgetScore(candidate, category, profile) * 20, 0, 20);
+  const basicScore = clamp(3 + matchingTerms(text, basicTerms) * 2 - (lowQualityTerms.test(text) ? 4 : 0), 0, 10);
+  const qualityScore = clamp(2 + Math.log10(Math.max(candidate.volume, 1) + 1) * 2, 0, 10);
+  return sceneScore + comfortScore + budgetScore + basicScore + qualityScore;
 }
 
 function hasBudgetScore(candidate, category, profile) {
@@ -354,11 +307,15 @@ function explainOutfit(blueprint, profile) {
   const style = blueprint.style || profile.stylePreference || '简约风格';
   const occasion = blueprint.occasion || profile.occasion || '日常';
   const fit = blueprint.fit || '合体利落的版型';
+  if (profile.mode === 'advanced') {
+    return `以${fit}调整身形比例，用${colors}建立${style}的风格统一感；兼顾${occasion}场景，突出层次、配色与材质带来的高级氛围。`;
+  }
   return `结合你${Number.isFinite(height) ? `${height}cm` : '当前'}身高、${Number.isFinite(weight) ? `${weight}kg` : '当前'}体重与 BMI ${bmi}，以${fit}修饰身形；用${colors}建立${style}的统一层次，兼顾${occasion}场景的得体与舒适。`;
 }
 
 function outfitStyleTags(blueprint, profile, template) {
   return [...new Set([
+    profile.mode === 'advanced' ? 'AI Stylist' : '日常好穿',
     ...getStyleTagLabels(profile, blueprint, template),
     blueprint.style,
     blueprint.formality,
@@ -380,7 +337,12 @@ function rankCategory(candidates, profile, blueprint, category, usedIds, allowRe
     : eligible;
   const pool = profile.mode === 'advanced' && preferred.length >= 3 ? preferred : eligible;
   const ranked = pool
-    .map((candidate) => ({ candidate, score: scoreCandidate(candidate, profile, blueprint, category, template) + scoreRecommendationMode(candidate, profile, blueprint, template) }))
+    .map((candidate) => ({
+      candidate,
+      score: profile.mode === 'advanced'
+        ? scoreRecommendationMode(candidate, profile, blueprint, template)
+        : scoreCandidate(candidate, profile, blueprint, category),
+    }))
     .sort((left, right) => right.score - left.score || left.candidate.couponPrice - right.candidate.couponPrice);
   const usedShopTitles = new Set(candidates
     .filter((candidate) => usedIds.has(candidate.id))
@@ -395,7 +357,12 @@ function composeOutfit(blueprint, candidates, profile, usedIds, allowReuse, temp
   const ranked = Object.fromEntries(categories.map((category) => [category, rankCategory(candidates, profile, blueprint, category, usedIds, allowReuse, template)]));
   const createOutfit = (items) => ({
     name: blueprint.name,
-    stylingTip: [blueprint.style, blueprint.fit, blueprint.formality].filter(Boolean).join(' · ') || '按你的身形与场合搭配',
+    stylingTip: [
+      profile.mode === 'advanced' ? '风格进阶 · AI Stylist' : '日常好穿 · 省心通勤',
+      blueprint.style,
+      blueprint.fit,
+      blueprint.formality,
+    ].filter(Boolean).join(' · '),
     outfit_reason: explainOutfit(blueprint, profile),
     suitable_scene: blueprint.occasion || profile.occasion || '日常',
     style_tags: outfitStyleTags(blueprint, profile, template),
