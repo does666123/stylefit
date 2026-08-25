@@ -1,5 +1,5 @@
 import { searchTaobaoCandidatePool } from '../lib/taobao.js';
-import { getStyleTagLabels, matchesRecommendationMode, scoreOutfitMatch, scoreRecommendationMode } from '../lib/style-knowledge.js';
+import { getStyleTagLabels, scoreOutfitMatch, scoreRecommendationMode } from '../lib/style-knowledge.js';
 
 const endpoint = 'https://qianfan.baidubce.com/v2/chat/completions';
 const model = 'ernie-4.5-turbo-32k';
@@ -328,20 +328,13 @@ function outfitStyleTags(blueprint, profile, template) {
 function rankCategory(candidates, profile, blueprint, category, usedIds, allowReuse, template) {
   const base = candidates
     .filter((candidate) => candidate.category === category && isCandidateEligible(candidate, profile))
-    .filter((candidate) => allowReuse || !usedIds.has(candidate.id))
-  const templateMatches = base.filter((candidate) => matchesStyleTemplate(candidate, template));
-  const eligible = profile.mode === 'advanced' && templateMatches.length < 3 ? base : templateMatches;
-  const preferred = profile.mode === 'advanced'
-    ? eligible.filter((candidate) => matchesRecommendationMode(candidate, profile)
-      && scoreRecommendationMode(candidate, profile, blueprint, template) >= 30)
-    : eligible;
-  const pool = profile.mode === 'advanced' && preferred.length >= 3 ? preferred : eligible;
-  const ranked = pool
+    .filter((candidate) => allowReuse || !usedIds.has(candidate.id));
+  const ranked = base
     .map((candidate) => ({
       candidate,
-      score: profile.mode === 'advanced'
-        ? scoreRecommendationMode(candidate, profile, blueprint, template)
-        : scoreCandidate(candidate, profile, blueprint, category),
+      score: scoreCandidate(candidate, profile, blueprint, category)
+        + scoreRecommendationMode(candidate, profile, blueprint, template) * (profile.mode === 'advanced' ? 0.8 : 0.25)
+        + (matchesStyleTemplate(candidate, template) ? 6 : -3),
     }))
     .sort((left, right) => right.score - left.score || left.candidate.couponPrice - right.candidate.couponPrice);
   const usedShopTitles = new Set(candidates

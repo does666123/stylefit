@@ -25,6 +25,8 @@ import {
   ChevronDown,
   MoreHorizontal,
   Share2,
+  ThumbsDown,
+  ThumbsUp,
 } from 'lucide-react';
 import type { UserBodyProfile, ClothingItem, OutfitSet } from '../types';
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
@@ -43,6 +45,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { readQuickSceneContext, type QuickScene } from '@/lib/quickScene';
+import { createRecommendationId, DISLIKE_REASONS, recordStyleFeedback } from '@/lib/styleFeedback';
 
 type ProductSourceStatus = 'loading' | 'demo' | 'live' | 'empty';
 
@@ -390,9 +393,12 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
     return () => window.removeEventListener('scroll', markUserScroll);
   }, [isDiscover]);
 
+  const recommendationId = useMemo(() => createRecommendationId(profile), [profile]);
+
   const regenerateAIRecommendation = useCallback(async () => {
     if (!profile || aiRequestInFlight.current) return;
 
+    recordStyleFeedback({ profile, recommendationId, action: 'regenerate_ai' });
     aiRequestInFlight.current = true;
     setAILoading(true);
     try {
@@ -405,7 +411,7 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
       aiRequestInFlight.current = false;
       setAILoading(false);
     }
-  }, [profile]);
+  }, [profile, recommendationId]);
 
   const restartSurvey = useCallback(() => {
     clearCachedAIRecommendation();
@@ -451,7 +457,22 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
     return getBMICategory(profile.height, profile.weight, t as any);
   }, [profile]);
 
-  const { isFavorite, toggleFavorite, favoriteItems } = useFavorites();
+  const { isFavorite, toggleFavorite: toggleFavoriteItem, favoriteItems } = useFavorites();
+  const toggleFavorite = useCallback((itemOrId: ClothingItem | string) => {
+    const id = typeof itemOrId === 'string' ? itemOrId : itemOrId.id;
+    const item = typeof itemOrId === 'string'
+      ? aiResult?.candidates.find((candidate) => candidate.id === itemOrId)
+      : itemOrId;
+    const action = isFavorite(id) ? 'unfavorite' : 'favorite';
+    toggleFavoriteItem(itemOrId);
+    recordStyleFeedback({ profile, recommendationId, product: item, action });
+  }, [aiResult?.candidates, isFavorite, profile, recommendationId, toggleFavoriteItem]);
+  const recordOutfitFeedback = useCallback((outfit: OutfitSet, action: 'like' | 'dislike', reason?: string) => {
+    recordStyleFeedback({ profile, recommendationId, outfit, action, reason });
+  }, [profile, recommendationId]);
+  const recordPurchase = useCallback((item: ClothingItem, outfit?: OutfitSet) => {
+    recordStyleFeedback({ profile, recommendationId, outfit, product: item, action: 'purchase_click' });
+  }, [profile, recommendationId]);
 
   const loadTaobaoProducts = useCallback(async (category: TaobaoCategory, page = 1, retry = false) => {
     if (!profile) return;
@@ -891,6 +912,8 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
                     outfit={outfit}
                     isFavorite={isFavorite}
                     toggleFavorite={toggleFavorite}
+                    onFeedback={(action, reason) => recordOutfitFeedback(outfit, action, reason)}
+                    onPurchase={(item) => recordPurchase(item, outfit)}
                     index={idx}
                     budget={profile?.budget}
                   />
@@ -1029,6 +1052,7 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
                     item={item}
                     isFavorite={isFavorite}
                     toggleFavorite={toggleFavorite}
+                    onPurchase={recordPurchase}
                     taobaoMeta={taobaoProductMeta[item.id]}
                   />
                 </div>
@@ -1070,18 +1094,24 @@ function OutfitCard({
   outfit,
   isFavorite,
   toggleFavorite,
+  onFeedback,
+  onPurchase,
   index,
   budget,
 }: {
   outfit: OutfitSet;
   isFavorite: (id: string) => boolean;
   toggleFavorite: (item: ClothingItem | string) => void;
+  onFeedback: (action: 'like' | 'dislike', reason?: string) => void;
+  onPurchase: (item: ClothingItem) => void;
   index: number;
   budget?: number;
 }) {
   const { t } = useT();
   const [previewItem, setPreviewItem] = useState<ClothingItem | null>(null);
   const [detailsExpanded, setDetailsExpanded] = useState(false);
+  const [feedbackAction, setFeedbackAction] = useState<'like' | 'dislike' | null>(null);
+  const [showDislikeReasons, setShowDislikeReasons] = useState(false);
   const itemReasonMap = useMemo(() => {
     const map: Record<string, string> = {};
     outfit.itemReasons?.forEach(r => { map[r.itemId] = r.reason; });
@@ -1162,6 +1192,49 @@ function OutfitCard({
               ))}
             </div>
           )}
+          <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-[#E8E4DC] pt-2" aria-label="穿着反馈">
+            <span className="text-xs text-[#77736B]">这套穿着适合你吗？</span>
+            <button
+              type="button"
+              aria-pressed={feedbackAction === 'like'}
+              onClick={() => {
+                setFeedbackAction('like');
+                setShowDislikeReasons(false);
+                onFeedback('like');
+              }}
+              className={`focus-ring inline-flex min-h-9 items-center gap-1 rounded-full border px-3 text-xs ${feedbackAction === 'like' ? 'border-[#E0782C] bg-[#FFF4EC] text-[#C96A22]' : 'border-[#E5E2DA] bg-white text-[#6B6B66]'}`}
+            >
+              <ThumbsUp className="h-3.5 w-3.5" />喜欢
+            </button>
+            <button
+              type="button"
+              aria-pressed={feedbackAction === 'dislike'}
+              onClick={() => {
+                setFeedbackAction('dislike');
+                setShowDislikeReasons(true);
+              }}
+              className={`focus-ring inline-flex min-h-9 items-center gap-1 rounded-full border px-3 text-xs ${feedbackAction === 'dislike' ? 'border-[#E0782C] bg-[#FFF4EC] text-[#C96A22]' : 'border-[#E5E2DA] bg-white text-[#6B6B66]'}`}
+            >
+              <ThumbsDown className="h-3.5 w-3.5" />不喜欢
+            </button>
+            {showDislikeReasons && (
+              <div className="flex w-full flex-wrap gap-1.5 pt-1">
+                {DISLIKE_REASONS.map((reason) => (
+                  <button
+                    key={reason}
+                    type="button"
+                    onClick={() => {
+                      onFeedback('dislike', reason);
+                      setShowDislikeReasons(false);
+                    }}
+                    className="focus-ring min-h-8 rounded-full bg-[#F4F1EA] px-2.5 text-xs text-[#6B6258] hover:bg-[#FFF4EC] hover:text-[#C96A22]"
+                  >
+                    {reason}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Item thumbnails */}
@@ -1233,6 +1306,7 @@ function OutfitCard({
                       href={item.buyLink}
                       target="_blank"
                       rel="noopener noreferrer"
+                      onClick={() => onPurchase(item)}
                       className="result-item-buy mt-1 inline-flex items-center gap-1 text-xs font-medium"
                     >
                       <ShoppingBag className="h-3 w-3" />
@@ -1281,11 +1355,13 @@ function ClothingCard({
   item,
   isFavorite,
   toggleFavorite,
+  onPurchase,
   taobaoMeta,
 }: {
   item: ClothingItem;
   isFavorite: (id: string) => boolean;
   toggleFavorite: (item: ClothingItem | string) => void;
+  onPurchase: (item: ClothingItem) => void;
   taobaoMeta?: TaobaoProductMeta;
 }) {
   const { t } = useT();
@@ -1377,7 +1453,7 @@ function ClothingCard({
               <span className="ml-1.5 text-xs text-[#8A8A84]">{item.priceRange}</span>
             )}
           </div>
-          <Button size="sm" className="h-11 min-w-11 bg-[#E0782C] px-2 text-white hover:bg-[#C96A22] sm:h-9 sm:min-w-0 sm:w-auto sm:px-3" onClick={() => window.open(item.buyLink, '_blank')} aria-label={t('rec.goToBuy')}>
+          <Button size="sm" className="h-11 min-w-11 bg-[#E0782C] px-2 text-white hover:bg-[#C96A22] sm:h-9 sm:min-w-0 sm:w-auto sm:px-3" onClick={() => { onPurchase(item); window.open(item.buyLink, '_blank'); }} aria-label={t('rec.goToBuy')}>
             <span className="text-xs sm:hidden">购买</span>
             <span className="hidden sm:inline">{t('rec.goToBuy')}</span><ExternalLink className="h-3 w-3 sm:ml-1" />
           </Button>

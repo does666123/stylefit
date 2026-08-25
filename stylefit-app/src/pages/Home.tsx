@@ -29,6 +29,7 @@ import { getNeutralProfile, loadProfile } from '@/hooks/useRecommendation';
 import { cacheAIRecommendation, readCachedAIRecommendation, requestAIRecommendation, type AIRecommendationResult } from '@/lib/aiRecommendation';
 import { STYLEFIT_DATA_CLEARED_EVENT } from '@/lib/localData';
 import { saveQuickSceneContext, type QuickScene } from '@/lib/quickScene';
+import { recordStyleFeedback } from '@/lib/styleFeedback';
 import type { Gender, Occasion, RecommendationMode, UserBodyProfile } from '@/types';
 
 const SilkBackground = lazy(() => import('@/components/SilkBackground'));
@@ -110,6 +111,16 @@ export function HomePage() {
   const [quickError, setQuickError] = useState('');
   const quickRequestInFlight = useRef(false);
   const quickDialogOpenRef = useRef(false);
+  const changeMode = (nextMode: RecommendationMode) => {
+    if (nextMode !== mode) {
+      recordStyleFeedback({
+        profile: existingProfile ? { ...existingProfile, mode: nextMode } : { mode: nextMode },
+        action: 'mode_switch',
+        reason: `${mode}->${nextMode}`,
+      });
+    }
+    setMode(nextMode);
+  };
 
   useEffect(() => {
     const clearProfileState = () => {
@@ -438,7 +449,7 @@ export function HomePage() {
                     <button
                       key={option.value}
                       type="button"
-                      onClick={() => setMode(option.value)}
+                      onClick={() => changeMode(option.value)}
                       aria-pressed={mode === option.value}
                       className={`focus-ring min-h-14 min-w-0 flex-1 rounded-xl px-3 text-left transition-colors sm:min-h-12 sm:flex-none sm:px-4 ${mode === option.value ? 'bg-[#1A1A1A] text-white shadow-sm' : 'text-[#555550] hover:bg-[#F4F2EE]'} ${option.value === 'advanced' && mode !== option.value ? 'border border-[#E0782C]/20 bg-[#FFF8F2] sm:border-transparent sm:bg-transparent' : ''}`}
                     >

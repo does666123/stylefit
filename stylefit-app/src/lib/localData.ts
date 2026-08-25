@@ -2,6 +2,7 @@ const LOCAL_STORAGE_KEYS = [
   'stylefit_profile',
   'stylefit_favorites',
   'stylefit_ai_recommendation',
+  'stylefit_feedback_v1',
   'stylefit_weather',
   'stylefit_lang',
 ] as const;

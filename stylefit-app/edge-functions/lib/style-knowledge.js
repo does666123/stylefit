@@ -1,177 +1,110 @@
-const bottomKnowledge = {
-  cleanFit: {
-    match: ['clean fit', 'clean', '简约', '极简', 'minimal'],
-    preferred: ['高腰', '直筒', '宽松', '垂感', '西裤', '休闲裤', '素色'],
-    avoid: ['紧身', '束脚', '收口', '运动裤'],
-  },
-  oldMoney: {
-    match: ['old money', 'quiet luxury', '老钱', '商务', '轻熟'],
-    preferred: ['灰色', '卡其', '深色', '羊毛', '毛呢', '西裤', '宽直筒', '直筒'],
-    avoid: ['大logo', '卡通', '破洞', '运动裤', '束脚'],
-  },
-  americanVintage: {
-    match: ['美式', '复古', '街头', '工装'],
-    preferred: ['水洗', '牛仔', '工装', '军裤', '宽版', '直筒'],
-    avoid: ['紧身', '束脚'],
-  },
-};
+import { STYLE_KNOWLEDGE } from './style-knowledge-data.js';
 
-const materialTerms = ['羊毛', '毛呢', '针织', '棉麻', '亚麻', '真皮', '灯芯绒', '牛仔'];
-const fitTerms = ['高腰', '宽直筒', '直筒', '阔腿', '宽松', '垂感', '修身', '紧身', '束脚', '运动'];
-const basicColors = ['黑', '白', '灰', '米', '卡其', '棕', '深蓝', '藏蓝'];
-const advancedRejectTerms = /大logo|大标|卡通|夸张印花|荧光|爆款|网红|地摊|清仓|直播款|速干|训练服|篮球服|足球服|健身服/;
-const styleTagRules = {
-  clean_fit: { label: 'Clean Fit', terms: ['clean fit', 'clean', '简约', '极简', '纯色', '基础', '直筒', '小白鞋'] },
-  old_money: { label: 'Old Money', terms: ['old money', 'quiet luxury', '老钱', '针织', '羊毛', '衬衫', '西裤', '乐福鞋'] },
-  cityboy: { label: 'Cityboy', terms: ['cityboy', 'city boy', '城市', '宽松', '廓形', '工装', '衬衫'] },
-  american_vintage: { label: '美式复古', terms: ['美式', '复古', '水洗', '牛仔', '工装', '灯芯绒', '板鞋'] },
-  korean: { label: '韩系', terms: ['韩系', '轻熟', '短外套', '阔腿', '简洁', '垂感'] },
-  french: { label: '法式', terms: ['法式', '优雅', '针织', '衬衫', '低饱和', '玛丽珍'] },
-  street: { label: '街头', terms: ['街头', '廓形', '工装', '水洗', '牛仔', '板鞋', '宽松'] },
-};
-const fitTagRules = {
+const categoryField = { top: 'tops', bottom: 'bottoms', shoes: 'shoes', accessory: 'accessories', outerwear: 'tops', dress: 'tops' };
+const fitTags = {
   oversize: ['oversize', '宽松', '廓形', '落肩'],
-  straight: ['直筒', '垂感', '合体'],
-  wide: ['阔腿', '宽腿', '宽版'],
-  slim: ['修身', '微修身'],
+  straight: ['直筒', '垂感', '合体', '利落'],
+  wide: ['阔腿', '宽腿', '宽版', '宽直筒'],
+  slim: ['修身', '微修身', '收腰'],
 };
 
-const outfitKnowledge = {
-  cleanFit: {
-    match: ['clean fit', 'clean', '简约', '极简', 'minimal'],
-    preferred: ['直筒', '宽松', '垂感', '基础', '纯色', '小白鞋', '休闲鞋'],
-    avoid: ['大logo', '紧身', '束脚', '收口', '运动裤'],
-  },
-  oldMoney: {
-    match: ['old money', 'quiet luxury', '老钱', '商务', '轻熟'],
-    preferred: ['羊毛', '毛呢', '针织', '衬衫', '西裤', '乐福鞋', '皮鞋', '卡其', '深蓝'],
-    avoid: ['运动鞋', '球鞋', '潮牌', '街头', '大logo', '卡通'],
-  },
-  americanVintage: {
-    match: ['美式', '复古', '街头', '工装'],
-    preferred: ['工装', '牛仔', '水洗', '宽松', '直筒', '帆布鞋', '板鞋'],
-    avoid: ['西装', '商务', '领带', '正装皮鞋'],
-  },
-};
+function textOf(...values) {
+  return values.flat().filter(Boolean).join(' ').toLowerCase();
+}
 
-function countMatches(text, terms) {
-  return terms.filter((term) => text.includes(term)).length;
+function countMatches(text, terms = []) {
+  return terms.reduce((count, term) => count + (text.includes(String(term).toLowerCase()) ? 1 : 0), 0);
 }
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
+function knowledgeEntries(profile, blueprint, template) {
+  const context = textOf(profile?.stylePreference, profile?.occasion, blueprint?.style, blueprint?.fit, blueprint?.formality, template?.name);
+  const matched = Object.entries(STYLE_KNOWLEDGE).filter(([, knowledge]) =>
+    [knowledge.label, ...knowledge.aliases].some((term) => context.includes(String(term).toLowerCase())),
+  );
+  return matched.length ? matched : [['clean_fit', STYLE_KNOWLEDGE.clean_fit]];
+}
+
+function termsForCandidate(knowledge, candidate, profile) {
+  const field = categoryField[candidate?.category] || 'tops';
+  const gender = profile?.gender === 'female' ? 'female' : 'male';
+  return [...(knowledge[field] || []), ...(knowledge.gender?.[gender]?.[field] || [])];
+}
+
 export function analyzeStyleKnowledge(title, category) {
-  const text = String(title || '').toLowerCase();
+  const text = textOf(title);
+  const materialTerms = [...new Set(Object.values(STYLE_KNOWLEDGE).flatMap((knowledge) => knowledge.materials))];
+  const fitTerms = [...new Set(Object.values(STYLE_KNOWLEDGE).flatMap((knowledge) => knowledge.fits))];
   return {
-    category: category === 'bottom' || /裤|牛仔|工装|西裤|休闲裤/.test(text) ? 'bottom' : category,
-    fit: fitTerms.filter((term) => text.includes(term)),
-    material: materialTerms.filter((term) => text.includes(term)),
+    category: category === 'bottom' || /裤|牛仔|工装|西裤|休闲裤|半身裙/.test(text) ? 'bottom' : category,
+    fit: fitTerms.filter((term) => text.includes(String(term).toLowerCase())),
+    material: materialTerms.filter((term) => text.includes(String(term).toLowerCase())),
   };
 }
 
 export function getStyleTags(profile, blueprint, template) {
-  const context = [profile?.stylePreference, profile?.occasion, blueprint?.style, blueprint?.fit, blueprint?.formality, template?.name]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase();
-  const tags = Object.entries(styleTagRules)
-    .filter(([, rule]) => rule.terms.some((term) => context.includes(term)))
-    .map(([id]) => id);
-  return tags.length ? tags : ['clean_fit'];
+  return knowledgeEntries(profile, blueprint, template).map(([id]) => id).slice(0, 3);
 }
 
 export function getStyleTagLabels(profile, blueprint, template) {
-  return getStyleTags(profile, blueprint, template).map((tag) => styleTagRules[tag].label);
+  return knowledgeEntries(profile, blueprint, template).map(([, knowledge]) => knowledge.label).slice(0, 3);
 }
 
 export function getCandidateStyleProfile(candidate) {
-  const text = String(candidate?.title || '').toLowerCase();
-  const style = Object.entries(styleTagRules)
-    .filter(([, rule]) => countMatches(text, rule.terms) > 0)
-    .map(([tag]) => tag);
-  const fit = Object.entries(fitTagRules)
-    .filter(([, terms]) => countMatches(text, terms) > 0)
-    .map(([tag]) => tag);
-  const premiumSignals = countMatches(text, [...materialTerms, '简约', '纯色', '剪裁', '质感', '垂感']);
+  const text = textOf(candidate?.title);
+  const style = Object.entries(STYLE_KNOWLEDGE)
+    .filter(([, knowledge]) => countMatches(text, [...knowledge.aliases, ...knowledge.tops, ...knowledge.bottoms, ...knowledge.shoes]) > 0)
+    .map(([id]) => id);
+  const fit = Object.entries(fitTags).filter(([, terms]) => countMatches(text, terms) > 0).map(([id]) => id);
+  const premiumTerms = [...new Set(Object.values(STYLE_KNOWLEDGE).flatMap((knowledge) => knowledge.materials))];
+  const premiumSignals = countMatches(text, [...premiumTerms, '简约', '纯色', '剪裁', '质感', '垂感']);
   return { style, fit, qualityLevel: premiumSignals >= 2 ? 'premium' : 'basic' };
 }
 
-export function matchesRecommendationMode(candidate, profile) {
-  if (profile?.mode !== 'advanced') return true;
-  return !advancedRejectTerms.test(String(candidate?.title || '').toLowerCase());
+export function matchesRecommendationMode() {
+  return true;
 }
 
 export function scoreRecommendationMode(candidate, profile, blueprint, template) {
-  if (profile?.mode !== 'advanced') return 0;
-  const text = String(candidate?.title || '').toLowerCase();
-  const candidateProfile = getCandidateStyleProfile(candidate);
-  const styleMatches = getStyleTags(profile, blueprint, template)
-    .reduce((count, tag) => count + countMatches(text, styleTagRules[tag].terms), 0);
-  const fitContext = [blueprint?.fit, template?.name, profile?.bodyType].filter(Boolean).join(' ').toLowerCase();
-  const preferredFits = new Set(['straight']);
-  if (/宽松|廓形|cityboy|复古|偏瘦/.test(fitContext)) preferredFits.add('oversize');
-  if (/阔腿|宽腿|宽版/.test(fitContext)) preferredFits.add('wide');
-  if (/修身|合体|运动型/.test(fitContext)) preferredFits.add('slim');
-  const fitMatches = candidateProfile.fit.reduce((count, tag) => count + (preferredFits.has(tag) ? 1 : 0), 0);
-  const colorMatches = countMatches(text, [...(blueprint?.colors || []), ...basicColors]);
-  const sophistication = countMatches(text, [...materialTerms, '简约', '纯色', '剪裁', '质感', '垂感', '无logo']);
-  const quality = Math.log10(Math.max(Number(candidate?.volume) || 0, 1) + 1) * 3;
-  return clamp(styleMatches * 8, 0, 30)
-    + clamp(fitMatches * 15 + candidateProfile.fit.length * 2, 0, 25)
-    + clamp(colorMatches * 4, 0, 20)
-    + clamp(sophistication * 3 + (candidateProfile.qualityLevel === 'premium' ? 4 : 0), 0, 15)
-    + clamp(4 + quality, 0, 10);
+  const text = textOf(candidate?.title, candidate?.tags);
+  const scores = knowledgeEntries(profile, blueprint, template).map(([, knowledge]) => {
+    const style = clamp(countMatches(text, [...knowledge.aliases, ...termsForCandidate(knowledge, candidate, profile)]) * 8, 0, 30);
+    const fit = clamp(countMatches(text, knowledge.fits) * 7, 0, 20);
+    const color = clamp(countMatches(text, [...knowledge.colors, ...(blueprint?.colors || [])]) * 5, 0, 15);
+    const material = clamp(countMatches(text, knowledge.materials) * 6, 0, 15);
+    const scene = clamp(countMatches(textOf(text, profile?.occasion, blueprint?.occasion), knowledge.scenes) * 4, 0, 10);
+    const quality = clamp(Math.log10(Math.max(Number(candidate?.volume) || 0, 1) + 1) * 2 + (candidate?.rating || 0), 0, 10);
+    return clamp(style + fit + color + material + scene + quality - countMatches(text, knowledge.avoid) * 7, 0, 100);
+  });
+  return Math.max(...scores, 0);
 }
 
 export function scoreBottomKnowledge(candidate, profile, blueprint, template) {
-  const knowledge = analyzeStyleKnowledge(candidate?.title, candidate?.category);
-  if (knowledge.category !== 'bottom') return 0;
-
-  const context = [profile?.stylePreference, blueprint?.style, blueprint?.fit, template?.name]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase();
-  const rule = Object.values(bottomKnowledge).find((item) => item.match.some((term) => context.includes(term)))
-    || bottomKnowledge.cleanFit;
-  const text = String(candidate?.title || '').toLowerCase();
-  const preferred = countMatches(text, rule.preferred);
-  const avoided = countMatches(text, rule.avoid);
-
-  return preferred * 4 + knowledge.material.length * 2 - avoided * 5;
+  if (analyzeStyleKnowledge(candidate?.title, candidate?.category).category !== 'bottom') return 0;
+  return scoreRecommendationMode(candidate, profile, blueprint, template) * 0.25;
 }
 
 export function scoreOutfitMatch(items, profile, blueprint, template) {
-  const text = items.map((item) => String(item?.candidate?.title || '')).join(' ').toLowerCase();
-  const context = [profile?.stylePreference, blueprint?.style, blueprint?.fit, template?.name]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase();
-  const rule = Object.values(outfitKnowledge).find((item) => item.match.some((term) => context.includes(term)))
-    || outfitKnowledge.cleanFit;
-  const preferred = countMatches(text, rule.preferred);
-  const avoided = countMatches(text, rule.avoid);
-  const colors = [...(blueprint?.colors || []), ...basicColors];
-  const colorMatches = countMatches(text, colors);
-  const sceneTerms = profile?.occasion === 'work' ? ['通勤', '商务', '衬衫', '西裤', '皮鞋']
-    : profile?.occasion === 'date' ? ['优雅', '轻熟', '简约', '乐福鞋']
-      : ['休闲', '基础', '牛仔', 't恤', '运动鞋'];
-  const sceneMatches = countMatches(text, sceneTerms);
-  const bottom = items.find((item) => item?.candidate?.category === 'bottom')?.candidate;
-  const bodyTerms = {
-    slim: ['宽松', '直筒', '垂感'],
-    standard: ['合体', '直筒', '简约'],
-    athletic: ['合体', '直筒', '修身'],
-    curvy: ['高腰', '垂感', '直筒'],
-    plus: ['垂感', '直筒', '宽松', '深色'],
-  };
-  const bodyMatches = countMatches(String(bottom?.title || '').toLowerCase(), bodyTerms[profile?.bodyType] || []);
-
-  const coordination = clamp(14 + preferred * 4 - avoided * 5, 0, 30);
-  const colorMatch = clamp(8 + colorMatches * 3 - avoided * 2, 0, 20);
-  const proportion = clamp(8 + bodyMatches * 4, 0, 20);
-  const sceneMatch = clamp(7 + sceneMatches * 2, 0, 15);
-  const bodyFit = clamp(7 + bodyMatches * 3, 0, 15);
-  return coordination + colorMatch + proportion + sceneMatch + bodyFit;
+  if (!items.length) return 0;
+  const entries = knowledgeEntries(profile, blueprint, template);
+  const itemScores = items.map(({ candidate }) => scoreRecommendationMode(candidate, profile, blueprint, template));
+  const averageItemScore = itemScores.reduce((total, score) => total + score, 0) / itemScores.length;
+  const combinedText = textOf(items.map(({ candidate }) => candidate?.title));
+  const coordination = Math.max(...entries.map(([, knowledge]) => clamp(
+    12 + countMatches(combinedText, [...knowledge.rules, ...knowledge.fits, ...knowledge.materials]) * 3 - countMatches(combinedText, knowledge.avoid) * 5,
+    0,
+    25,
+  )), 0);
+  const colors = [...new Set(entries.flatMap(([, knowledge]) => knowledge.colors).concat(blueprint?.colors || []))];
+  const colorScore = clamp(8 + countMatches(combinedText, colors) * 3, 0, 20);
+  const bodyTerms = profile?.bodyType === 'slim' ? ['宽松', '直筒', '垂感', '层次']
+    : profile?.bodyType === 'plus' ? ['直筒', '垂感', '深色', '高腰']
+      : ['合体', '直筒', '高腰', '简约'];
+  const bodyScore = clamp(7 + countMatches(combinedText, bodyTerms) * 3, 0, 20);
+  const sceneTerms = entries.flatMap(([, knowledge]) => knowledge.scenes);
+  const sceneScore = clamp(7 + countMatches(textOf(combinedText, profile?.occasion, blueprint?.occasion), sceneTerms) * 2, 0, 15);
+  return clamp(averageItemScore * 0.2 + coordination + colorScore + bodyScore + sceneScore, 0, 100);
 }

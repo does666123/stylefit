@@ -24,6 +24,7 @@ import {
   safeSessionSet,
 } from '../lib/aiRecommendation';
 import LoadingScreen from '@/components/LoadingScreen';
+import { recordStyleFeedback } from '@/lib/styleFeedback';
 
 const allSteps = ['survey.step.basic', 'survey.step.body', 'survey.step.style'];
 const DRAFT_KEY = 'stylefit_survey_draft';
@@ -365,7 +366,13 @@ export default function Survey() {
                         <button
                           key={option.value}
                           type="button"
-                          onClick={() => update('mode', option.value as RecommendationMode)}
+                          onClick={() => {
+                            const nextMode = option.value as RecommendationMode;
+                            if (profile.mode !== nextMode) {
+                              recordStyleFeedback({ profile: { ...profile, mode: nextMode }, action: 'mode_switch', reason: `${profile.mode || 'daily'}->${nextMode}` });
+                            }
+                            update('mode', nextMode);
+                          }}
                           aria-pressed={profile.mode === option.value}
                           className={`survey-option rounded-xl border-2 px-4 py-3 text-left transition-all ${
                             profile.mode === option.value

@@ -17,12 +17,25 @@ import {
 } from 'lucide-react';
 import type { ClothingItem } from '@/types';
 import { useT } from '@/i18n';
-import { useFavorites } from '@/hooks/useRecommendation';
+import { loadProfile, useFavorites } from '@/hooks/useRecommendation';
+import { createRecommendationId, recordStyleFeedback } from '@/lib/styleFeedback';
 
 export function FavoritesPage() {
   const navigate = useNavigate();
   const { t } = useT();
-  const { favoriteItems, isFavorite, toggleFavorite } = useFavorites();
+  const { favoriteItems, isFavorite, toggleFavorite: toggleFavoriteItem } = useFavorites();
+  const profile = loadProfile();
+  const recommendationId = createRecommendationId(profile);
+  const toggleFavorite = (itemOrId: ClothingItem | string) => {
+    const item = typeof itemOrId === 'string'
+      ? favoriteItems.find((favorite) => favorite.id === itemOrId)
+      : itemOrId;
+    toggleFavoriteItem(itemOrId);
+    if (item) recordStyleFeedback({ profile, recommendationId, product: item, action: 'unfavorite' });
+  };
+  const recordPurchase = (item: ClothingItem) => {
+    recordStyleFeedback({ profile, recommendationId, product: item, action: 'purchase_click' });
+  };
   const returnToPreviousPage = () => {
     if (window.history.length > 1) {
       navigate(-1);
@@ -84,6 +97,7 @@ export function FavoritesPage() {
                   item={item}
                   isFavorite={isFavorite}
                   toggleFavorite={toggleFavorite}
+                  onPurchase={recordPurchase}
                   t={t}
                 />
               </div>
@@ -117,11 +131,13 @@ function FavoriteCard({
   item,
   isFavorite,
   toggleFavorite,
+  onPurchase,
   t,
 }: {
   item: ClothingItem;
   isFavorite: (id: string) => boolean;
   toggleFavorite: (item: ClothingItem | string) => void;
+  onPurchase: (item: ClothingItem) => void;
   t: (key: any, params?: any) => string;
 }) {
   const [imgError, setImgError] = useState(false);
@@ -220,7 +236,10 @@ function FavoriteCard({
               <span className="ml-1.5 text-xs text-[#8A8A84]">{item.priceRange}</span>
             )}
           </div>
-          <Button size="sm" className="favorite-buy-button sf-primary-button" onClick={() => window.open(item.buyLink, '_blank')}>
+          <Button size="sm" className="favorite-buy-button sf-primary-button" onClick={() => {
+            onPurchase(item);
+            window.open(item.buyLink, '_blank');
+          }}>
             {t('favorites.buyNow')}<ExternalLink className="ml-1 h-3 w-3" />
           </Button>
         </div>
