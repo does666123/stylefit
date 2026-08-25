@@ -26,7 +26,7 @@ import {
 import { useT } from '@/i18n';
 import { fetchWeatherWithCache, interpretWeather, type WeatherData } from '@/lib/weather';
 import { getNeutralProfile, loadProfile } from '@/hooks/useRecommendation';
-import { cacheAIRecommendation, readCachedAIRecommendation, requestAIRecommendation } from '@/lib/aiRecommendation';
+import { cacheAIRecommendation, readCachedAIRecommendation, requestAIRecommendation, type AIRecommendationResult } from '@/lib/aiRecommendation';
 import { STYLEFIT_DATA_CLEARED_EVENT } from '@/lib/localData';
 import { saveQuickSceneContext, type QuickScene } from '@/lib/quickScene';
 import type { Gender, Occasion, RecommendationMode, UserBodyProfile } from '@/types';
@@ -49,6 +49,28 @@ const quickSceneOccasions: Record<QuickScene, Occasion> = {
 const quickSceneModes: Record<QuickScene, RecommendationMode> = {
   work: 'daily', sport: 'daily', travel: 'daily', date: 'advanced', party: 'advanced', formal: 'advanced',
 };
+
+const quickStyleOptions = [
+  { id: 'daily', label: '日常简约', value: 'casual' },
+  { id: 'clean-fit', label: 'Clean Fit', value: 'minimal' },
+  { id: 'cityboy', label: 'Cityboy', value: 'streetwear' },
+  { id: 'old-money', label: 'Old Money', value: 'elegant' },
+  { id: 'korean', label: '韩系', value: 'casual' },
+  { id: 'japanese', label: '日系', value: 'minimal' },
+  { id: 'american-vintage', label: '美式复古', value: 'streetwear' },
+  { id: 'light-mature', label: '轻熟', value: 'elegant' },
+  { id: 'french', label: '法式', value: 'elegant' },
+  { id: 'y2k', label: 'Y2K', value: 'streetwear' },
+  { id: 'commute', label: '通勤', value: 'business' },
+  { id: 'minimal-luxe', label: '极简高级', value: 'minimal' },
+] as const;
+
+type QuickStyleId = typeof quickStyleOptions[number]['id'];
+
+type QuickGenerationStatus =
+  | { state: 'generating'; title: string }
+  | { state: 'ready'; scene: QuickScene; title: string; profile: UserBodyProfile; result: AIRecommendationResult }
+  | { state: 'error'; scene: QuickScene; title: string; profile: UserBodyProfile };
 
 const heroLooks = [
   {
@@ -79,9 +101,15 @@ export function HomePage() {
   const [silkReady, setSilkReady] = useState(false);
   const [quickScene, setQuickScene] = useState<{ scene: QuickScene; title: string } | null>(null);
   const [quickForm, setQuickForm] = useState({ gender: 'male' as Gender, height: '175', weight: '70', budget: '300' });
+  const [quickDialogOpen, setQuickDialogOpen] = useState(false);
+  const [quickStyleIds, setQuickStyleIds] = useState<QuickStyleId[]>(['daily']);
+  const [quickUnlimitedBudget, setQuickUnlimitedBudget] = useState(false);
+  const [quickElapsedSeconds, setQuickElapsedSeconds] = useState(0);
+  const [quickGenerationStatus, setQuickGenerationStatus] = useState<QuickGenerationStatus | null>(null);
   const [quickSubmitting, setQuickSubmitting] = useState(false);
   const [quickError, setQuickError] = useState('');
   const quickRequestInFlight = useRef(false);
+  const quickDialogOpenRef = useRef(false);
 
   useEffect(() => {
     const clearProfileState = () => {
@@ -90,6 +118,21 @@ export function HomePage() {
     window.addEventListener(STYLEFIT_DATA_CLEARED_EVENT, clearProfileState);
     return () => window.removeEventListener(STYLEFIT_DATA_CLEARED_EVENT, clearProfileState);
   }, []);
+
+  useEffect(() => {
+    quickDialogOpenRef.current = quickDialogOpen;
+  }, [quickDialogOpen]);
+
+  useEffect(() => {
+    if (!quickSubmitting) {
+      setQuickElapsedSeconds(0);
+      return;
+    }
+
+    setQuickElapsedSeconds(0);
+    const intervalId = window.setInterval(() => setQuickElapsedSeconds((seconds) => seconds + 1), 1000);
+    return () => window.clearInterval(intervalId);
+  }, [quickSubmitting]);
 
   useLayoutEffect(() => {
     if (!homeRef.current || window.matchMedia('(prefers-reduced-motion: reduce)').matches || !window.matchMedia('(min-width: 768px)').matches) return;
@@ -210,20 +253,28 @@ export function HomePage() {
   const buildQuickProfile = useCallback((scene: QuickScene) => {
     const occasion = quickSceneOccasions[scene];
     const baseProfile = existingProfile ? { ...existingProfile } : getNeutralProfile(occasion);
+    const selectedStyle = quickStyleOptions.find((style) => style.id === quickStyleIds[0]) ?? quickStyleOptions[0];
+    const budget = quickUnlimitedBudget ? undefined : Number(quickForm.budget);
     if (!existingProfile) {
       baseProfile.gender = quickForm.gender;
       baseProfile.height = Number(quickForm.height);
       baseProfile.weight = Number(quickForm.weight);
-      baseProfile.budget = Number(quickForm.budget);
     }
-    return { ...baseProfile, occasion, mode: quickSceneModes[scene] };
-  }, [existingProfile, quickForm]);
+    return {
+      ...baseProfile,
+      occasion,
+      budget,
+      mode: quickSceneModes[scene],
+      stylePreference: selectedStyle.value,
+    };
+  }, [existingProfile, quickForm, quickStyleIds, quickUnlimitedBudget]);
 
   const runQuickRecommendation = useCallback(async (scene: QuickScene, title: string, profile: UserBodyProfile) => {
     if (quickRequestInFlight.current) return;
     quickRequestInFlight.current = true;
     setQuickSubmitting(true);
     setQuickError('');
+    setQuickGenerationStatus({ state: 'generating', title });
     saveQuickSceneContext(scene, profile);
 
     try {
@@ -231,16 +282,24 @@ export function HomePage() {
       const result = cached || await requestAIRecommendation(profile);
       if (!result) throw new Error('recommendation-unavailable');
       if (!cached) cacheAIRecommendation(profile, result);
-      navigate(`/recommendations?entryMode=quick_scene&scene=${scene}`, {
-        state: {
-          profile,
-          aiRecommendation: result.recommendation,
-          aiCandidates: result.candidates,
-          quickScene: { entryMode: 'quick_scene', scene, title },
-        },
-      });
+
+      const recommendationState = {
+        profile,
+        aiRecommendation: result.recommendation,
+        aiCandidates: result.candidates,
+        quickScene: { entryMode: 'quick_scene' as const, scene, title },
+      };
+
+      if (quickDialogOpenRef.current) {
+        navigate(`/recommendations?entryMode=quick_scene&scene=${scene}`, { state: recommendationState });
+        return;
+      }
+
+      setQuickGenerationStatus({ state: 'ready', scene, title, profile, result });
     } catch {
       setQuickError('暂时没能生成这组穿着建议，请重新尝试。');
+      setQuickGenerationStatus({ state: 'error', scene, title, profile });
+    } finally {
       setQuickSubmitting(false);
       quickRequestInFlight.current = false;
     }
@@ -248,8 +307,26 @@ export function HomePage() {
 
   const openQuickScene = (scene: QuickScene, title: string) => {
     setQuickScene({ scene, title });
+    setQuickDialogOpen(true);
     setQuickError('');
-    if (existingProfile) void runQuickRecommendation(scene, title, buildQuickProfile(scene));
+    setQuickGenerationStatus(null);
+    setQuickUnlimitedBudget(typeof existingProfile?.budget !== 'number' || existingProfile.budget <= 0);
+    setQuickForm({
+      gender: existingProfile?.gender ?? 'male',
+      height: String(existingProfile?.height ?? 175),
+      weight: String(existingProfile?.weight ?? 70),
+      budget: String(existingProfile?.budget ?? 300),
+    });
+    setQuickStyleIds([
+      quickStyleOptions.find((style) => style.value === existingProfile?.stylePreference)?.id ?? 'daily',
+    ]);
+  };
+
+  const toggleQuickStyle = (styleId: QuickStyleId) => {
+    setQuickStyleIds((current) => {
+      if (current.includes(styleId)) return current.filter((id) => id !== styleId);
+      return [styleId, ...current].slice(0, 2);
+    });
   };
 
   const submitQuickScene = () => {
@@ -257,11 +334,26 @@ export function HomePage() {
     const height = Number(quickForm.height);
     const weight = Number(quickForm.weight);
     const budget = Number(quickForm.budget);
-    if (height < 120 || height > 230 || weight < 30 || weight > 250 || budget <= 0) {
+    if (height < 120 || height > 230 || weight < 30 || weight > 250 || (!quickUnlimitedBudget && budget <= 0)) {
       setQuickError('请填写有效的身高、体重和预算。');
       return;
     }
+    if (!quickStyleIds.length) {
+      setQuickError('请至少选择一种想要的风格。');
+      return;
+    }
     void runQuickRecommendation(quickScene.scene, quickScene.title, buildQuickProfile(quickScene.scene));
+  };
+
+  const viewQuickRecommendation = (status: Extract<QuickGenerationStatus, { state: 'ready' }>) => {
+    navigate(`/recommendations?entryMode=quick_scene&scene=${status.scene}`, {
+      state: {
+        profile: status.profile,
+        aiRecommendation: status.result.recommendation,
+        aiCandidates: status.result.candidates,
+        quickScene: { entryMode: 'quick_scene', scene: status.scene, title: status.title },
+      },
+    });
   };
 
   const prefetchSurvey = () => {
@@ -287,6 +379,18 @@ export function HomePage() {
 
   return (
     <div ref={homeRef} className="stylefit-home min-h-screen">
+      {quickGenerationStatus && !quickDialogOpen && (
+        <div className="fixed inset-x-4 top-4 z-[70] mx-auto flex w-auto max-w-md items-center justify-between gap-3 rounded-2xl border border-[#E0782C]/25 bg-white/95 px-4 py-3 text-sm shadow-[0_14px_36px_rgba(26,26,26,0.16)] backdrop-blur sm:left-auto sm:right-6 sm:w-[min(100%-3rem,420px)]" role="status">
+          <div className="min-w-0">
+            {quickGenerationStatus.state === 'generating' && <><p className="font-semibold text-[#1A1A1A]">AI穿着方案生成中…</p><p className="mt-0.5 truncate text-xs text-[#77756F]">正在生成{quickGenerationStatus.title}穿着</p></>}
+            {quickGenerationStatus.state === 'ready' && <><p className="font-semibold text-[#1A1A1A]">你的穿着方案已生成</p><p className="mt-0.5 truncate text-xs text-[#77756F]">{quickGenerationStatus.title}的专属建议已为你保留</p></>}
+            {quickGenerationStatus.state === 'error' && <><p className="font-semibold text-[#1A1A1A]">本次生成暂未完成</p><p className="mt-0.5 truncate text-xs text-[#77756F]">你可以重新尝试生成这组穿着</p></>}
+          </div>
+          {quickGenerationStatus.state === 'generating' && <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[#E0782C]" />}
+          {quickGenerationStatus.state === 'ready' && <Button size="sm" onClick={() => viewQuickRecommendation(quickGenerationStatus)} className="sf-primary-button h-9 shrink-0 px-3">查看推荐</Button>}
+          {quickGenerationStatus.state === 'error' && <Button size="sm" onClick={() => void runQuickRecommendation(quickGenerationStatus.scene, quickGenerationStatus.title, quickGenerationStatus.profile)} className="sf-primary-button h-9 shrink-0 px-3">重试</Button>}
+        </div>
+      )}
       <main>
         <section data-hero className="stylefit-hero relative isolate overflow-hidden border-b border-[#1A1A1A]/[0.08]">
           {silkReady && (
@@ -455,8 +559,9 @@ export function HomePage() {
                   <button
                     key={entry.key}
                     onClick={() => openQuickScene(entry.key as QuickScene, entry.title)}
+                    disabled={quickSubmitting}
                     data-motion-card
-                    className="spotlight-card focus-ring group min-h-[150px] rounded-2xl p-5 text-left sm:min-h-44"
+                    className="spotlight-card focus-ring group min-h-[150px] rounded-2xl p-5 text-left disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-44"
                   >
                     <span className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl border border-[#1A1A1A]/[0.08] bg-[#EAF2F8] text-[#555550] transition-colors group-hover:border-[#E0782C]/30 group-hover:text-[#C96A22] sm:mb-8">
                       {original.icon}
@@ -534,43 +639,73 @@ export function HomePage() {
           </div>
         </section>
       </main>
-      <Dialog open={Boolean(quickScene)} onOpenChange={(open) => {
+      <Dialog open={quickDialogOpen} onOpenChange={(open) => {
+        setQuickDialogOpen(open);
         if (!open && !quickSubmitting) {
           setQuickScene(null);
           setQuickError('');
         }
       }}>
-        <DialogContent className="max-w-[min(92vw,420px)] border-[#E5E2DA] bg-[#FCFAF5] p-5">
+        <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-[min(92vw,480px)] overflow-y-auto border-[#E5E2DA] bg-[#FCFAF5] p-5">
           <DialogTitle className="text-lg font-semibold text-[#1A1A1A]">
             {quickSubmitting ? `正在为你生成${quickScene?.title || ''}穿着` : `${quickScene?.title || ''}快速推荐`}
           </DialogTitle>
           {quickSubmitting ? (
-            <div className="flex min-h-36 flex-col items-center justify-center gap-3 text-center text-sm text-[#666660]">
-              <Loader2 className="h-6 w-6 animate-spin text-[#E0782C]" />
-              <p>正在根据你的资料挑选专属穿着，请稍候。</p>
-            </div>
-          ) : existingProfile ? (
-            <div className="space-y-4 text-sm leading-6 text-[#666660]">
-              <p>{quickError || '将保留你的原有资料，只更新这次的场景。'}</p>
-              {quickError && <Button className="sf-primary-button w-full" onClick={() => quickScene && void runQuickRecommendation(quickScene.scene, quickScene.title, buildQuickProfile(quickScene.scene))}>重新生成</Button>}
+            <div className="space-y-5 pt-2 text-sm text-[#666660]">
+              <div className="flex flex-col items-center gap-2 text-center">
+                <Loader2 className="h-7 w-7 animate-spin text-[#E0782C]" />
+                <p className="font-medium text-[#1A1A1A]">正在为你生成「{quickScene?.title}」穿着</p>
+                <p className="text-xs text-[#77756F]">预计需要约 10–20 秒 · 已等待 {quickElapsedSeconds} 秒</p>
+              </div>
+              <div className="space-y-2 rounded-2xl border border-[#E5E2DA] bg-white p-4 text-sm">
+                {[
+                  '已读取你的身材资料',
+                  '正在分析场景与风格',
+                  '正在匹配真实商品',
+                  '正在生成完整穿着方案',
+                ].map((stage, index) => {
+                  const activeIndex = quickElapsedSeconds < 4 ? 1 : quickElapsedSeconds < 9 ? 2 : 3;
+                  const completed = index < activeIndex;
+                  const active = index === activeIndex;
+                  return <p key={stage} className={completed ? 'text-[#68865F]' : active ? 'font-medium text-[#C96A22]' : 'text-[#9A9892]'}>{completed ? '✓' : active ? '●' : '○'} {stage}</p>;
+                })}
+              </div>
+              {quickElapsedSeconds > 35 ? <p className="rounded-xl bg-[#FFF4EC] px-3 py-2 text-xs leading-5 text-[#A8581C]">仍在生成，你可以先关闭窗口，完成后我们会保留结果。</p> : quickElapsedSeconds > 20 ? <p className="rounded-xl bg-[#FFF4EC] px-3 py-2 text-xs leading-5 text-[#A8581C]">商品匹配可能需要一点时间，请稍候。</p> : null}
             </div>
           ) : (
             <div className="space-y-4">
-              <p className="text-sm leading-6 text-[#666660]">填写四项基础资料，即可直接生成本次场景的穿着建议。</p>
-              <div className="grid grid-cols-2 gap-2" role="group" aria-label="性别">
-                {(['male', 'female'] as const).map((gender) => (
-                  <Button key={gender} type="button" variant="outline" onClick={() => setQuickForm((current) => ({ ...current, gender }))} className={`h-11 ${quickForm.gender === gender ? 'border-[#E0782C] bg-[#FFF4EC] text-[#C96A22]' : 'border-[#E5E2DA]'}`}>
-                    {gender === 'male' ? '男' : '女'}
-                  </Button>
-                ))}
+              <p className="text-sm leading-6 text-[#666660]">{existingProfile ? '将保留你的原有资料，本次只临时调整风格、场景和预算。' : '填写基础资料后，即可直接生成本次场景的穿着建议。'}</p>
+              {!existingProfile && <>
+                <div className="grid grid-cols-2 gap-2" role="group" aria-label="性别">
+                  {(['male', 'female'] as const).map((gender) => (
+                    <Button key={gender} type="button" variant="outline" onClick={() => setQuickForm((current) => ({ ...current, gender }))} className={`h-11 ${quickForm.gender === gender ? 'border-[#E0782C] bg-[#FFF4EC] text-[#C96A22]' : 'border-[#E5E2DA]'}`}>
+                      {gender === 'male' ? '男' : '女'}
+                    </Button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="space-y-1.5 text-sm font-medium text-[#34322E]">身高（cm）<Input inputMode="numeric" value={quickForm.height} onChange={(event) => setQuickForm((current) => ({ ...current, height: event.target.value }))} className="border-[#E5E2DA] bg-white" /></label>
+                  <label className="space-y-1.5 text-sm font-medium text-[#34322E]">体重（kg）<Input inputMode="decimal" value={quickForm.weight} onChange={(event) => setQuickForm((current) => ({ ...current, weight: event.target.value }))} className="border-[#E5E2DA] bg-white" /></label>
+                </div>
+              </>}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-3"><p className="text-sm font-semibold text-[#34322E]">今天想穿什么风格</p><span className="text-xs text-[#77756F]">可选 1–2 个</span></div>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3" role="group" aria-label="本次穿着风格">
+                  {quickStyleOptions.map((style) => {
+                    const selected = quickStyleIds.includes(style.id);
+                    return <button key={style.id} type="button" onClick={() => toggleQuickStyle(style.id)} aria-pressed={selected} className={`focus-ring min-h-10 rounded-xl border px-3 text-left text-xs font-medium transition-colors ${selected ? 'border-[#E0782C] bg-[#FFF4EC] text-[#C96A22]' : 'border-[#E5E2DA] bg-white text-[#555550] hover:border-[#E0782C]/45'}`}>{style.label}</button>;
+                  })}
+                </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <label className="space-y-1.5 text-sm font-medium text-[#34322E]">身高（cm）<Input inputMode="numeric" value={quickForm.height} onChange={(event) => setQuickForm((current) => ({ ...current, height: event.target.value }))} className="border-[#E5E2DA] bg-white" /></label>
-                <label className="space-y-1.5 text-sm font-medium text-[#34322E]">体重（kg）<Input inputMode="decimal" value={quickForm.weight} onChange={(event) => setQuickForm((current) => ({ ...current, weight: event.target.value }))} className="border-[#E5E2DA] bg-white" /></label>
+              <div className="space-y-3 rounded-2xl border border-[#E5E2DA] bg-white p-3.5">
+                <div className="flex items-center justify-between gap-3"><p className="text-sm font-semibold text-[#34322E]">本次预算</p><button type="button" role="switch" aria-checked={quickUnlimitedBudget} onClick={() => setQuickUnlimitedBudget((value) => !value)} className={`focus-ring rounded-full px-3 py-1 text-xs font-medium ${quickUnlimitedBudget ? 'bg-[#1A1A1A] text-white' : 'bg-[#F2F0EB] text-[#666660]'}`}>不限预算</button></div>
+                <div className={quickUnlimitedBudget ? 'opacity-45' : ''}>
+                  <div className="mb-2 flex items-center justify-between"><span className="text-xs text-[#77756F]">¥100</span><strong className="text-base text-[#C96A22]">¥{quickForm.budget}</strong><span className="text-xs text-[#77756F]">¥2000</span></div>
+                  <input type="range" min="100" max="2000" step="50" value={quickForm.budget} disabled={quickUnlimitedBudget} onChange={(event) => setQuickForm((current) => ({ ...current, budget: event.target.value }))} className="h-2 w-full cursor-pointer accent-[#E0782C] disabled:cursor-not-allowed" aria-label="本次预算" />
+                </div>
               </div>
-              <label className="block space-y-1.5 text-sm font-medium text-[#34322E]">预算（元）<Input inputMode="numeric" value={quickForm.budget} onChange={(event) => setQuickForm((current) => ({ ...current, budget: event.target.value }))} className="border-[#E5E2DA] bg-white" /></label>
               {quickError && <p className="text-sm text-[#C96A22]">{quickError}</p>}
-              <Button className="sf-primary-button w-full" onClick={submitQuickScene}>生成{quickScene?.title || ''}穿着</Button>
+              <Button className="sf-primary-button h-12 w-full" disabled={quickSubmitting} onClick={submitQuickScene}>{quickSubmitting ? '正在生成…' : '生成今天的穿着方案'}</Button>
             </div>
           )}
         </DialogContent>
