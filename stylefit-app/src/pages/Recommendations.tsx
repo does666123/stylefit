@@ -470,6 +470,9 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
   const recordOutfitFeedback = useCallback((outfit: OutfitSet, action: 'like' | 'dislike', reason?: string) => {
     recordStyleFeedback({ profile, recommendationId, outfit, action, reason });
   }, [profile, recommendationId]);
+  const recordOutfitView = useCallback((outfit: OutfitSet) => {
+    recordStyleFeedback({ profile, recommendationId, outfit, action: 'recommendation_view' });
+  }, [profile, recommendationId]);
   const recordPurchase = useCallback((item: ClothingItem, outfit?: OutfitSet) => {
     recordStyleFeedback({ profile, recommendationId, outfit, product: item, action: 'purchase_click' });
   }, [profile, recommendationId]);
@@ -913,6 +916,7 @@ export default function Recommendations({ view = 'outfits' }: { view?: Recommend
                     isFavorite={isFavorite}
                     toggleFavorite={toggleFavorite}
                     onFeedback={(action, reason) => recordOutfitFeedback(outfit, action, reason)}
+                    onViewed={recordOutfitView}
                     onPurchase={(item) => recordPurchase(item, outfit)}
                     index={idx}
                     budget={profile?.budget}
@@ -1095,6 +1099,7 @@ function OutfitCard({
   isFavorite,
   toggleFavorite,
   onFeedback,
+  onViewed,
   onPurchase,
   index,
   budget,
@@ -1103,6 +1108,7 @@ function OutfitCard({
   isFavorite: (id: string) => boolean;
   toggleFavorite: (item: ClothingItem | string) => void;
   onFeedback: (action: 'like' | 'dislike', reason?: string) => void;
+  onViewed: (outfit: OutfitSet) => void;
   onPurchase: (item: ClothingItem) => void;
   index: number;
   budget?: number;
@@ -1112,6 +1118,25 @@ function OutfitCard({
   const [detailsExpanded, setDetailsExpanded] = useState(false);
   const [feedbackAction, setFeedbackAction] = useState<'like' | 'dislike' | null>(null);
   const [showDislikeReasons, setShowDislikeReasons] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const didRecordView = useRef(false);
+  useEffect(() => {
+    const element = cardRef.current;
+    if (!element || didRecordView.current) return;
+    if (!('IntersectionObserver' in window)) {
+      didRecordView.current = true;
+      onViewed(outfit);
+      return;
+    }
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting || didRecordView.current) return;
+      didRecordView.current = true;
+      onViewed(outfit);
+      observer.disconnect();
+    }, { threshold: 0.45 });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [onViewed, outfit]);
   const itemReasonMap = useMemo(() => {
     const map: Record<string, string> = {};
     outfit.itemReasons?.forEach(r => { map[r.itemId] = r.reason; });
@@ -1137,7 +1162,7 @@ function OutfitCard({
     <Card className="result-outfit-card overflow-hidden stagger-item" style={{ animationDelay: `${index * 100}ms` }}>
       <CardContent className="p-0">
         {/* Header with theme name and match score */}
-        <div className="result-outfit-card-header px-4 py-3">
+        <div ref={cardRef} className="result-outfit-card-header px-4 py-3">
           <div className="flex items-center justify-between mb-1">
             <h3 className="font-semibold text-[#1A1A1A]">{outfit.themeName || outfit.name}</h3>
             <div className="flex items-center gap-2">

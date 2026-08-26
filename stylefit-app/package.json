@@ -11,6 +11,7 @@
     "check:budget": "node scripts/check-budget.mjs",
     "check:taobao": "node scripts/check-taobao-endpoint.mjs",
     "check:ai-candidates": "node scripts/check-ai-candidate-pool.mjs",
+    "check:feedback": "node scripts/check-feedback-endpoint.mjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },

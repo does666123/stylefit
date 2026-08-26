@@ -1,9 +1,10 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { Routes, Route, useLocation } from 'react-router';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import Header from '@/components/Header';
 import LoadingScreen from '@/components/LoadingScreen';
 import SiteFooter from '@/components/SiteFooter';
+import { startFeedbackQueueSync } from '@/lib/styleFeedback';
 
 // Lazy load pages for code splitting / faster initial load
 const Home = lazy(() => import('./pages/Home'));
@@ -17,6 +18,10 @@ const NotFound = lazy(() => import('./pages/NotFound'));
 
 export default function App() {
   const location = useLocation();
+  useEffect(() => {
+    startFeedbackQueueSync();
+  }, []);
+
   return (
     <ErrorBoundary>
       <div className="app-shell">
