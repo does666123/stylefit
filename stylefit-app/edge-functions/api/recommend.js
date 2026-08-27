@@ -344,6 +344,26 @@ function rankCategory(candidates, profile, blueprint, category, usedIds, allowRe
   return (freshShops.length ? freshShops : ranked).slice(0, category === 'shoes' ? 10 : 20);
 }
 
+function countAffordableCoreOutfits(candidates, budget) {
+  if (!(Number.isFinite(budget) && budget > 0)) return null;
+
+  const byCategory = Object.fromEntries(categories.map((category) => [
+    category,
+    candidates.filter((candidate) => candidate.category === category),
+  ]));
+  let count = 0;
+
+  for (const top of byCategory.top) {
+    for (const bottom of byCategory.bottom) {
+      for (const shoe of byCategory.shoes) {
+        if (top.price + bottom.price + shoe.price <= budget) count += 1;
+      }
+    }
+  }
+
+  return count;
+}
+
 function composeOutfit(blueprint, candidates, profile, usedIds, allowReuse, template) {
   const budget = Number(profile.budget);
   const hasBudget = Number.isFinite(budget) && budget > 0;
@@ -409,6 +429,7 @@ function providerError(payload) {
 }
 
 export async function onRequest({ request, env }) {
+  const diagnostic = new URL(request.url).searchParams.get('diagnostic') === '1';
   if (request.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: { Allow: 'POST, OPTIONS' } });
   }
@@ -561,7 +582,19 @@ export async function onRequest({ request, env }) {
       composedOutfits: composed.length,
       topScored,
     });
-    if (!composed.length) return { reason: '本场景暂未找到可搭配的真实商品' };
+    if (!composed.length) {
+      return {
+        reason: '本场景暂未找到可搭配的真实商品',
+        details: diagnostic ? {
+          diagnostic: {
+            candidateCounts: categoryCounts,
+            affordableCoreOutfits: countAffordableCoreOutfits(candidates, budget),
+            composedOutfits: 0,
+            hasBudget,
+          },
+        } : {},
+      };
+    }
 
     const selected = [];
     const selectedIds = new Set();
