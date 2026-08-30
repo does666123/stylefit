@@ -344,24 +344,51 @@ function rankCategory(candidates, profile, blueprint, category, usedIds, allowRe
   return (freshShops.length ? freshShops : ranked).slice(0, category === 'shoes' ? 10 : 20);
 }
 
-function countAffordableCoreOutfits(candidates, budget) {
-  if (!(Number.isFinite(budget) && budget > 0)) return null;
+function candidateCounts(candidates) {
+  return Object.fromEntries(categories.map((category) => [
+    category,
+    candidates.filter((candidate) => candidate.category === category).length,
+  ]));
+}
+
+function countCoreBudgetOutfits(candidates, budget) {
+  if (!(Number.isFinite(budget) && budget > 0)) return { affordable: null, rejected: 0 };
 
   const byCategory = Object.fromEntries(categories.map((category) => [
     category,
     candidates.filter((candidate) => candidate.category === category),
   ]));
-  let count = 0;
+  let affordable = 0;
+  let rejected = 0;
 
   for (const top of byCategory.top) {
     for (const bottom of byCategory.bottom) {
       for (const shoe of byCategory.shoes) {
-        if (top.price + bottom.price + shoe.price <= budget) count += 1;
+        if (top.couponPrice + bottom.couponPrice + shoe.couponPrice <= budget) affordable += 1;
+        else rejected += 1;
       }
     }
   }
 
-  return count;
+  return { affordable, rejected };
+}
+
+function logRecommendationOutcome(profile, event, candidates, outfitCount) {
+  try {
+    const counts = candidateCounts(candidates || []);
+    console.info('[recommend] outcome', {
+      event,
+      outfitCount,
+      topCandidates: counts.top,
+      bottomCandidates: counts.bottom,
+      shoeCandidates: counts.shoes,
+      budget: Number(profile.budget) || null,
+      gender: asText(profile.gender, 24),
+      mode: asText(profile.mode, 24),
+      scene: asText(profile.occasion, 40),
+    });
+  } catch {
+  }
 }
 
 function composeOutfit(blueprint, candidates, profile, usedIds, allowReuse, template) {
@@ -430,6 +457,7 @@ function providerError(payload) {
 
 export async function onRequest({ request, env }) {
   const diagnostic = new URL(request.url).searchParams.get('diagnostic') === '1';
+  const startedAt = Date.now();
   if (request.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: { Allow: 'POST, OPTIONS' } });
   }
@@ -466,16 +494,43 @@ export async function onRequest({ request, env }) {
   const budget = typeof profile.budget === 'number' && Number.isFinite(profile.budget) && profile.budget > 0
     ? profile.budget
     : undefined;
+  const diagnosticDetails = (values = {}) => diagnostic ? {
+    diagnostic: {
+      aiSuccess: false,
+      candidateCounts: { top: 0, bottom: 0, shoes: 0, accessory: 0 },
+      taobaoRequestCount: 0,
+      filteredCounts: { returned: 0, eligible: 0, excluded: 0 },
+      budgetRejectedCount: 0,
+      composedOutfits: 0,
+      fallbackReason: '',
+      durationMs: Date.now() - startedAt,
+      ...values,
+    },
+  } : {};
   const prompt = JSON.stringify({ profile, weather, userRequest });
   const cacheKey = recommendationCacheKey(body, profile, weather);
   const cachedResult = readCachedRecommendation(cacheKey);
   if (cachedResult) {
-    return json({ status: 'ok', ...cachedResult, cached: true });
+    return json({
+      status: 'ok',
+      ...cachedResult,
+      cached: true,
+      ...diagnosticDetails({
+        aiSuccess: true,
+        candidateCounts: candidateCounts(cachedResult.candidates || []),
+        filteredCounts: {
+          returned: (cachedResult.candidates || []).length,
+          eligible: (cachedResult.candidates || []).length,
+          excluded: 0,
+        },
+        composedOutfits: cachedResult.recommendation?.outfits?.length || 0,
+      }),
+    });
   }
 
   const apiKey = env.QIANFAN_API_KEY;
   if (!apiKey) {
-    return fallback('AI service is not configured');
+    return fallback('AI service is not configured', diagnosticDetails({ fallbackReason: 'AI service is not configured' }));
   }
 
   const generateRecommendation = async () => {
@@ -520,7 +575,11 @@ export async function onRequest({ request, env }) {
       if (!shouldRetry || attempt === 2) {
         return {
           reason: `AI service request failed (${response.status})`,
-          details: { providerStatus: response.status, ...details },
+          details: {
+            providerStatus: response.status,
+            ...details,
+            ...diagnosticDetails({ fallbackReason: `AI service request failed (${response.status})` }),
+          },
         };
       }
 
@@ -541,21 +600,40 @@ export async function onRequest({ request, env }) {
           details: {
             providerCode: `finish_reason=${finishReason}`,
             providerMessage: rawContent.slice(0, 300),
+            ...diagnosticDetails({ fallbackReason: 'AI response could not be validated' }),
           },
         };
     }
 
     const pool = await searchTaobaoCandidatePool(env, getScene(profile), mergeKeywords(plan.blueprints));
-    if (pool.error) return { reason: '淘宝联盟商品暂时不可用' };
+    if (pool.error) {
+      return {
+        reason: '淘宝联盟商品暂时不可用',
+        details: diagnosticDetails({
+          aiSuccess: true,
+          taobaoRequestCount: pool.requestCount || 0,
+          fallbackReason: '淘宝联盟商品暂时不可用',
+        }),
+      };
+    }
     const taobaoCount = Array.isArray(pool.products) ? pool.products.length : 0;
     const candidates = (pool.products || [])
       .map((product) => toCandidate(product, profile))
       .filter(Boolean)
       .filter((candidate) => isCandidateEligible(candidate, profile));
-    const categoryCounts = Object.fromEntries(categories.map((category) => [
-      category,
-      candidates.filter((candidate) => candidate.category === category).length,
-    ]));
+    const categoryCounts = candidateCounts(candidates);
+    const budgetCounts = diagnostic ? countCoreBudgetOutfits(candidates, budget) : { affordable: null, rejected: 0 };
+    const recommendationDiagnostics = {
+      aiSuccess: true,
+      candidateCounts: categoryCounts,
+      taobaoRequestCount: pool.requestCount || 0,
+      filteredCounts: {
+        returned: taobaoCount,
+        eligible: candidates.length,
+        excluded: Math.max(0, taobaoCount - candidates.length),
+      },
+      budgetRejectedCount: budgetCounts.rejected,
+    };
     const usedIds = new Set();
     const composed = [];
     for (const [index, blueprint] of plan.blueprints.entries()) {
@@ -585,14 +663,12 @@ export async function onRequest({ request, env }) {
     if (!composed.length) {
       return {
         reason: '本场景暂未找到可搭配的真实商品',
-        details: diagnostic ? {
-          diagnostic: {
-            candidateCounts: categoryCounts,
-            affordableCoreOutfits: countAffordableCoreOutfits(candidates, budget),
-            composedOutfits: 0,
-            hasBudget,
-          },
-        } : {},
+        details: diagnosticDetails({
+          ...recommendationDiagnostics,
+          affordableCoreOutfits: budgetCounts.affordable,
+          composedOutfits: 0,
+          fallbackReason: '本场景暂未找到可搭配的真实商品',
+        }),
       };
     }
 
@@ -611,9 +687,16 @@ export async function onRequest({ request, env }) {
         outfits: composed.map(({ selected: _selected, ...outfit }) => outfit),
       },
       candidates: selected,
+      details: diagnosticDetails({
+        ...recommendationDiagnostics,
+        composedOutfits: composed.length,
+      }),
     };
     } catch {
-      return { reason: 'AI service is temporarily unavailable' };
+      return {
+        reason: 'AI service is temporarily unavailable',
+        details: diagnosticDetails({ fallbackReason: 'AI service is temporarily unavailable' }),
+      };
     }
   };
 
@@ -650,11 +733,19 @@ export async function onRequest({ request, env }) {
       }
 
       const outcome = await modelRequest;
+      const outfitCount = outcome.recommendation?.outfits?.length || 0;
+      logRecommendationOutcome(
+        profile,
+        outcome.recommendation ? (outfitCount >= 3 ? 'recommend_success' : 'recommend_partial') : 'recommend_fallback',
+        outcome.candidates,
+        outfitCount,
+      );
       complete(outcome.recommendation
-        ? { status: 'ok', recommendation: outcome.recommendation, candidates: outcome.candidates, cached: false }
+        ? { status: 'ok', recommendation: outcome.recommendation, candidates: outcome.candidates, cached: false, ...outcome.details }
         : { status: 'fallback', reason: outcome.reason, cached: false, ...outcome.details });
     } catch {
-      complete({ status: 'fallback', reason: 'AI service is temporarily unavailable', cached: false });
+      logRecommendationOutcome(profile, 'recommend_failed', [], 0);
+      complete({ status: 'fallback', reason: 'AI service is temporarily unavailable', cached: false, ...diagnosticDetails({ fallbackReason: 'AI service is temporarily unavailable' }) });
     }
   });
 

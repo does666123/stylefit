@@ -273,6 +273,17 @@ function safeKeyword(value) {
   return keyword && /^[\u4e00-\u9fffA-Za-z0-9\s-]+$/.test(keyword) ? keyword : '';
 }
 
+function relaxKeyword(value) {
+  const keyword = safeKeyword(value);
+  if (!keyword) return '';
+
+  const relaxed = keyword
+    .replace(/宽松|垂感|高级感|高级|简约|轻熟|复古|通勤|日常|商务|质感|合体|微宽松/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return relaxed && relaxed !== keyword ? relaxed : '';
+}
+
 export async function searchTaobaoCandidatePool(env, sceneKey, keywordGroups) {
   const scene = TAOBAO_SCENES[sceneKey];
   if (!scene) return { error: 'invalid_scene' };
@@ -284,17 +295,34 @@ export async function searchTaobaoCandidatePool(env, sceneKey, keywordGroups) {
     const keywords = supplied.length ? supplied : [scene.queries[category]];
     return keywords.map((keyword) => ({ category, keyword }));
   });
-  const results = await Promise.all(searches.map(({ category, keyword }) =>
-    searchTaobaoProducts(env, sceneKey, category, 1, keyword)));
-  const missingCoreCategories = ['top', 'bottom'].filter((category) => !results.some((result, index) =>
+  let requestCount = 0;
+  const search = async (category, keyword) => {
+    requestCount += 1;
+    return searchTaobaoProducts(env, sceneKey, category, 1, keyword);
+  };
+  const results = await Promise.all(searches.map(({ category, keyword }) => search(category, keyword)));
+  const missingCoreCategories = ['top', 'bottom', 'shoes'].filter((category) => !results.some((result, index) =>
     searches[index].category === category && !result.error && (result.products || []).length));
-  const fallbackResults = await Promise.all(missingCoreCategories.map((category) =>
-    searchTaobaoProducts(env, sceneKey, category, 1, scene.queries[category])));
-  const successful = [...results, ...fallbackResults].filter((result) => !result.error);
+  for (const category of missingCoreCategories) {
+    const firstKeyword = searches.find((searchItem) => searchItem.category === category)?.keyword || '';
+    const tried = new Set(searches
+      .filter((searchItem) => searchItem.category === category)
+      .map((searchItem) => searchItem.keyword));
+    const fallbacks = [relaxKeyword(firstKeyword), scene.queries[category]]
+      .filter((keyword) => keyword && !tried.has(keyword));
+
+    for (const keyword of fallbacks) {
+      const result = await search(category, keyword);
+      results.push(result);
+      if (!result.error && (result.products || []).length) break;
+    }
+  }
+  const successful = results.filter((result) => !result.error);
   if (!successful.length) {
-    return results.find((result) => result.error === 'not_configured')
+    const failed = results.find((result) => result.error === 'not_configured')
       || results.find((result) => result.error)
       || { error: 'upstream_failed' };
+    return { ...failed, requestCount };
   }
 
   const products = [];
@@ -309,6 +337,6 @@ export async function searchTaobaoCandidatePool(env, sceneKey, keywordGroups) {
     if (products.length >= 200) break;
   }
   return products.length
-    ? { products, page: 1, hasMore: false }
-    : { products: [], page: 1, hasMore: false, message: '暂无匹配的淘宝联盟商品' };
+    ? { products, page: 1, hasMore: false, requestCount }
+    : { products: [], page: 1, hasMore: false, requestCount, message: '暂无匹配的淘宝联盟商品' };
 }
